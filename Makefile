@@ -21,3 +21,15 @@ run:
 # Remove all generated output files
 clean:
 	rm -rf output/
+
+
+.PHONY: test
+test:
+	@echo "Installing dev dependencies and running tests..."
+	@if command -v uv >/dev/null 2>&1; then \
+		uv sync && uv install -D pytest pytest-cov || true; \
+	else \
+		python3 -m pip install -U '.[dev]' || true; \
+	fi
+	@echo "Running pytest..."
+	@pytest -q
