@@ -20,33 +20,33 @@ The TDPM-20 was developed from the **DREXI3** framework (by researcher Patrícia
 3. **Clinical synthesis** highlighting the **top 3 priority dimensions** for intervention, including functional impact notes, likely triggers, and agreed management strategies.
 
 ### The 20 TDPM-20 Dimensions
-| # | Dimension |
-|---|-----------|
-| 1 | Espectro Ansiedade / Fobia / Pânico |
-| 2 | Espectro Raiva / Irritabilidade |
-| 3 | Espectro Desconfiança / Agressividade |
-| 4 | Espectro Tristeza / Depressão |
-| 5 | Espectro Euforia / Mania |
-| 6 | Desregulação da Volição |
-| 7 | Desregulação da Conexão Social |
-| 8 | Impulsividade Decisional / Motora |
-| 9 | Compulsão |
-| 10 | Restrição / Purgação |
-| 11 | Desregulação do Sono |
-| 12 | Desregulação da Libido |
-| 13 | Desregulação do Apetite |
-| 14 | Desregulação da Energia |
-| 15 | Desregulação da Orientação |
-| 16 | Desregulação da Atenção |
-| 17 | Desregulação da Memória / Comunicação |
-| 18 | Alteração da Consciência |
-| 19 | Alteração da Sensopercepção |
-| 20 | Dor / Sintomas Somáticos |
+| Category | # | Dimension | Items (Assessment Criteria) |
+|---|---|---|---|
+| **Neurophysiological** | 1 | Desregulação do Apetite | • Mudanças marcantes no apetite (comer demais/perder a fome)<br>• Alteração do comportamento alimentar para um padrão pouco saudável |
+| | 2 | Desregulação do Sono | • Dificuldade para iniciar/manter o sono ou despertar (insônia)<br>• Alteração do ciclo sono-vigília ou sonolência diurna |
+| | 3 | Desregulação da Energia / Ânimo | • Baixa ou alta energia/disposição para atividades usuais<br>• Oscilações de ânimo que afetam produtividade/engajamento |
+| | 4 | Desregulação da Libido | • Alteração do desejo sexual (aumento/diminuição)<br>• Dificuldades de desempenho/satisfação sexual |
+| | 5 | Dor / Sintomas Somáticos | • Dores/desconfortos corporais frequentes ou crônicos<br>• Sintomas físicos (tensão, cefaleia, GI) associados a estresse |
+| **Neuropsychological** | 6 | Alteração da Consciência | • Sensação de "desligamento", confusão ou despersonalização<br>• Flutuações do estado de alerta que atrapalham atividades |
+| | 7 | Desregulação da Orientação | • Episódios de desorientação (tempo, lugar, pessoas)<br>• Necessidade de ajuda/pistas para se situar |
+| | 8 | Memória / Comunicação | • Esquecimentos de curto, médio e longo prazo<br>• Alterações perceptíveis da evocação da linguagem |
+| | 9 | Desregulação da Atenção | • Distraibilidade<br>• Dificuldade de manter foco até concluir tarefas |
+| | 10 | Alteração da Sensopercepção | • Percepções incomuns (sons/imagens/sensações) não compartilhadas<br>• Hiper/hipossensibilidade sensorial que causa desconforto |
+| **Search (Busca)** | 11 | Desregulação da Volição | • Baixa volição percebida de forma subjetiva<br>• Alta volição (ex: fissura/craving) |
+| | 12 | Impulsividade | • Ações impulsivas/precipitadas (motoras)<br>• Decisões sem ponderar consequências (decisional) |
+| | 13 | Conexão Social | • Evitação/isolamento social, sensação de desconexão<br>• Dificuldade de manter vínculos/reciprocidade nas relações |
+| | 14 | Compulsão | • Comportamentos/pensamentos repetitivos difíceis de controlar<br>• Tempo gasto com rituais/checagens que interferem no dia a dia |
+| | 15 | Restrição / Purgação | • Restrição alimentar rígida ou compensações (jejum, exercício)<br>• Episódios de purgação ou culpa intensa após comer |
+| **Alarm (Alarme)** | 16 | Espectro Ansiedade / Fobia / Pânico | • Ansiedade/tensão excessivas em situações cotidianas<br>• Evitação por medo/antecipação; Ataques de pânico |
+| | 17 | Espectro Irritabilidade / Raiva | • Irritabilidade/baixa tolerância; Explosões de raiva<br>• Rancor/ressentimento mantidos após conflitos |
+| | 18 | Espectro Desconfiança / Agressividade | • Tendência a interpretar intenções alheias como hostis<br>• Respostas duras/ameaçadoras/agressivas em desacordos |
+| | 19 | Espectro Tristeza / Depressão | • Humor deprimido, anedonia, vazio, desesperança, desvalorização<br>• Ruminação negativista; Autoestima/autoimagem rebaixada |
+| | 20 | Espectro Euforia / Mania | • Períodos de humor elevado/eufórico; Aceleração do pensamento<br>• Comportamentos expansivos e pensamentos grandiosos |
 
 ## Data
 - **Source:** Transcripts of group therapy sessions conducted via **Google Meet**
 - **Language:** Brazilian Portuguese (PT-BR)
-- **Format:** `.docx` (primary), `.pdf` available for reference
+- **Format:** `.docx`
 - **Transcription origin:** Automatic transcription by Google Meet's AI tool — **known quality issues:**
   - **Split sentences:** A single utterance is frequently broken across multiple consecutive lines, sometimes misattributed to a different speaker label mid-sentence (e.g., `"...no final de"` / `"semana."` separated by another speaker's line)
   - **Noise tokens:** Transcription hallucinations such as Cyrillic characters (`Да`), garbled tokens (`Yrym`, `Yry`), and ambiguous short tokens (`M.`)

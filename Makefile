@@ -33,3 +33,32 @@ test:
 	fi
 	@echo "Running pytest..."
 	@pytest -q
+
+
+.PHONY: analyse-llm
+analyse-llm:
+	@if [ -z "$(INPUT)" ]; then \
+		echo "Error: set INPUT to a sanitized transcript (e.g. session.run3.sanitized.txt)."; \
+		exit 1; \
+	fi
+	uv run tdpm_analyse_llm "$(INPUT)" --output "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
+
+
+.PHONY: analyse
+analyse: 
+	@if [ -z "$(INPUT)" ]; then \
+		echo "Error: INPUT is required. Usage: make analyse INPUT=path/to/session.docx"; \
+		exit 1; \
+	fi
+	# Step 1: run preprocessing to produce sanitized transcript (creates runN.sanitized.txt)
+	$(MAKE) run INPUT="$(INPUT)" OUTPUT_DIR="$(OUTPUT_DIR)" CHUNKS_PER_CALL="$(CHUNKS_PER_CALL)"
+	# session base name
+	SESSION=$(notdir $(basename $(INPUT))); \
+	# find latest sanitized run file
+	SANITIZED=$$(ls -1t "$(OUTPUT_DIR)/"$$SESSION.run*.sanitized.txt 2>/dev/null | head -n1); \
+	if [ -z "$$SANITIZED" ]; then \
+		echo "Error: sanitized transcript not found in $(OUTPUT_DIR)"; \
+		exit 1; \
+	fi; \
+	echo "Analysing $$SANITIZED with LLM..."; \
+	uv run tdpm_analyse_llm "$$SANITIZED" --output "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
