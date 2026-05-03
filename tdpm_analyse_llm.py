@@ -21,7 +21,10 @@ from typing import Dict, Any, List
 
 from openai import OpenAI
 
-from preprocess import split_into_chunks, merge_chunks, load_system_prompt, MODEL, LLM_BASE_URL, LLM_API_KEY, Spinner
+from utils import (
+    MODEL, LLM_BASE_URL, LLM_API_KEY,
+    split_into_chunks, merge_chunks, Spinner
+)
 
 PROMPT_FILE = Path(__file__).parent / "prompts" / "tdpm_analysis.md"
 ONTOLOGY_FILE = Path(__file__).parent / "data" / "tdpm_ontology.json"
