@@ -62,3 +62,8 @@ analyse:
 	fi; \
 	echo "Analysing $$SANITIZED with LLM..."; \
 	uv run tdpm_analyse_llm "$$SANITIZED" --output "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
+
+
+.PHONY: viewer
+viewer:
+	uv run python viewer.py

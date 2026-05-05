@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Análise TDPM-20</title>
+    <!-- Use a standard system font stack in CSS, or a clean web font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/viewer/styles.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="header-content">
+            <h1>Análise de sentimento com TDPM-20</h1>
+            <div class="file-selector">
+                <label for="fileSelect">Selecionar sessão:</label>
+                <select id="fileSelect">
+                    <option value="" disabled selected>Carregando arquivos...</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main" id="mainContainer">
+        <!-- Dashboard appears here after loading a file -->
+        <div id="welcomeMessage" class="welcome-message">
+            <h2>Bem-vindo</h2>
+            <p>Selecione uma sessão no menu acima para ver a análise.</p>
+        </div>
+
+        <div id="dashboard" class="dashboard" style="display: none;">
+            
+            <section class="session-meta">
+                <div class="meta-card">
+                    <span class="meta-label">Sessão</span>
+                    <span class="meta-value" id="metaSession">-</span>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">Modelo</span>
+                    <span class="meta-value" id="metaModel">-</span>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">Blocos</span>
+                    <span class="meta-value" id="metaChunks">-</span>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">Tempo de Execução</span>
+                    <span class="meta-value" id="metaTime">-</span>
+                </div>
+                <div class="meta-card">
+                    <span class="meta-label">Tokens (Prompt/Resposta)</span>
+                    <span class="meta-value" id="metaTokens">-</span>
+                </div>
+            </section>
+
+            <section class="patient-navigation">
+                <ul id="patientTabs" class="patient-tabs">
+                    <!-- Tabs will be generated here -->
+                </ul>
+            </section>
+
+            <section id="patientContent" class="patient-content">
+                <!-- Patient specific content will be injected here -->
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Template for Patient Content -->
+    <template id="patientTemplate">
+        <div class="patient-view">
+            
+            <div class="section-header">
+                <h3>Top 3 Dimensões Prioritárias</h3>
+                <p>Dimensões com a maior relevância clínica para este paciente.</p>
+            </div>
+            
+            <div class="top3-grid" id="tplTop3">
+                <!-- Top 3 cards go here -->
+            </div>
+
+            <div class="section-header">
+                <h3>Todas as Dimensões com Evidências</h3>
+                <p>Detalhamento de pontuações e evidências da transcrição.</p>
+            </div>
+
+            <div class="dimensions-list" id="tplDimensions">
+                <!-- Dimension items go here -->
+            </div>
+
+        </div>
+    </template>
+
+    <script src="/viewer/script.js"></script>
+</body>
+</html>
