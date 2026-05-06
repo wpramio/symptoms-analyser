@@ -12,7 +12,7 @@ Output:
 import argparse
 import json
 import logging
-import math
+import random
 import re
 import time
 from datetime import datetime, timezone
@@ -38,7 +38,7 @@ with open(ONTOLOGY_FILE, "r", encoding="utf-8") as f:
 
 logging.basicConfig(level=logging.WARNING)
 
-MAX_RETRIES = 3
+MAX_RETRIES = 5
 
 def load_prompt(prompt_file: Path) -> str:
     return prompt_file.read_text(encoding="utf-8")
@@ -61,10 +61,15 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
             usage = resp.usage.model_dump() if resp.usage else {}
             return resp.choices[0].message.content.strip(), usage
         except Exception as e:
-            logging.warning(f"Model call failed (attempt {attempt}): {e}")
-            if attempt == MAX_RETRIES:
+            err_str = str(e)
+            if "429" in err_str and attempt < MAX_RETRIES:
+                match = re.search(r"retry.*?(\d+)s", err_str, re.IGNORECASE)
+                wait = int(match.group(1)) if match else (2 ** attempt + random.uniform(0, 2))
+                print(f"\r  ⚠ Rate limited. Waiting {wait:.0f}s before retry"
+                      f" {attempt}/{MAX_RETRIES - 1}...", flush=True)
+                time.sleep(wait)
+            else:
                 raise
-    raise RuntimeError("Unreachable")
 
 
 JSON_RE = re.compile(r"\{[\s\S]*\}")
