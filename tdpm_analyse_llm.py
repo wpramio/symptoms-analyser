@@ -57,6 +57,7 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
                 messages=messages,
                 temperature=0,
                 max_tokens=8192,
+                response_format={"type": "json_object"}
             )
             usage = resp.usage.model_dump() if resp.usage else {}
             return resp.choices[0].message.content.strip(), usage
@@ -70,17 +71,6 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
                 time.sleep(wait)
             else:
                 raise
-
-
-JSON_RE = re.compile(r"\{[\s\S]*\}")
-
-
-def extract_json(s: str) -> str:
-    # Attempt to find the first JSON object in the string
-    m = JSON_RE.search(s)
-    if not m:
-        raise ValueError("No JSON object found in model output")
-    return m.group(0)
 
 
 def validate_and_parse(json_str: str) -> Dict[str, Any]:
@@ -221,18 +211,16 @@ def main():
         with Spinner(label + "..."):
             raw_out, usage = call_model(client, system_prompt, user_text)
 
-        # Extract JSON
+        # Parse JSON
         try:
-            json_part = extract_json(raw_out)
-            parsed = validate_and_parse(json_part)
+            parsed = validate_and_parse(raw_out)
         except Exception as e:
             # Retry once with a strict instruction
             logging.warning(f"First parse failed for chunk {i}, retrying: {e}")
             retry_user = ("Return only valid JSON matching the schema: \n" + system_prompt + "\n\n" + user_text)
             with Spinner(label + " (retry)..."):
                 raw_out, usage = call_model(client, system_prompt, retry_user)
-            json_part = extract_json(raw_out)
-            parsed = validate_and_parse(json_part)
+            parsed = validate_and_parse(raw_out)
 
         # Aggregate token usage
         for key in total_usage:
