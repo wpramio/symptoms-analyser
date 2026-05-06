@@ -5,15 +5,15 @@ install:
 	uv sync
 
 # Run preprocessing on a .docx file
-# Usage: make run INPUT=path/to/session.docx
-# Optional: make run INPUT=path/to/session.docx OUTPUT_DIR=path/to/output CHUNKS_PER_CALL=6
+# Usage: make preprocess INPUT=path/to/session.docx
+# Optional: make preprocess INPUT=path/to/session.docx OUTPUT_DIR=path/to/output CHUNKS_PER_CALL=6
 INPUT ?=
 OUTPUT_DIR ?= output
 CHUNKS_PER_CALL ?= 6
 
-run:
+preprocess:
 	@if [ -z "$(INPUT)" ]; then \
-		echo "Error: INPUT is required. Usage: make run INPUT=path/to/session.docx"; \
+		echo "Error: INPUT is required. Usage: make preprocess INPUT=path/to/session.docx"; \
 		exit 1; \
 	fi
 	uv run preprocess "$(INPUT)" --output-dir "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
@@ -51,7 +51,7 @@ analyse:
 		exit 1; \
 	fi
 	# Step 1: run preprocessing to produce sanitized transcript (creates runN.sanitized.txt)
-	$(MAKE) run INPUT="$(INPUT)" OUTPUT_DIR="$(OUTPUT_DIR)" CHUNKS_PER_CALL="$(CHUNKS_PER_CALL)"
+	$(MAKE) preprocess INPUT="$(INPUT)" OUTPUT_DIR="$(OUTPUT_DIR)" CHUNKS_PER_CALL="$(CHUNKS_PER_CALL)"
 	# session base name
 	SESSION=$(notdir $(basename $(INPUT))); \
 	# find latest sanitized run file
