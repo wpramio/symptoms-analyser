@@ -17,13 +17,11 @@ Outputs (written to --output-dir, default: ./output):
 """
 
 import argparse
-import itertools
 import json
-import os
+import math
 import random
 import re
 import sys
-import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -171,8 +169,16 @@ def sanitize_chunk(
         except Exception as e:
             err_str = str(e)
             if "429" in err_str and attempt < MAX_RETRIES:
-                match = re.search(r"retry.*?(\d+)s", err_str, re.IGNORECASE)
-                wait = int(match.group(1)) if match else (2 ** attempt + random.uniform(0, 2))
+                match_delay = re.search(r"'retryDelay':\s*'(\d+)s'", err_str)
+                match_msg = re.search(r"retry.*?(\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                
+                if match_delay:
+                    wait = int(match_delay.group(1))
+                elif match_msg:
+                    wait = int(math.ceil(float(match_msg.group(1))))
+                else:
+                    wait = int(2 ** attempt + random.uniform(0, 2))
+                    
                 print(f"\r  ⚠ Rate limited. Waiting {wait:.0f}s before retry"
                       f" {attempt}/{MAX_RETRIES - 1}...", flush=True)
                 time.sleep(wait)
