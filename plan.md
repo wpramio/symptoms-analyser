@@ -242,3 +242,13 @@ To ensure these entirely fabricated sessions remain clinically and linguisticall
 3. The LLM is instructed to strictly mimic the vocabulary, slang, sentence structure, and conversational pacing found in the reference, while inventing a completely new narrative designed to showcase the requested TDPM symptoms.
 
 This approach guarantees full control over symptom injection while preserving the deep linguistic texture of the real therapy groups, preventing the synthetic data from sounding generic or artificial.
+
+## Future Extensions
+
+### Free-Text Analysis (Letters, Diaries, Clinical Notes)
+The current pipeline (`tdpm_analyse_llm.py`, `utils.py`, and `tdpm_analysis.md`) is hyper-specialized for structured group therapy transcripts. It relies on explicit timestamps (`00:00:00`) to chunk the text and speaker labels (`Paciente1:`) to attribute symptoms.
+
+If the project scope expands to analyze unstructured free-text (such as a patient's letter, diary entry, or a psychologist's clinical note), the following adaptations are required:
+1. **New Prompt (`tdpm_analysis_text.md`)**: A variant of the analysis prompt that does not require grouping by speaker labels or extracting timestamps, instead attributing all symptoms to the "Author" or "Subject".
+2. **New Chunking Strategy**: `utils.py` must be updated to split text by paragraphs, token count, or character limits, rather than searching for timestamp lines.
+3. **CLI Flexibility**: Introduce a `--format` flag to `tdpm_analyse_llm.py` (e.g., `--format transcript` vs `--format free_text`) to toggle between the respective prompts and chunking strategies dynamically.
