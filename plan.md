@@ -206,3 +206,18 @@ API call latency is dominated by a fixed overhead per call (network round trip, 
 The output token budget per call is `max_tokens=8192`, and each ~1 min block produces ~300 completion tokens on average, giving a theoretical ceiling of ~27 chunks per call (⌊8192/300⌋≈27) — but 6 provides good headroom and covers ~6 minutes of session per call, a coherent conversational segment.
 
 **Recommendation:** Use `--chunks-per-call 6` as the default. Use `--chunks-per-call 1` only when traceability is the priority (e.g., debugging or final academic runs where per-block attribution matters).
+
+## Synthetic Data Generation Pipeline
+
+To rigorously evaluate the accuracy and resilience of the TDPM analysis pipeline (`tdpm_analyse_llm.py`), the architecture includes a pipeline for generating synthetic, realistic therapy transcripts based on the real sanitized transcripts. This serves as a ground-truth dataset.
+
+### Design Decisions
+The following key design decisions were established for the synthetic generation pipeline:
+
+1. **Controlled Symptom Injection:**
+   The generation of synthetic transcripts follows a controlled approach. Specific TDPM symptoms (e.g., `16.1`, `16.3`) are explicitly passed to the generator (e.g., via CLI arguments) to be injected into specific patient utterances. This deterministic approach ensures that the ground-truth dataset is known, measurable, and highly specific to the tests being run. 
+   *(Alternative Considered: Randomized Symptom Injection was rejected because it lacks traceability, makes it difficult to isolate and test specific edge cases or dimensions, and complicates the creation of a rigorous, reproducible ground-truth dataset.)*
+
+2. **Full Chunk Rewriting:**
+   Instead of modifying only specific, isolated utterances, the LLM is instructed to rewrite the entire transcript chunk. This ensures that the conversation flows naturally, maintaining clinical realism, coherent contextual responses from other patients/therapists, and logical continuity, which is crucial for testing the LLM's true contextual reasoning capabilities.
+   *(Alternative Considered: Targeted Utterance Replacement — altering only the specific sentence of a patient — was rejected because it often leads to disjointed conversations. For example, if a patient's statement is heavily altered to show a symptom, the therapist's subsequent response in the original transcript might no longer make logical sense, breaking the realism of the session.)*
