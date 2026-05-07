@@ -164,12 +164,19 @@ Timestamps in the raw transcript have **minute-level precision** (e.g., `00:04:0
 The original timestamp values are preserved verbatim — no conversion to block indices.
 
 ### LLM Model Choice
-Two models are recommended depending on the stage of work:
+Models can be run via cloud APIs or locally, depending on the stage of work and available hardware:
 
-- **Development/testing:** `Gemini 3 Flash` (Google) — free tier, generous limits, strong PT-BR quality, OpenAI-compatible API
-- **Final/academic runs:** `GPT-4o` or `GPT-4.1 mini` (OpenAI) — well-documented, strictly pinnable model versions, which is required for reproducibility
+**Cloud APIs:**
+- **Development/testing:** `Gemini 3 Flash` (Google) — free tier, strong PT-BR quality, OpenAI-compatible API. Note that free tiers have strict rate limits, making concurrent execution impractical.
+- **Final/academic runs:** `GPT-4o` or `GPT-4.1 mini` (OpenAI) — well-documented, strictly pinnable model versions, which is required for reproducibility.
 
-Fully local models (e.g., Llama via Ollama) are not recommended unless a GPU with sufficient VRAM is available — the sanitization task requires strong contextual reasoning over long PT-BR conversational texts.
+**Local Execution (Recommended for users with a dedicated GPU):**
+Since the project uses the `openai` Python SDK and `.env` configuration, it is 100% ready to run local, OpenAI-compatible servers (e.g., via **Ollama** or **LM Studio**) without code changes. This bypasses rate limits entirely and allows for fast, concurrent processing.
+
+For a system with at least 6GB of VRAM (e.g., RTX 2060), you can fit a 4-bit quantized 7B-9B parameter model entirely in GPU memory, yielding 30-50+ tokens per second:
+- **Llama 3 (8B) / Mistral (7B):** Highly capable models that understand PT-BR exceptionally well, especially when the system prompt is in English.
+- **Qwen 2 (7B) / Gemma 2 (9B):** Exceptionally strong at multilingual tasks.
+- **Dedicated PT-BR Fine-tunes:** e.g., Bode or Maritaca AI models.
 
 #### Privacy & Ethics
 Cloud-based APIs receive the transcript content externally. Before using any cloud API, confirm:
