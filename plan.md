@@ -221,3 +221,13 @@ The following key design decisions were established for the synthetic generation
 2. **Full Chunk Rewriting:**
    Instead of modifying only specific, isolated utterances, the LLM is instructed to rewrite the entire transcript chunk. This ensures that the conversation flows naturally, maintaining clinical realism, coherent contextual responses from other patients/therapists, and logical continuity, which is crucial for testing the LLM's true contextual reasoning capabilities.
    *(Alternative Considered: Targeted Utterance Replacement — altering only the specific sentence of a patient — was rejected because it often leads to disjointed conversations. For example, if a patient's statement is heavily altered to show a symptom, the therapist's subsequent response in the original transcript might no longer make logical sense, breaking the realism of the session.)*
+
+### Dataset Generation Strategy
+
+When generating the synthetic ground-truth dataset, the approach is to focus on a **Representative Subset** rather than attempting 100% ontology coverage by brute-forcing all 40 TDPM items into the limited set of available real transcripts. 
+
+This strategy was chosen to mitigate two major risks:
+1. **Contextual Mismatch (The "Frankenstein" Effect):** Forcefully injecting symptoms that do not align with the original topic of the conversation (e.g., injecting "grandiosity" into a discussion deeply focused on grief) results in highly artificial and disjointed dialogue. If the analysis script fails on these chunks, it is impossible to determine if the failure was due to the analyzer's shortcomings or the poor quality of the synthetic text.
+2. **Lack of Diversity (Overfitting):** Repeatedly generating dozens of synthetic transcripts from the exact same base conversations risks overfitting the analysis pipeline to specific therapist styles, patient personas, and sentence structures, rather than proving the architecture's generalizability.
+
+By selecting 5 to 10 diverse dimensions (e.g., Anxiety, Sleep, Psychosis, Impulsivity) and carefully matching them to appropriate conversational contexts within the real transcripts, the resulting dataset provides a rigorous, realistic, and methodologically sound validation of the pipeline's capabilities.
