@@ -252,3 +252,10 @@ If the project scope expands to analyze unstructured free-text (such as a patien
 1. **New Prompt (`tdpm_analysis_text.md`)**: A variant of the analysis prompt that does not require grouping by speaker labels or extracting timestamps, instead attributing all symptoms to the "Author" or "Subject".
 2. **New Chunking Strategy**: `utils.py` must be updated to split text by paragraphs, token count, or character limits, rather than searching for timestamp lines.
 3. **CLI Flexibility**: Introduce a `--format` flag to `tdpm_analyse_llm.py` (e.g., `--format transcript` vs `--format free_text`) to toggle between the respective prompts and chunking strategies dynamically.
+
+### Model Fine-Tuning vs. In-Context Learning
+The current architecture relies entirely on **In-Context Learning** (providing the TDPM rubric within the system prompt). This approach was selected because it offers high accuracy with modern LLMs and maximum flexibility (updating the ontology requires zero model retraining).
+
+Fine-tuning a model specifically for TDPM item extraction is **not recommended** for the initial validation phases due to the massive "data hunger" of classification fine-tuning. However, it represents a highly valuable future extension for **Knowledge Distillation**:
+- **The Distillation Pipeline**: Once the prompt-based architecture generates a sufficiently large and rigorous dataset (combining real and synthetic transcripts), this dataset can be used to fine-tune a much smaller, highly specialized local model (e.g., a 3B parameter model).
+- **Benefits**: This allows the pipeline to run locally on low-end hardware (like laptops without discrete GPUs) at scale, ensuring total patient privacy and zero API costs, while retaining the reasoning capabilities of the larger models that generated the training data.
