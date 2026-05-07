@@ -231,3 +231,14 @@ This strategy was chosen to mitigate two major risks:
 2. **Lack of Diversity (Overfitting):** Repeatedly generating dozens of synthetic transcripts from the exact same base conversations risks overfitting the analysis pipeline to specific therapist styles, patient personas, and sentence structures, rather than proving the architecture's generalizability.
 
 By selecting 5 to 10 diverse dimensions (e.g., Anxiety, Sleep, Psychosis, Impulsivity) and carefully matching them to appropriate conversational contexts within the real transcripts, the resulting dataset provides a rigorous, realistic, and methodologically sound validation of the pipeline's capabilities.
+
+### From-Scratch Generation with Style References
+
+To further expand the synthetic dataset while completely avoiding the constraints of the 2 base transcripts, the pipeline supports generating entire 30-minute therapy sessions from scratch. 
+
+To ensure these entirely fabricated sessions remain clinically and linguistically authentic, the architecture employs a **Few-Shot Style Reference Injection**:
+1. The generation script (`generate_from_scratch.py`) extracts a random ~4-minute chunk from one of the real sanitized transcripts.
+2. This chunk is explicitly passed to the LLM as a `[STYLE_REFERENCE]`.
+3. The LLM is instructed to strictly mimic the vocabulary, slang, sentence structure, and conversational pacing found in the reference, while inventing a completely new narrative designed to showcase the requested TDPM symptoms.
+
+This approach guarantees full control over symptom injection while preserving the deep linguistic texture of the real therapy groups, preventing the synthetic data from sounding generic or artificial.
