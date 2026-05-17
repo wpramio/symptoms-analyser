@@ -63,9 +63,22 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
                 raise
 
 def validate_and_parse(json_str: str) -> Dict[str, Any]:
-    obj = json.loads(json_str)
+    json_str = json_str.strip()
+    if json_str.startswith("```json"):
+        json_str = json_str[7:]
+    if json_str.startswith("```"):
+        json_str = json_str[3:]
+    if json_str.endswith("```"):
+        json_str = json_str[:-3]
+    json_str = json_str.strip()
+
+    try:
+        obj = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse JSON: {e}\nRaw output: {json_str[:200]}")
+
     if "synthetic_text" not in obj or "ground_truth" not in obj:
-        raise ValueError("Output JSON missing required keys: 'synthetic_text', 'ground_truth'")
+        raise ValueError(f"Output JSON missing keys 'synthetic_text', 'ground_truth'. Keys found: {list(obj.keys())}\nRaw: {json_str[:200]}")
     return obj
 
 def parse_inject_args(inject_list: List[str]) -> Dict[str, List[str]]:
@@ -86,7 +99,7 @@ def parse_inject_args(inject_list: List[str]) -> Dict[str, List[str]]:
 def main():
     parser = argparse.ArgumentParser(description="Generate a synthetic transcript with injected TDPM symptoms")
     parser.add_argument("input", type=Path, help="Path to real sanitized transcript (.txt)")
-    parser.add_argument("--output-dir", type=Path, default=Path("output"), help="Output directory")
+    parser.add_argument("--output-dir", type=Path, default=Path("output/synthetic"), help="Output directory")
     parser.add_argument("--chunks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
     parser.add_argument("--inject", nargs="+", help="Symptoms to inject e.g., Paciente1:16.1,16.2 Paciente2:1.1")
     args = parser.parse_args()
@@ -134,13 +147,20 @@ def main():
         with Spinner(label + "..."):
             raw_out, usage = call_model(client, system_prompt, user_text)
             
-        try:
-            parsed = validate_and_parse(raw_out)
-        except Exception as e:
-            logging.warning(f"Parse failed for chunk {i}: {e}. Retrying...")
-            with Spinner(label + " (retry)..."):
-                raw_out, usage = call_model(client, system_prompt, "Return valid JSON matching schema.\n\n" + user_text)
+        parsed = {}
+        for attempt in range(3):
+            try:
                 parsed = validate_and_parse(raw_out)
+                break
+            except Exception as e:
+                logging.warning(f"Parse failed for chunk {i} (attempt {attempt+1}): {e}")
+                if attempt < 2:
+                    with Spinner(label + f" (retry {attempt+1})..."):
+                        raw_out, usage = call_model(client, system_prompt, "Return valid JSON matching schema with exact keys 'synthetic_text' and 'ground_truth'.\n\n" + user_text)
+        
+        if not parsed:
+            logging.error(f"Failed to generate valid JSON for chunk {i} after 3 attempts. Falling back to original text.")
+            parsed = {"synthetic_text": chunk["text"], "ground_truth": {}}
 
         synthetic_text = parsed.get("synthetic_text", "")
         
