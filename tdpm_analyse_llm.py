@@ -55,9 +55,10 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
         try:
             resp = client.chat.completions.create(
                 model=MODEL,
+                service_tier="flex",
                 messages=messages,
                 temperature=0,
-                max_tokens=8192,
+                max_completion_tokens=16384,
                 response_format={"type": "json_object"}
             )
             usage = resp.usage.model_dump() if resp.usage else {}
@@ -252,6 +253,7 @@ def main():
         "session": args.input.stem,
         "model": MODEL,
         "chunks_analyzed": len(chunks),
+        "chunks_per_call": args.chunks_per_call,
         "total_elapsed_seconds": round(total_elapsed, 1),
         "token_usage": total_usage,
         "aggregated": aggregated,
@@ -270,6 +272,7 @@ def main():
             "output_file": str(output_path.resolve()),
             "model": MODEL,
             "chunks_total": len(chunks),
+            "chunks_per_call": args.chunks_per_call,
             "total_token_usage": total_usage,
             "total_elapsed_seconds": round(total_elapsed, 1),
         }
