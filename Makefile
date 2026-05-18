@@ -10,7 +10,7 @@ install:
 INPUT ?=
 OUTPUT_DIR ?= output
 CHUNKS_PER_CALL ?= 6
-STYLE_REF ?=
+STYLE_REF ?= data/speaking_style_reference.txt
 INJECT ?=
 
 preprocess:
@@ -73,8 +73,9 @@ viewer:
 
 .PHONY: synthetic-scratch
 synthetic-scratch:
-	@if [ -z "$(STYLE_REF)" ] || [ -z "$(INJECT)" ]; then \
-		echo "Error: STYLE_REF and INJECT are required. Usage: make synthetic-scratch STYLE_REF=path/to/style.txt INJECT='Paciente:1.1,1.2'"; \
+	@if [ -z "$(INJECT)" ]; then \
+		echo "Error: INJECT is required. Usage: make synthetic-scratch INJECT='Paciente1:1.1,1.2'"; \
 		exit 1; \
 	fi
-	uv run python generate_from_scratch.py --style-ref "$(STYLE_REF)" --output-dir "$(OUTPUT_DIR)/synthetic" --inject $(INJECT)
+	uv run python generate_from_scratch.py --style-ref "$(STYLE_REF)" --output-dir "$(OUTPUT_DIR)/synthetic" --inject $(INJECT) $(if $(SCENES),--scenes $(SCENES),)
+
