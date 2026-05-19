@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,12 +9,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/viewer/styles.css">
 </head>
+
 <body>
 
     <header class="app-header">
         <div class="header-content">
-            <h1>Análise de sentimento com TDPM-20</h1>
-            <div class="file-selector">
+            <nav class="app-nav">
+                <button id="navAnalysis" class="nav-btn active">Análise TDPM-20</button>
+                <button id="navCalculator" class="nav-btn">Calculadora de Custos</button>
+            </nav>
+            <div class="file-selector" id="fileSelectorContainer">
                 <label for="fileSelect">Selecionar sessão:</label>
                 <select id="fileSelect">
                     <option value="" disabled selected>Carregando arquivos...</option>
@@ -30,7 +35,7 @@
         </div>
 
         <div id="dashboard" class="dashboard" style="display: none;">
-            
+
             <section class="session-meta">
                 <div class="meta-card">
                     <span class="meta-label">Sessão</span>
@@ -65,17 +70,108 @@
             </section>
 
         </div>
+
+        <div id="calculatorView" class="calculator-view" style="display: none;">
+            <div class="calc-header">
+                <h2>Calculadora de Custos de Pipeline</h2>
+                <p>Estime os custos de API baseando-se nos tokens consumidos nas etapas de pré-processamento e análise.
+                </p>
+            </div>
+
+            <div class="calc-grid">
+                <div class="calc-card">
+                    <h3>Parâmetros de Pré-processamento</h3>
+                    <div class="input-group">
+                        <label for="calcPrepPrompt">Tokens de Prompt (Média):</label>
+                        <input type="number" id="calcPrepPrompt" value="30000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcPrepComp">Tokens de Resposta (Média):</label>
+                        <input type="number" id="calcPrepComp" value="10000" step="1000">
+                    </div>
+                </div>
+
+                <div class="calc-card">
+                    <h3>Parâmetros de Análise</h3>
+                    <div class="input-group">
+                        <label for="calcAnaPrompt">Tokens de Prompt (Média):</label>
+                        <input type="number" id="calcAnaPrompt" value="35000" step="1000">
+                    </div>
+                    <div class="input-group">
+                        <label for="calcAnaComp">Tokens de Resposta (Média):</label>
+                        <input type="number" id="calcAnaComp" value="1500" step="100">
+                    </div>
+                </div>
+
+                <div class="calc-card">
+                    <h3>Configurações de Escala</h3>
+                    <div class="input-group">
+                        <label for="calcSessions">Número de Sessões (Total):</label>
+                        <input type="number" id="calcSessions" value="100" step="10">
+                    </div>
+                </div>
+            </div>
+
+            <div class="calc-hybrid" style="margin-bottom: 2.5rem; background-color: var(--card-bg); padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow);">
+                <h3 style="font-size: 1.25rem; margin-bottom: 1rem;">Custo Híbrido Personalizado</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                    <div class="input-group">
+                        <label for="hybridPrepSelect">Modelo para Pré-processamento:</label>
+                        <select id="hybridPrepSelect" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); outline: none; font-family: inherit; font-size: 0.875rem; color: var(--text-main); background-color: var(--card-bg);">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="hybridAnaSelect">Modelo para Análise:</label>
+                        <select id="hybridAnaSelect" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); outline: none; font-family: inherit; font-size: 0.875rem; color: var(--text-main); background-color: var(--card-bg);">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 2rem; align-items: center; background: #f8fafc; padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--border);">
+                    <div>
+                        <span style="display: block; font-size: 0.875rem; color: var(--text-muted); font-weight: 500;">Custo 1 Sessão (Híbrida)</span>
+                        <strong style="font-size: 1.5rem; color: var(--primary);" id="hybridSessionCost">$-</strong>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.875rem; color: var(--text-muted); font-weight: 500;">Custo Total (Híbrido)</span>
+                        <strong style="font-size: 1.5rem; color: var(--primary);" id="hybridTotalCost">$-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calc-results">
+                <h3>Estimativa de Custos por Provedor (em dólares)</h3>
+                <div class="table-container">
+                    <table class="cost-table" id="costTable">
+                        <thead>
+                            <tr>
+                                <th>Provedor</th>
+                                <th>Modelo</th>
+                                <th>Custo Input (1M)</th>
+                                <th>Custo Output (1M)</th>
+                                <th>Custo 1 Sessão</th>
+                                <th>Custo Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Template for Patient Content -->
     <template id="patientTemplate">
         <div class="patient-view">
-            
+
             <div class="section-header">
                 <h3>Top 3 Dimensões Prioritárias</h3>
                 <p>Dimensões com a maior relevância clínica para este paciente.</p>
             </div>
-            
+
             <div class="top3-grid" id="tplTop3">
                 <!-- Top 3 cards go here -->
             </div>
@@ -94,4 +190,5 @@
 
     <script src="/viewer/script.js"></script>
 </body>
+
 </html>

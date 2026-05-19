@@ -2,19 +2,167 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileSelect = document.getElementById('fileSelect');
     const dashboard = document.getElementById('dashboard');
     const welcomeMessage = document.getElementById('welcomeMessage');
-    
+
     // Meta elements
     const metaSession = document.getElementById('metaSession');
     const metaModel = document.getElementById('metaModel');
     const metaChunks = document.getElementById('metaChunks');
     const metaTime = document.getElementById('metaTime');
     const metaTokens = document.getElementById('metaTokens');
-    
+
     const patientTabs = document.getElementById('patientTabs');
     const patientContent = document.getElementById('patientContent');
     const patientTemplate = document.getElementById('patientTemplate');
 
+    // Navigation and Calculator elements
+    const navAnalysis = document.getElementById('navAnalysis');
+    const navCalculator = document.getElementById('navCalculator');
+    const fileSelectorContainer = document.getElementById('fileSelectorContainer');
+    const calculatorView = document.getElementById('calculatorView');
+
+    const calcPrepPrompt = document.getElementById('calcPrepPrompt');
+    const calcPrepComp = document.getElementById('calcPrepComp');
+    const calcAnaPrompt = document.getElementById('calcAnaPrompt');
+    const calcAnaComp = document.getElementById('calcAnaComp');
+    const calcSessions = document.getElementById('calcSessions');
+    const costTableBody = document.querySelector('#costTable tbody');
+    
+    const hybridPrepSelect = document.getElementById('hybridPrepSelect');
+    const hybridAnaSelect = document.getElementById('hybridAnaSelect');
+    const hybridSessionCost = document.getElementById('hybridSessionCost');
+    const hybridTotalCost = document.getElementById('hybridTotalCost');
+
     let currentData = null;
+    let pricingData = [];
+
+    // Setup navigation toggles
+    navAnalysis.addEventListener('click', () => {
+        navAnalysis.classList.add('active');
+        navCalculator.classList.remove('active');
+        fileSelectorContainer.style.display = 'flex';
+        calculatorView.style.display = 'none';
+
+        if (currentData) {
+            welcomeMessage.style.display = 'none';
+            dashboard.style.display = 'block';
+        } else {
+            welcomeMessage.style.display = 'block';
+            dashboard.style.display = 'none';
+        }
+    });
+
+    navCalculator.addEventListener('click', () => {
+        navCalculator.classList.add('active');
+        navAnalysis.classList.remove('active');
+        fileSelectorContainer.style.display = 'none';
+        welcomeMessage.style.display = 'none';
+        dashboard.style.display = 'none';
+        calculatorView.style.display = 'block';
+
+        if (pricingData.length === 0) {
+            loadPricingData();
+        }
+    });
+
+    // Calculator Logic
+    function loadPricingData() {
+        fetch('/viewer/prices.csv')
+            .then(res => res.text())
+            .then(csv => {
+                const lines = csv.trim().split('\n');
+                pricingData = lines.slice(1).map(line => {
+                    const parts = line.split(',');
+                    return {
+                        provider: parts[0],
+                        model: parts[1],
+                        inputPrice: parseFloat(parts[2]),
+                        outputPrice: parseFloat(parts[3])
+                    };
+                });
+                
+                // Populate selects
+                hybridPrepSelect.innerHTML = '';
+                hybridAnaSelect.innerHTML = '';
+                pricingData.forEach((item, index) => {
+                    const opt1 = document.createElement('option');
+                    opt1.value = index;
+                    opt1.textContent = `${item.provider} - ${item.model}`;
+                    hybridPrepSelect.appendChild(opt1);
+                    
+                    const opt2 = document.createElement('option');
+                    opt2.value = index;
+                    opt2.textContent = `${item.provider} - ${item.model}`;
+                    hybridAnaSelect.appendChild(opt2);
+                });
+                
+                // Set default selections if possible
+                if (pricingData.length > 0) {
+                    hybridPrepSelect.selectedIndex = 0; // First item usually flash/cheap
+                    hybridAnaSelect.selectedIndex = Math.min(1, pricingData.length - 1); // Second item usually pro
+                }
+
+                updateCalculator();
+            })
+            .catch(err => console.error("Error loading CSV", err));
+    }
+
+    function updateCalculator() {
+        if (pricingData.length === 0) return;
+
+        const pPrompt = parseInt(calcPrepPrompt.value) || 0;
+        const pComp = parseInt(calcPrepComp.value) || 0;
+        const aPrompt = parseInt(calcAnaPrompt.value) || 0;
+        const aComp = parseInt(calcAnaComp.value) || 0;
+        const sessions = parseInt(calcSessions.value) || 0;
+
+        const totalInputTokens = pPrompt + aPrompt;
+        const totalOutputTokens = pComp + aComp;
+
+        costTableBody.innerHTML = '';
+
+        pricingData.forEach(item => {
+            const inputCost = (totalInputTokens / 1000000) * item.inputPrice;
+            const outputCost = (totalOutputTokens / 1000000) * item.outputPrice;
+            const sessionCost = inputCost + outputCost;
+            const totalCost = sessionCost * sessions;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="provider-cell">${item.provider}</td>
+                <td>${item.model}</td>
+                <td>$${item.inputPrice.toFixed(3).replace('.', ',')}</td>
+                <td>$${item.outputPrice.toFixed(3).replace('.', ',')}</td>
+                <td class="total-cell">$${sessionCost.toFixed(3).replace('.', ',')}</td>
+                <td class="total-cell">$${totalCost.toFixed(2).replace('.', ',')}</td>
+            `;
+            costTableBody.appendChild(tr);
+        });
+        
+        // Calculate Hybrid
+        const prepIndex = parseInt(hybridPrepSelect.value);
+        const anaIndex = parseInt(hybridAnaSelect.value);
+        
+        if (!isNaN(prepIndex) && !isNaN(anaIndex) && pricingData[prepIndex] && pricingData[anaIndex]) {
+            const prepModel = pricingData[prepIndex];
+            const anaModel = pricingData[anaIndex];
+            
+            const prepCost = (pPrompt / 1000000) * prepModel.inputPrice + (pComp / 1000000) * prepModel.outputPrice;
+            const anaCost = (aPrompt / 1000000) * anaModel.inputPrice + (aComp / 1000000) * anaModel.outputPrice;
+            
+            const hSessionCost = prepCost + anaCost;
+            const hTotalCost = hSessionCost * sessions;
+            
+            hybridSessionCost.textContent = '$' + hSessionCost.toFixed(3).replace('.', ',');
+            hybridTotalCost.textContent = '$' + hTotalCost.toFixed(2).replace('.', ',');
+        }
+    }
+
+    [calcPrepPrompt, calcPrepComp, calcAnaPrompt, calcAnaComp, calcSessions, hybridPrepSelect, hybridAnaSelect].forEach(input => {
+        if(input) {
+            input.addEventListener('input', updateCalculator);
+            input.addEventListener('change', updateCalculator);
+        }
+    });
 
     // Fetch list of files
     fetch('/api/files')
@@ -61,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         metaModel.textContent = currentData.model || '-';
         metaChunks.textContent = currentData.chunks_analyzed || '-';
         metaTime.textContent = currentData.total_elapsed_seconds ? currentData.total_elapsed_seconds + 's' : '-';
-        
+
         if (currentData.token_usage) {
             metaTokens.textContent = `${currentData.token_usage.prompt_tokens} / ${currentData.token_usage.completion_tokens}`;
         } else {
@@ -71,8 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Patient Tabs
         patientTabs.innerHTML = '';
         const patients = currentData.aggregated?.patients || {};
-        const patientNames = Object.keys(patients).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-        
+        const patientNames = Object.keys(patients).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
         if (patientNames.length === 0) {
             patientContent.innerHTML = '<p>Nenhum dado de paciente encontrado.</p>';
             return;
@@ -97,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabElement.classList.add('active');
 
         const patientData = currentData.aggregated.patients[name];
-        
+
         // Clone template
         patientContent.innerHTML = '';
         const clone = patientTemplate.content.cloneNode(true);
@@ -112,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="top3-rank">Prioridade #${index + 1}</div>
                     <div class="top3-title">${dim.name}</div>
-                    <div class="score-badge" data-score="${dim.mean}">Média: ${dim.mean.toFixed(1)}</div>
+                    <div class="score-badge" data-score="${dim.mean}">Média: ${dim.mean.toFixed(1).replace('.', ',')}</div>
                 `;
                 tplTop3.appendChild(card);
             });
@@ -124,11 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (patientData.dimensions && Object.keys(patientData.dimensions).length > 0) {
             // Sort dimensions by score descending
             const dims = Object.values(patientData.dimensions).sort((a, b) => b.dimension_mean - a.dimension_mean);
-            
+
             dims.forEach(dim => {
                 const dimEl = document.createElement('div');
                 dimEl.className = 'dimension-item';
-                
+
                 // Better approach: filter items where item ID starts with dimension ID
                 // Since dimension key is not always present in the object directly, we map it
                 const dimKey = Object.keys(patientData.dimensions).find(k => patientData.dimensions[k].name === dim.name);
@@ -156,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="dimension-title-group">
                             <span class="dimension-name">${dim.name}</span>
                         </div>
-                        <div class="score-badge" data-score="${dim.dimension_mean}">Média: ${dim.dimension_mean.toFixed(1)}</div>
+                        <div class="score-badge" data-score="${dim.dimension_mean}">Média: ${dim.dimension_mean.toFixed(1).replace('.', ',')}</div>
                     </div>
                     <div class="dimension-body">
                         ${itemsHtml}

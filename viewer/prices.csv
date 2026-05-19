@@ -1,0 +1,13 @@
+Provider,Model,InputPrice,OutputPrice
+Google,Gemini 2.5 Flash,0.15,1.25
+Google,Gemini 2.5 Pro,0.625,5.00
+Google,Gemini 3.1 Flash-Lite,0.125,0.25
+Google,Gemini 3.1 Pro Preview,1.00,6.00
+OpenAI,GPT-5.4 nano,0.10,0.625
+OpenAI,GPT-5.4 mini,0.375,2.25
+OpenAI,GPT-5.4,1.25,7.50
+OpenAI,GPT-5.5,2.50,15.00
+Anthropic,Claude Haiku 4.5,1.00,5.00
+Anthropic,Claude Sonnet 4.6,3.00,15.00
+Anthropic,Claude Opus 4.6,5.00,25.00
+Local / Open Weights,Gemma 4 (Local via Ollama),0.00,0.00
