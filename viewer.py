@@ -13,18 +13,22 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
 
-            # Find all .tdpm.json files in output directory
+            # Find all .tdpm.json files in output directory recursively
             files = []
             output_dir = Path("output")
             if output_dir.exists() and output_dir.is_dir():
-                for f in output_dir.glob("*.tdpm.json"):
-                    files.append({
-                        "name": f.name,
-                        "path": f"/output/{f.name}"
-                    })
+                for f in output_dir.rglob("*.tdpm.json"):
+                    if f.is_file():
+                        files.append({
+                            "name": f.name,
+                            "path": f"/output/{f.relative_to(output_dir).as_posix()}",
+                            "mtime": f.stat().st_mtime
+                        })
 
             # Sort files descending by modification time
-            files.sort(key=lambda x: os.path.getmtime(f"output/{x['name']}"), reverse=True)
+            files.sort(key=lambda x: x["mtime"], reverse=True)
+            for f in files:
+                del f["mtime"]
 
             self.wfile.write(json.dumps(files).encode())
             return
