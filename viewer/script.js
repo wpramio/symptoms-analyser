@@ -255,12 +255,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Top 3
         if (patientData.top3 && patientData.top3.length > 0) {
             patientData.top3.forEach((dim, index) => {
+                const maxSize = (dim.dim === "16" ? 3 : 2) * 4;
+                const severity = Math.ceil((dim.sum / maxSize) * 4) || 1;
                 const card = document.createElement('div');
                 card.className = 'top3-card';
                 card.innerHTML = `
                     <div class="top3-rank">Prioridade #${index + 1}</div>
                     <div class="top3-title">${dim.name}</div>
-                    <div class="score-badge" data-score="${dim.mean}">Média: ${dim.mean.toFixed(1).replace('.', ',')}</div>
+                    <div class="score-badge" data-severity="${severity}">Pontuação: ${dim.sum}/${maxSize}</div>
                 `;
                 tplTop3.appendChild(card);
             });
@@ -271,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Render Dimensions List
         if (patientData.dimensions && Object.keys(patientData.dimensions).length > 0) {
             // Sort dimensions by score descending
-            const dims = Object.values(patientData.dimensions).sort((a, b) => b.dimension_mean - a.dimension_mean);
+            const dims = Object.values(patientData.dimensions).sort((a, b) => b.dimension_sum - a.dimension_sum);
 
             dims.forEach(dim => {
                 const dimEl = document.createElement('div');
@@ -290,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="item-row">
                             <div class="item-header">
                                 <span class="item-name">${itemId} - ${item.name}</span>
-                                <span class="score-badge" data-score="${item.score}">Pontuação: ${item.score}</span>
+                                <span class="score-badge" data-severity="${item.score}">Pontuação: ${item.score}</span>
                             </div>
                             <ul class="item-evidence">
                                 ${evidenceHtml}
@@ -299,12 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 });
 
+                const maxSize = (dimKey === "16" ? 3 : 2) * 4;
+                const severity = Math.ceil((dim.dimension_sum / maxSize) * 4) || 1;
                 dimEl.innerHTML = `
                     <div class="dimension-header">
                         <div class="dimension-title-group">
                             <span class="dimension-name">${dim.name}</span>
                         </div>
-                        <div class="score-badge" data-score="${dim.dimension_mean}">Média: ${dim.dimension_mean.toFixed(1).replace('.', ',')}</div>
+                        <div class="score-badge" data-severity="${severity}">Pontuação: ${dim.dimension_sum}/${maxSize}</div>
                     </div>
                     <div class="dimension-body">
                         ${itemsHtml}

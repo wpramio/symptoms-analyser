@@ -232,11 +232,11 @@ select:focus {
     margin-top: auto;
 }
 
-/* Score colors based on value */
-.score-badge[data-score^="1"] { background-color: var(--score-1); }
-.score-badge[data-score^="2"] { background-color: var(--score-2); }
-.score-badge[data-score^="3"] { background-color: var(--score-3); }
-.score-badge[data-score^="4"] { background-color: var(--score-4); }
+/* Score colors based on severity */
+.score-badge[data-severity="1"] { background-color: var(--score-1); }
+.score-badge[data-severity="2"] { background-color: var(--score-2); }
+.score-badge[data-severity="3"] { background-color: var(--score-3); }
+.score-badge[data-severity="4"] { background-color: var(--score-4); }
 
 
 /* Dimensions Accordion */
