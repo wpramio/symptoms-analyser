@@ -57,17 +57,17 @@ def split_into_chunks(raw_text: str) -> list[dict]:
     return [c for c in chunks if c["text"]]
 
 
-def merge_chunks(chunks: list[dict], chunks_per_call: int) -> list[dict]:
+def merge_chunks(chunks: list[dict], blocks_per_call: int) -> list[dict]:
     """
-    Group consecutive timestamp chunks into batches of `chunks_per_call`.
+    Group consecutive timestamp chunks into batches of `blocks_per_call`.
     Each batch is merged into a single dict with the first timestamp and combined text.
     """
-    if chunks_per_call <= 1:
+    if blocks_per_call <= 1:
         return chunks
 
     merged = []
-    for i in range(0, len(chunks), chunks_per_call):
-        batch = chunks[i:i + chunks_per_call]
+    for i in range(0, len(chunks), blocks_per_call):
+        batch = chunks[i:i + blocks_per_call]
         combined_text = "\n\n".join(
             f"{c['timestamp']}\n{c['text']}" for c in batch
         )

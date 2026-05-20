@@ -6,10 +6,10 @@ install:
 
 # Run preprocessing on a .docx file
 # Usage: make preprocess INPUT=path/to/session.docx
-# Optional: make preprocess INPUT=path/to/session.docx OUTPUT_DIR=path/to/output CHUNKS_PER_CALL=6
+# Optional: make preprocess INPUT=path/to/session.docx OUTPUT_DIR=path/to/output BLOCKS_PER_CALL=6
 INPUT ?=
 OUTPUT_DIR ?= output
-CHUNKS_PER_CALL ?= 6
+BLOCKS_PER_CALL ?= 100
 STYLE_REF ?= data/speaking_style_reference.txt
 INJECT ?=
 
@@ -18,7 +18,7 @@ preprocess:
 		echo "Error: INPUT is required. Usage: make preprocess INPUT=path/to/session.docx"; \
 		exit 1; \
 	fi
-	uv run preprocess "$(INPUT)" --output-dir "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
+	uv run preprocess "$(INPUT)" --output-dir "$(OUTPUT_DIR)/preprocess" --blocks-per-call "$(BLOCKS_PER_CALL)"
 
 # Remove all generated output files
 clean:
@@ -43,7 +43,7 @@ analyse-llm:
 		echo "Error: set INPUT to a sanitized transcript (e.g. session.run3.sanitized.txt)."; \
 		exit 1; \
 	fi
-	uv run tdpm_analyse_llm "$(INPUT)" --output "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
+	uv run tdpm_analyse_llm "$(INPUT)" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
 
 
 .PHONY: analyse
@@ -53,17 +53,17 @@ analyse:
 		exit 1; \
 	fi
 	# Step 1: run preprocessing to produce sanitized transcript (creates runN.sanitized.txt)
-	$(MAKE) preprocess INPUT="$(INPUT)" OUTPUT_DIR="$(OUTPUT_DIR)" CHUNKS_PER_CALL="$(CHUNKS_PER_CALL)"
+	$(MAKE) preprocess INPUT="$(INPUT)" OUTPUT_DIR="$(OUTPUT_DIR)" BLOCKS_PER_CALL="$(BLOCKS_PER_CALL)"
 	# session base name
 	SESSION=$(notdir $(basename $(INPUT))); \
 	# find latest sanitized run file
-	SANITIZED=$$(ls -1t "$(OUTPUT_DIR)/"$$SESSION.run*.sanitized.txt 2>/dev/null | head -n1); \
+	SANITIZED=$$(ls -1t "$(OUTPUT_DIR)/preprocess/"$$SESSION.run*.sanitized.txt 2>/dev/null | head -n1); \
 	if [ -z "$$SANITIZED" ]; then \
-		echo "Error: sanitized transcript not found in $(OUTPUT_DIR)"; \
+		echo "Error: sanitized transcript not found in $(OUTPUT_DIR)/preprocess"; \
 		exit 1; \
 	fi; \
 	echo "Analysing $$SANITIZED with LLM..."; \
-	uv run tdpm_analyse_llm "$$SANITIZED" --output "$(OUTPUT_DIR)" --chunks-per-call "$(CHUNKS_PER_CALL)"
+	uv run tdpm_analyse_llm "$$SANITIZED" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
 
 
 .PHONY: viewer

@@ -191,11 +191,11 @@ This decision must be **explicitly documented** in the paper's methodology secti
 #### Why chunking is necessary
 A full session transcript (~1300 lines, ~73KB) exceeds the practical **output token limit** of current LLMs. Even models with large context windows have a much smaller output limit — in early testing, a single-call attempt was silently truncated at ~2621 completion tokens, sanitizing only ~8% of the transcript. Splitting by timestamp blocks (one ~1 minute block per call) keeps each output well within limits.
 
-#### Tradeoffs of `--chunks-per-call N`
+<!-- #### Tradeoffs of `--blocks-per-call N`
 
 API call latency is dominated by a fixed overhead per call (network round trip, prompt processing — typically ~2s), not by input size. Output generation scales with completion tokens but is fast. This means **fewer calls = much faster overall**, even if each individual call takes slightly longer:
 
-| `--chunks-per-call` | Calls (67-block session) | Est. total time | Quality risk |
+| `--blocks-per-call` | Calls (67-block session) | Est. total time | Quality risk |
 |---|---|---|---|
 | 1 | 67 | ~167s | Lowest — may miss cross-boundary sentence splits |
 | 4 | 17 | ~68s | Low |
@@ -203,9 +203,9 @@ API call latency is dominated by a fixed overhead per call (network round trip, 
 | 10 | 7 | ~38s | Moderate — model attention may dilute |
 | 15 | 5 | ~30s | Higher |
 
-The output token budget per call is `max_tokens=8192`, and each ~1 min block produces ~300 completion tokens on average, giving a theoretical ceiling of ~27 chunks per call (⌊8192/300⌋≈27) — but 6 provides good headroom and covers ~6 minutes of session per call, a coherent conversational segment.
+The output token budget per call is `max_tokens=8192`, and each ~1 min block produces ~300 completion tokens on average, giving a theoretical ceiling of ~27 blocks per call (⌊8192/300⌋≈27) — but 6 provides good headroom and covers ~6 minutes of session per call, a coherent conversational segment.
 
-**Recommendation:** Use `--chunks-per-call 6` as the default. Use `--chunks-per-call 1` only when traceability is the priority (e.g., debugging or final academic runs where per-block attribution matters).
+**Recommendation:** Use `--blocks-per-call 25` as the default. Use `--blocks-per-call 1` only when traceability is the priority (e.g., debugging or final academic runs where per-block attribution matters). -->
 
 ## Synthetic Data Generation Pipeline
 

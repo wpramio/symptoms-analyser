@@ -34,7 +34,7 @@ from utils import (
     TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner
 )
 PROMPTS_DIR = Path(__file__).parent / "prompts"
-SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "sanitization.md"
+SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "preprocess.md"
 
 # ---------------------------------------------------------------------------
 # Step 1 — Text extraction
@@ -149,6 +149,8 @@ def sanitize_chunk(
     t_start = time.time()
     start_clock = datetime.now().strftime("%H:%M:%S")
 
+    print(f"  → Chunk {idx_str} prompt_chars={len(user_prompt)}")
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             label = f"Chunk {idx_str} [{chunk['timestamp']}]"
@@ -164,11 +166,19 @@ def sanitize_chunk(
                     temperature=0,
                     max_completion_tokens=20000,
                 )
+            
+            if not getattr(response, "choices", None):
+                err = getattr(response, "error", None)
+                raise ValueError(f"API Error payload: {err}" if err else f"API returned no choices: {response}")
+                
             break  # success
 
         except Exception as e:
             err_str = str(e)
-            if "429" in err_str and attempt < MAX_RETRIES:
+            err_str_lower = err_str.lower()
+            is_retriable = any(k in err_str_lower for k in ["429", "504", "502", "503", "aborted", "api error payload"])
+            
+            if is_retriable and attempt < MAX_RETRIES:
                 match_delay = re.search(r"'retryDelay':\s*'(\d+)s'", err_str)
                 match_msg = re.search(r"retry.*?(\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
                 
@@ -179,7 +189,7 @@ def sanitize_chunk(
                 else:
                     wait = int(2 ** attempt + random.uniform(0, 2))
                     
-                print(f"\r  ⚠ Rate limited. Waiting {wait:.0f}s before retry"
+                print(f"\r  ⚠ API Error. Waiting {wait:.0f}s before retry"
                       f" {attempt}/{MAX_RETRIES - 1}...", flush=True)
                 time.sleep(wait)
             else:
@@ -205,16 +215,17 @@ def sanitize_chunk(
     }
 
 
-def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, chunks_per_call: int = 1) -> dict:
+def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1) -> dict:
     """
     Split transcript into timestamp chunks, optionally merge into batches,
     sanitize each call, then reassemble.
     Returns a dict with the full sanitized transcript, per-chunk logs, and aggregated usage.
     """
     base_chunks = split_into_chunks(raw_text)
-    chunks = merge_chunks(base_chunks, chunks_per_call)
+    chunks = merge_chunks(base_chunks, blocks_per_call)
     print(f"  → {len(base_chunks)} timestamp blocks → {len(chunks)} API call(s)"
-          f" ({chunks_per_call} block(s) per call)")
+          f" ({blocks_per_call} block(s) per call)")
+    print(f"  → API Params: temperature=0, max_completion_tokens=20000")
 
     chunk_results = []
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -255,7 +266,7 @@ def write_outputs(
     raw_text: str,
     sanitization_result: dict,
     docx_path: Path,
-    chunks_per_call: int,
+    blocks_per_call: int,
     metadata: dict,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -293,9 +304,9 @@ def write_outputs(
         "sanitized_file": str(sanitized_path),
         "model": MODEL,
         "status": "success",
-        "strategy": f"chunked_{chunks_per_call}_block(s)_per_call",
+        "strategy": f"chunked_{blocks_per_call}_block(s)_per_call",
         "chunks_total": len(sanitization_result["chunk_results"]),
-        "chunks_per_call": chunks_per_call,
+        "blocks_per_call": blocks_per_call,
         "total_token_usage": sanitization_result["total_usage"],
         "total_elapsed_seconds": round(sanitization_result["total_elapsed"], 1),
         "chunks": sanitization_result["chunk_results"],
@@ -319,11 +330,11 @@ def main() -> None:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("output"),
-        help="Directory to write outputs to (default: ./output)",
+        default=Path("output/preprocess"),
+        help="Directory to write outputs to (default: ./output/preprocess)",
     )
     parser.add_argument(
-        "--chunks-per-call",
+        "--blocks-per-call",
         type=int,
         default=6,
         metavar="N",
@@ -356,10 +367,10 @@ def main() -> None:
     print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
     system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-    result = sanitize_transcript(raw_text, system_prompt, client, args.chunks_per_call)
+    result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call)
 
     # Write outputs
-    write_outputs(output_dir, session_name, raw_text, result, docx_path, args.chunks_per_call, metadata)
+    write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata)
 
     usage = result["total_usage"]
     elapsed = result["total_elapsed"]

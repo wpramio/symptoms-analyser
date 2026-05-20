@@ -100,7 +100,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate a synthetic transcript with injected TDPM symptoms")
     parser.add_argument("input", type=Path, help="Path to real sanitized transcript (.txt)")
     parser.add_argument("--output-dir", type=Path, default=Path("output/synthetic"), help="Output directory")
-    parser.add_argument("--chunks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
+    parser.add_argument("--blocks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
     parser.add_argument("--inject", nargs="+", help="Symptoms to inject e.g., Paciente1:16.1,16.2 Paciente2:1.1")
     args = parser.parse_args()
 
@@ -117,7 +117,7 @@ def main():
 
     text = args.input.read_text(encoding="utf-8")
     base_chunks = split_into_chunks(text)
-    chunks = merge_chunks(base_chunks, args.chunks_per_call)
+    chunks = merge_chunks(base_chunks, args.blocks_per_call)
 
     system_prompt = load_prompt(PROMPT_FILE)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)

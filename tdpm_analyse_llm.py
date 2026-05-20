@@ -4,7 +4,7 @@ tdpm_analyse_llm.py
 Call the LLM to score TDPM-20 on a sanitized transcript using the prompt in prompts/tdpm_analysis.md
 
 Usage:
-    python tdpm_analyse_llm.py <sanitized_transcript.txt> [--output output.json] [--chunks-per-call N]
+    python tdpm_analyse_llm.py <sanitized_transcript.txt> [--output output.json] [--blocks-per-call N]
 
 Output:
     JSON report written to stdout or --output
@@ -177,8 +177,8 @@ def write_log(output_dir: Path, run_entry: dict):
 def main():
     parser = argparse.ArgumentParser(description="Run LLM TDPM analysis on a sanitized transcript")
     parser.add_argument("input", type=Path, help="Path to sanitized transcript (txt)")
-    parser.add_argument("--output", type=Path, help="Output JSON file path or directory (if not set, prints to stdout)")
-    parser.add_argument("--chunks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
+    parser.add_argument("--output", type=Path, default=Path("output/tdpm_analysis"), help="Output JSON file path or directory (if not set, prints to stdout)")
+    parser.add_argument("--blocks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
     args = parser.parse_args()
 
     if not args.input.exists():
@@ -201,7 +201,7 @@ def main():
     print("  [1/2] Loading and chunking sanitized transcript...")
     text = args.input.read_text(encoding="utf-8")
     base_chunks = split_into_chunks(text)
-    chunks = merge_chunks(base_chunks, args.chunks_per_call)
+    chunks = merge_chunks(base_chunks, args.blocks_per_call)
 
     system_prompt = load_prompt(PROMPT_FILE)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
@@ -251,10 +251,11 @@ def main():
     mins, secs = divmod(int(total_elapsed), 60)
     
     output = {
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "session": args.input.stem,
         "model": MODEL,
         "chunks_analyzed": len(chunks),
-        "chunks_per_call": args.chunks_per_call,
+        "blocks_per_call": args.blocks_per_call,
         "total_elapsed_seconds": round(total_elapsed, 1),
         "token_usage": total_usage,
         "aggregated": aggregated,
@@ -273,7 +274,7 @@ def main():
             "output_file": str(output_path.resolve()),
             "model": MODEL,
             "chunks_total": len(chunks),
-            "chunks_per_call": args.chunks_per_call,
+            "blocks_per_call": args.blocks_per_call,
             "total_token_usage": total_usage,
             "total_elapsed_seconds": round(total_elapsed, 1),
         }
