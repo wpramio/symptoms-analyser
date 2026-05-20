@@ -189,7 +189,9 @@ def main():
     output_path = None
     if args.output:
         if args.output.is_dir() or args.output.suffix == "":
-            output_path = args.output / f"{args.input.stem}.tdpm.json"
+            base_name = re.sub(r'\.run\d+\.sanitized$', '', args.input.stem)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = args.output / f"{base_name}.{timestamp}.tdpm.json"
         else:
             output_path = args.output
 
