@@ -94,14 +94,16 @@ class Spinner:
         for frame in itertools.cycle("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"):
             if self._stop_event.is_set():
                 break
-            print(f"\r  {frame} {self.message}", end="", flush=True)
+            elapsed = time.time() - self.start_time
+            print(f"\r  {frame} {self.message} ({elapsed:.1f}s)", end="", flush=True)
             time.sleep(0.1)
 
     def __enter__(self):
+        self.start_time = time.time()
         self._thread.start()
         return self
 
     def __exit__(self, *_):
         self._stop_event.set()
         self._thread.join()
-        print("\r", end="", flush=True)
+        print("\r" + " " * (len(self.message) + 20) + "\r", end="", flush=True)
