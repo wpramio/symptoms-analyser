@@ -71,6 +71,10 @@ The TDPM-20 was developed from the **DREXI3** framework (by researcher Patrícia
 | **Therapist utterances** | Include in TDPM-20 scoring or analyze separately / exclude? |
 | **Backchannels** | Strip short filler responses before analysis or keep for context? |
 
+### Clean Verbatim Transcription
+Clean verbatim transcription is a style of audio-to-text conversion that removes unnecessary speech elements, such as filler words (e.g., "um," "uh," "like"), stutters, false starts, and background sounds, to make the text highly readable while retaining the exact meaning of the original recording.
+This is what we do in `preprocess.py` using LLM.
+
 ## Goals
 - Automatically identify TDPM-20 dimensions present in therapy session transcripts
 - Score intensity per dimension (mean of item scores, 0–4)

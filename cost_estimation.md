@@ -4,6 +4,9 @@ This document provides a cost estimation across several LLM providers and models
 
 ## Token Usage Estimation
 
+From https://brasstranscripts.com/blog/best-transcript-format-for-ai-tools:
+According to [OpenAI's tokenizer documentation](https://platform.openai.com/tokenizer), one token roughly equals 4 characters or 0.75 words in English, and both ChatGPT and Claude measure input size in tokens.
+
 The estimates are based on the existing execution logs (`output/preprocess.log.json` and `output/tdpm_analysis.log.json`).
 
 Average raw text sizes per session:
@@ -54,33 +57,6 @@ The prices below are estimated per **1 Million (1M) tokens** (in USD).
 | **Local / Open Weights** | Gemma 4 (Local via Ollama) | $0.00 | $0.00 | **$0.00** | **$0.00** * |
 
 *\* Local models incur hardware and electricity costs rather than direct API fees.*
-
-### Calculation Details per Session
-
-**1. Google Gemini Flash (e.g. 2.5 / 3)**
-*   Input: 65k * ($0.075 / 1M) = $0.0048
-*   Output: 11.5k * ($0.30 / 1M) = $0.0034
-*   **Total: $0.0082**
-
-**2. Google Gemini Pro**
-*   Input: 65k * ($1.25 / 1M) = $0.0813
-*   Output: 11.5k * ($5.00 / 1M) = $0.0575
-*   **Total: $0.1388**
-
-**3. OpenAI GPT-4o-mini**
-*   Input: 65k * ($0.15 / 1M) = $0.0097
-*   Output: 11.5k * ($0.60 / 1M) = $0.0069
-*   **Total: $0.0166**
-
-**4. OpenAI GPT-4o**
-*   Input: 65k * ($2.50 / 1M) = $0.1625
-*   Output: 11.5k * ($10.00 / 1M) = $0.1150
-*   **Total: $0.2775**
-
-**5. Anthropic Claude 3.5 Sonnet**
-*   Input: 65k * ($3.00 / 1M) = $0.1950
-*   Output: 11.5k * ($15.00 / 1M) = $0.1725
-*   **Total: $0.3675**
 
 ---
 
