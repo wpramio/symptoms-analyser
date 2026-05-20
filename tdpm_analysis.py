@@ -1,10 +1,8 @@
 """
-tdpm_analyse_llm.py
-
 Call the LLM to score TDPM-20 on a sanitized transcript using the prompt in prompts/tdpm_analysis.md
 
 Usage:
-    python tdpm_analyse_llm.py <sanitized_transcript.txt> [--output output.json] [--blocks-per-call N]
+    python tdpm_analysis.py <sanitized_transcript.txt> [--output output.json] [--blocks-per-call N]
 
 Output:
     JSON report written to stdout or --output

@@ -11,7 +11,7 @@ dependencies = [
 
 [project.scripts]
 preprocess = "preprocess:main"
-tdpm_analyse_llm = "tdpm_analyse_llm:main"
+tdpm_analysis = "tdpm_analysis:main"
 
 
 [build-system]
@@ -19,7 +19,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["preprocess", "tdpm_analyse_llm", "utils"]
+py-modules = ["preprocess", "tdpm_analysis", "utils"]
 
 [dependency-groups]
 dev = [

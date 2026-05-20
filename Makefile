@@ -43,7 +43,7 @@ analyse-llm:
 		echo "Error: set INPUT to a sanitized transcript (e.g. session.run3.sanitized.txt)."; \
 		exit 1; \
 	fi
-	uv run tdpm_analyse_llm "$(INPUT)" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
+	uv run tdpm_analysis "$(INPUT)" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
 
 
 .PHONY: analyse
@@ -63,7 +63,7 @@ analyse:
 		exit 1; \
 	fi; \
 	echo "Analysing $$SANITIZED with LLM..."; \
-	uv run tdpm_analyse_llm "$$SANITIZED" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
+	uv run tdpm_analysis "$$SANITIZED" --output "$(OUTPUT_DIR)/tdpm_analysis" --blocks-per-call "$(BLOCKS_PER_CALL)"
 
 
 .PHONY: viewer
