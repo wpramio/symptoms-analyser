@@ -55,10 +55,9 @@ def call_model(client: OpenAI, system_prompt: str, user_text: str) -> tuple[str,
         try:
             resp = client.chat.completions.create(
                 model=MODEL,
-                service_tier="flex",
                 messages=messages,
                 temperature=0,
-                max_completion_tokens=16384,
+                max_completion_tokens=20000,
                 response_format={"type": "json_object"}
             )
             usage = resp.usage.model_dump() if resp.usage else {}

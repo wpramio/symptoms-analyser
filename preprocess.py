@@ -157,13 +157,12 @@ def sanitize_chunk(
             with Spinner(label + "..."):
                 response = client.chat.completions.create(
                     model=MODEL,
-                    service_tier="flex",
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
                     temperature=0,
-                    max_completion_tokens=16384,
+                    max_completion_tokens=20000,
                 )
             break  # success
 
