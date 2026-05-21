@@ -74,6 +74,10 @@ select {
     cursor: pointer;
     outline: none;
     min-width: 250px;
+    max-width: 380px; /* Limit select width to prevent squishing navbar */
+    text-overflow: ellipsis; /* Truncate long filenames cleanly with ... */
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 select:focus {
@@ -230,6 +234,8 @@ select:focus {
     background-color: var(--text-muted);
     align-self: flex-start;
     margin-top: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 /* Score colors based on severity */
@@ -296,12 +302,15 @@ select:focus {
 .item-header {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
     margin-bottom: 0.75rem;
 }
 
 .item-name {
     font-weight: 500;
     color: var(--text-main);
+    line-height: 1.4;
 }
 
 .item-evidence {
@@ -337,6 +346,7 @@ select:focus {
     cursor: pointer;
     border-radius: var(--radius);
     transition: all 0.2s;
+    white-space: nowrap; /* Prevent buttons from wrapping to multiple lines */
 }
 
 .nav-btn:hover {
@@ -514,4 +524,368 @@ select:focus {
 .calc-hybrid-totals strong {
     font-size: 1.5rem;
     color: var(--primary);
+}
+
+/* Compare View */
+.compare-view {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.compare-selectors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.compare-selectors .file-selector {
+    flex: 1;
+    min-width: 250px;
+}
+
+.compare-selectors select {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.compare-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.compare-section-card {
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.compare-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.compare-col .meta-card {
+    flex: none;
+}
+
+.compare-dashboard .meta-card {
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+    background-color: transparent;
+}
+
+.compare-dashboard .meta-value {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+}
+
+.compare-meta-placeholder {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem;
+}
+
+.compare-actions-row {
+    display: none;
+    justify-content: flex-end;
+    margin-top: -1rem;
+    margin-bottom: -1rem;
+    width: 100%;
+}
+
+.btn-toggle-all {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: none;
+    transition: background-color var(--transition-speed);
+}
+
+.btn-toggle-all:hover {
+    opacity: 0.9;
+}
+
+/* Print-only helper classes (hidden on screen) */
+.print-only-title,
+.print-only-legend {
+    display: none;
+}
+
+@media print {
+    /* Hide navigation bar, select fields, buttons, and patient list tabs */
+    header,
+    nav,
+    .app-header,
+    .compare-selectors,
+    .compare-actions-row,
+    .nav-btn,
+    .welcome-message,
+    #welcomeMessage,
+    #fileSelectorContainer,
+    .patient-navigation {
+        display: none !important;
+    }
+
+    /* Hide inactive views during print */
+    body[data-active-tab="analysis"] #compareView,
+    body[data-active-tab="analysis"] #calculatorView,
+    body[data-active-tab="analysis"] #welcomeMessage {
+        display: none !important;
+    }
+
+    body[data-active-tab="compare"] #dashboard,
+    body[data-active-tab="compare"] #calculatorView,
+    body[data-active-tab="compare"] #welcomeMessage {
+        display: none !important;
+    }
+
+    body[data-active-tab="calculator"] #dashboard,
+    body[data-active-tab="calculator"] #compareView,
+    body[data-active-tab="calculator"] #welcomeMessage {
+        display: none !important;
+    }
+
+    /* Print-Only Cover Header on Page 1 */
+    .print-only-title {
+        display: block !important;
+        margin-top: 1rem !important;
+        margin-bottom: 2rem !important;
+        border-bottom: 2px solid var(--primary) !important;
+        padding-bottom: 1rem !important;
+    }
+
+    .print-only-title h1 {
+        font-size: 2.2rem !important;
+        color: var(--text-main) !important;
+        margin-bottom: 0.5rem !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
+    }
+
+    .print-only-title .print-subtitle {
+        font-size: 1.1rem !important;
+        color: var(--text-muted) !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Print-Only Legend Guide on Page 1 */
+    .print-only-legend {
+        display: block !important;
+        margin-top: 2rem !important;
+    }
+
+    .legend-title {
+        font-size: 1.30rem !important;
+        color: var(--text-main) !important;
+        margin-bottom: 0.75rem !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding-bottom: 0.5rem !important;
+        font-weight: 600 !important;
+    }
+
+    .legend-intro {
+        font-size: 0.95rem !important;
+        color: var(--text-muted) !important;
+        margin-bottom: 1.5rem !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Severity Scale Horizontal Row */
+    .legend-scale-row {
+        margin-bottom: 1.5rem !important;
+    }
+
+    .scale-horizontal-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 1rem !important;
+    }
+
+    .legend-scale-item {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        font-size: 0.75rem !important;
+        line-height: 1.3 !important;
+        color: var(--text-main) !important;
+    }
+
+    .legend-scale-item .score-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 18px !important;
+        height: 18px !important;
+        min-width: 18px !important;
+        border-radius: 4px !important;
+        font-weight: 700 !important;
+        font-size: 0.7rem !important;
+        color: white !important;
+        margin: 0 0.5rem 0 0 !important; /* Explicitly set all margins to override global auto margins */
+        box-shadow: none !important;
+        flex-shrink: 0 !important;
+    }
+
+    /* Ontology 3-Column Grid */
+    .legend-dimensions-section h4 {
+        font-size: 1rem !important;
+        margin-bottom: 0.75rem !important;
+        color: var(--text-main) !important;
+        font-weight: 600 !important;
+        border-bottom: 1px dashed var(--border) !important;
+        padding-bottom: 0.25rem !important;
+    }
+
+    .ontology-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1.5rem !important;
+    }
+
+    .ontology-col {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+
+    .ontology-item {
+        font-size: 0.78rem !important;
+        color: var(--text-main) !important;
+    }
+
+    .ontology-item strong {
+        font-weight: 600 !important;
+        display: block !important;
+        margin-bottom: 0.25rem !important;
+        color: var(--text-main) !important;
+    }
+
+    .ontology-item ul {
+        list-style: none !important;
+        padding-left: 0.5rem !important;
+        margin: 0 !important;
+        border-left: 1px solid var(--border) !important;
+    }
+
+    .ontology-item li {
+        font-size: 0.72rem !important;
+        color: var(--text-muted) !important;
+        margin-bottom: 0.15rem !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Optimize print canvas size and reset margins */
+    body {
+        background-color: white !important;
+        color: black !important;
+        font-size: 11pt !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .app-main {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    body[data-active-tab="compare"] .compare-view,
+    body[data-active-tab="compare"] .compare-dashboard,
+    body[data-active-tab="compare"] #comparePatientsContent {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    /* Style calculator inputs to print cleanly as plain text values */
+    body[data-active-tab="calculator"] input,
+    body[data-active-tab="calculator"] select {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        font-weight: 600 !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        color: var(--text-main) !important;
+    }
+
+    /* Maintain comparison grid columns side-by-side in print */
+    .compare-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 1.5rem !important;
+    }
+
+    /* Allow multi-page patient cards to split natively, but remove borders/shadows to prevent clipping box visuals */
+    .compare-section-card {
+        page-break-inside: auto !important;
+        break-inside: auto !important;
+        margin-bottom: 3rem !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    /* Prevent patient headings from being orphaned at the bottom of a page */
+    #comparePatientsContent h2 {
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    /* Prevent individual clinical symptom accordions, highlights, and text rows from breaking in half */
+    .dimension-item,
+    .top3-card,
+    .item-row {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* FORCE a page break BEFORE each patient comparison card */
+    #comparePatientsContent > .compare-section-card {
+        page-break-before: always !important;
+        break-before: page !important;
+    }
+
+    /* Automatically expand all clinical dimension accordions to reveal items and evidence quotes */
+    .dimension-body {
+        display: block !important;
+        background-color: #fafafa !important;
+        border-top: 1px solid var(--border) !important;
+    }
+
+    /* Force background colors (badges, accent blocks) to print exactly inside the PDF */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }
