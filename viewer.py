@@ -2,6 +2,8 @@ import http.server
 import json
 import socketserver
 import os
+import re
+from datetime import datetime
 from pathlib import Path
 
 PORT = 8000
@@ -19,16 +21,24 @@ class ViewerHandler(http.server.SimpleHTTPRequestHandler):
             if output_dir.exists() and output_dir.is_dir():
                 for f in output_dir.rglob("*.tdpm.json"):
                     if f.is_file():
+                        # Try to extract the timestamp (YYYYMMDD_HHMMSS) right before .tdpm.json
+                        match = re.search(r"(\d{8}_\d{6})\.tdpm\.json$", f.name)
+                        if match:
+                            timestamp = match.group(1)
+                        else:
+                            # Fallback: format modification time as YYYYMMDD_HHMMSS
+                            timestamp = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y%m%d_%H%M%S")
+
                         files.append({
                             "name": f.name,
                             "path": f"/output/{f.relative_to(output_dir).as_posix()}",
-                            "mtime": f.stat().st_mtime
+                            "timestamp": timestamp
                         })
 
-            # Sort files descending by modification time
-            files.sort(key=lambda x: x["mtime"], reverse=True)
+            # Sort files descending by timestamp
+            files.sort(key=lambda x: x["timestamp"], reverse=True)
             for f in files:
-                del f["mtime"]
+                del f["timestamp"]
 
             self.wfile.write(json.dumps(files).encode())
             return
