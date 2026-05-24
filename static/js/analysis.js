@@ -7,11 +7,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const metaChunks = document.getElementById('metaChunks');
     const metaTime = document.getElementById('metaTime');
     const metaTokens = document.getElementById('metaTokens');
+    
+    // Floating popover metadata elements
+    const btnShowSessionMeta = document.getElementById('btnShowSessionMeta');
+    const metaPopover = document.getElementById('metaPopover');
+
     const patientTabs = document.getElementById('patientTabs');
     const patientContent = document.getElementById('patientContent');
     const patientTemplate = document.getElementById('patientTemplate');
 
     let currentData = null;
+
+    // Toggle popover visibility
+    if (btnShowSessionMeta && metaPopover) {
+        btnShowSessionMeta.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isShown = metaPopover.classList.toggle('show');
+            btnShowSessionMeta.classList.toggle('active', isShown);
+        });
+
+        // Close popover when clicking anywhere else
+        document.addEventListener('click', (e) => {
+            if (!metaPopover.contains(e.target) && e.target !== btnShowSessionMeta) {
+                metaPopover.classList.remove('show');
+                btnShowSessionMeta.classList.remove('active');
+            }
+        });
+    }
 
     // Fetch list of files
     fetch('/api/files')
@@ -66,12 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
         metaSession.textContent = currentData.session || '-';
         metaModel.textContent = currentData.model || '-';
         metaChunks.textContent = currentData.chunks_analyzed || '-';
-        metaTime.textContent = currentData.total_elapsed_seconds ? currentData.total_elapsed_seconds + 's' : '-';
+        const formattedTime = currentData.total_elapsed_seconds ? currentData.total_elapsed_seconds + 's' : '-';
+        metaTime.textContent = formattedTime;
 
         if (currentData.token_usage) {
             metaTokens.textContent = `${currentData.token_usage.prompt_tokens} / ${currentData.token_usage.completion_tokens}`;
         } else {
             metaTokens.textContent = '-';
+        }
+
+        // Show meta info button when data is loaded
+        if (btnShowSessionMeta) {
+            btnShowSessionMeta.style.display = 'inline-flex';
         }
 
         // Render Patient Tabs

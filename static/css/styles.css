@@ -182,7 +182,7 @@ select:focus {
     color: var(--text-muted);
 }
 
-/* Meta Data Cards */
+/* Meta Data Cards & Collapsible Metadata Section */
 .session-meta {
     display: flex;
     flex-wrap: wrap;
@@ -215,6 +215,128 @@ select:focus {
     color: var(--text-main);
     word-break: break-all;
     overflow-wrap: break-word;
+}
+
+/* Premium Floating Metadata Popover */
+.selector-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.meta-popover-container {
+    position: relative;
+    display: inline-block;
+}
+
+.btn-icon-meta {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: none; /* Shown dynamically when a session is loaded */
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    outline: none;
+}
+
+.btn-icon-meta:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background-color: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-icon-meta.active {
+    color: white;
+    background-color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.meta-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 300px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    animation: popoverFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.meta-popover.show {
+    display: block;
+}
+
+@keyframes popoverFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.popover-arrow {
+    position: absolute;
+    top: -6px;
+    right: 13px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--card-bg);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    transform: rotate(45deg);
+}
+
+.popover-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.popover-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.popover-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.popover-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.popover-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    word-break: break-all;
 }
 
 /* Tabs */
