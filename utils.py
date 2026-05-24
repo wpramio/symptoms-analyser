@@ -1,6 +1,7 @@
 import itertools
 import os
 import re
+import sys
 import threading
 import time
 from pathlib import Path
@@ -87,10 +88,13 @@ class Spinner:
 
     def __init__(self, message: str):
         self.message = message
+        self.is_tty = sys.stdout.isatty()
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._spin, daemon=True)
 
     def _spin(self) -> None:
+        if not self.is_tty:
+            return
         for frame in itertools.cycle("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"):
             if self._stop_event.is_set():
                 break
@@ -100,10 +104,14 @@ class Spinner:
 
     def __enter__(self):
         self.start_time = time.time()
-        self._thread.start()
+        if self.is_tty:
+            self._thread.start()
+        else:
+            print(f"  ... {self.message}", flush=True)
         return self
 
     def __exit__(self, *_):
-        self._stop_event.set()
-        self._thread.join()
-        print("\r" + " " * (len(self.message) + 20) + "\r", end="", flush=True)
+        if self.is_tty:
+            self._stop_event.set()
+            self._thread.join()
+            print("\r" + " " * (len(self.message) + 20) + "\r", end="", flush=True)
