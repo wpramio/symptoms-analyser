@@ -105,8 +105,11 @@ def handle_upload():
             "error": ""
         }
         
+        # Check if skip_sanitization parameter is present
+        skip_sanitization = request.form.get('skip_sanitization') == 'true'
+        
         # Start background thread
-        thread = threading.Thread(target=process_file, args=(task_id, filepath))
+        thread = threading.Thread(target=process_file, args=(task_id, filepath, skip_sanitization))
         thread.start()
         
         return jsonify({"task_id": task_id})
@@ -119,7 +122,7 @@ def get_status(task_id):
         return jsonify({"error": "Task not found"}), 404
     return jsonify(tasks[task_id])
 
-def process_file(task_id, filepath: Path):
+def process_file(task_id, filepath: Path, skip_sanitization: bool = False):
     task = tasks[task_id]
     
     def add_log(msg):
@@ -134,8 +137,12 @@ def process_file(task_id, filepath: Path):
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
         
+        cmd = ["python", "preprocess.py", str(filepath), "--output-dir", str(PREPROCESS_OUTPUT)]
+        if skip_sanitization:
+            cmd.append("--skip-sanitization")
+            
         proc_prep = subprocess.Popen(
-            ["python", "preprocess.py", str(filepath), "--output-dir", str(PREPROCESS_OUTPUT)],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

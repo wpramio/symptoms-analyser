@@ -22,11 +22,22 @@
         </div>
 
         <div class="selected-file-card" id="selectedFileInfo" style="display: none;">
-            <div class="selected-file-info">
-                <span class="file-icon">📄</span>
-                <span class="file-name" id="fileName"></span>
+            <div class="selected-file-main">
+                <div class="selected-file-info">
+                    <span class="file-icon">📄</span>
+                    <span class="file-name" id="fileName"></span>
+                </div>
+                <button class="btn" id="startBtn">Iniciar processamento</button>
             </div>
-            <button class="btn" id="startBtn">Iniciar processamento</button>
+            <div class="upload-options">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="skipSanitizationOpt">
+                    <div class="checkbox-info">
+                        <span class="checkbox-title">Pular higienização por IA (LLM)</span>
+                        <span class="checkbox-desc">Pule a chamada de IA para limpar o texto. Útil para transcrições já higienizadas ou para economizar tempo/tokens.</span>
+                    </div>
+                </label>
+            </div>
         </div>
     </div>
 

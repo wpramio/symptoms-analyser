@@ -302,9 +302,9 @@ def write_outputs(
         "session_metadata": metadata,
         "source_file": str(docx_path.resolve()),
         "sanitized_file": str(sanitized_path),
-        "model": MODEL,
+        "model": "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
         "status": "success",
-        "strategy": f"chunked_{blocks_per_call}_block(s)_per_call",
+        "strategy": "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
         "chunks_total": len(sanitization_result["chunk_results"]),
         "blocks_per_call": blocks_per_call,
         "total_token_usage": sanitization_result["total_usage"],
@@ -341,6 +341,11 @@ def main() -> None:
         help="Number of timestamp blocks to merge per LLM call. "
              "Increase to reduce API call count; decrease for finer traceability.",
     )
+    parser.add_argument(
+        "--skip-sanitization",
+        action="store_true",
+        help="Skip the LLM-based sanitization step and use the raw extracted text as-is.",
+    )
     args = parser.parse_args()
 
     docx_path: Path = args.input
@@ -369,10 +374,20 @@ def main() -> None:
         print(f"  Session metadata: {metadata}")
 
     # Step 2 — AI sanitization (chunked)
-    print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
-    system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
-    client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-    result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call)
+    if args.skip_sanitization:
+        print("  [2/2] Skipping AI sanitization step (using raw text)...")
+        result = {
+            "sanitized_transcript": raw_text,
+            "chunk_results": [],
+            "total_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            "total_elapsed": 0.0,
+            "skipped": True,
+        }
+    else:
+        print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
+        system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
+        client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+        result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call)
 
     # Write outputs
     write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata)

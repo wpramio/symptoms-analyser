@@ -57,8 +57,11 @@ function handleFile(file) {
 startBtn.addEventListener('click', async () => {
     if (!currentFile) return;
 
+    const skipSanitization = document.getElementById('skipSanitizationOpt').checked;
+
     const formData = new FormData();
     formData.append('file', currentFile);
+    formData.append('skip_sanitization', skipSanitization ? 'true' : 'false');
 
     uploadView.style.display = 'none';
     processingView.style.display = 'block';

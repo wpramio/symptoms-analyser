@@ -1044,9 +1044,58 @@ select:focus {
     padding: 1.5rem;
     margin-top: 1.5rem;
     display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.selected-file-main {
+    display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: var(--shadow);
+}
+
+.upload-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.25rem;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+    margin-top: 3px;
+}
+
+.checkbox-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.checkbox-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.checkbox-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    line-height: 1.4;
 }
 
 .selected-file-info {
