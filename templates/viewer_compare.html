@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+{% set active_page = 'compare' %}
+
+{% block title %}Comparar Análises - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div id="compareView" class="compare-view">
+    <div class="compare-selectors">
+        <div class="file-selector">
+            <label for="compareSelect1">Análise A:</label>
+            <select id="compareSelect1">
+                <option value="" disabled selected>Selecione a análise A...</option>
+            </select>
+        </div>
+        <div class="file-selector">
+            <label for="compareSelect2">Análise B:</label>
+            <select id="compareSelect2">
+                <option value="" disabled selected>Selecione a análise B...</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="compareDashboard" class="compare-dashboard" style="display: none;">
+        <!-- Print-Only Cover Title -->
+        <div class="print-only-title">
+            <h1>Relatório Comparativo de Sintomas (TDPM-20)</h1>
+            <p class="print-subtitle">Comparação de dimensões e
+                evidências citadas em sessões de terapia de grupo.</p>
+        </div>
+
+        <!-- Metadata Card -->
+        <div class="compare-section-card">
+            <div class="compare-grid">
+                <!-- Meta Column A -->
+                <div>
+                    <div class="meta-card" id="compareMetaCard1" style="display: none;">
+                        <div class="meta-label">Sessão</div>
+                        <div class="meta-value" id="compareMetaSession1">-</div>
+                        <div class="meta-label">Modelo</div>
+                        <div class="meta-value" id="compareMetaModel1">-</div>
+                        <div class="meta-label">Blocos</div>
+                        <div class="meta-value" id="compareMetaChunks1">-</div>
+                        <div class="meta-label">Tempo de Execução</div>
+                        <div class="meta-value" id="compareMetaTime1">-</div>
+                        <div class="meta-label">Tokens (Prompt/Resposta)</div>
+                        <div class="meta-value" id="compareMetaTokens1">-</div>
+                    </div>
+                    <div id="compareMetaPlaceholder1" class="compare-meta-placeholder">Aguardando Análise A...
+                    </div>
+                </div>
+
+                <!-- Meta Column B -->
+                <div>
+                    <div class="meta-card" id="compareMetaCard2" style="display: none;">
+                        <div class="meta-label">Sessão</div>
+                        <div class="meta-value" id="compareMetaSession2">-</div>
+                        <div class="meta-label">Modelo</div>
+                        <div class="meta-value" id="compareMetaModel2">-</div>
+                        <div class="meta-label">Blocos</div>
+                        <div class="meta-value" id="compareMetaChunks2">-</div>
+                        <div class="meta-label">Tempo de Execução</div>
+                        <div class="meta-value" id="compareMetaTime2">-</div>
+                        <div class="meta-label">Tokens (Prompt/Resposta)</div>
+                        <div class="meta-value" id="compareMetaTokens2">-</div>
+                    </div>
+                    <div id="compareMetaPlaceholder2" class="compare-meta-placeholder">Aguardando Análise B...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="compare-section-card print-only-legend">
+            <h3 class="legend-title">Guia de Referência Clínico & Escala de Severidade (TDPM-20)</h3>
+            <p class="legend-intro">O instrumento TDPM-20 (Transdiagnostic Dysregulation of the Predostatic
+                Mind) avalia a frequência e intensidade de manifestação
+                de sintomas através de 20 dimensões clínicas. As pontuações são classificadas de acordo com os
+                níveis de severidade abaixo:</p>
+
+            <!-- Horizontal Severity Scale -->
+            <div class="legend-scale-row">
+                <div class="scale-horizontal-grid">
+                    <div class="legend-scale-item">
+                        <span class="score-badge" data-severity="1">1</span>
+                        <span><strong>Leve (1):</strong> Presença sutil ou isolada de manifestações.</span>
+                    </div>
+                    <div class="legend-scale-item">
+                        <span class="score-badge" data-severity="2">2</span>
+                        <span><strong>Moderada (2):</strong> Manifestações perceptíveis, com impacto clínico
+                            moderado.</span>
+                    </div>
+                    <div class="legend-scale-item">
+                        <span class="score-badge" data-severity="3">3</span>
+                        <span><strong>Alta (3):</strong> Sintomas frequentes ou intensificados na sessão.</span>
+                    </div>
+                    <div class="legend-scale-item">
+                        <span class="score-badge" data-severity="4">4</span>
+                        <span><strong>Grave (4):</strong> Manifestação severa e contínua do sintoma
+                            clínico.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3-Column Diagnostic Taxonomy -->
+            <div class="legend-dimensions-section">
+                <h4>Mapeamento de Dimensões Clínicas & Itens Diagnósticos</h4>
+                <div class="ontology-grid">
+                    <!-- Column 1 -->
+                    <div class="ontology-col">
+                        <div class="ontology-item">
+                            <strong>1. Desregulação do Apetite</strong>
+                            <ul>
+                                <li>1.1 Mudanças marcantes no apetite</li>
+                                <li>1.2 Alteração do comportamento alimentar</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>2. Desregulação do Sono</strong>
+                            <ul>
+                                <li>2.1 Dificuldade para iniciar/manter o sono</li>
+                                <li>2.2 Alteração do ciclo sono-vigília</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>3. Desregulação da Energia / Ânimo</strong>
+                            <ul>
+                                <li>3.1 Baixa/alta energia ou disposição</li>
+                                <li>3.2 Oscilações de ânimo</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>4. Desregulação da Libido</strong>
+                            <ul>
+                                <li>4.1 Alteração do desejo sexual</li>
+                                <li>4.2 Dificuldades de desempenho sexual</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>5. Dor / Sintomas Somáticos</strong>
+                            <ul>
+                                <li>5.1 Dores somáticas frequentes</li>
+                                <li>5.2 Sintomas físicos ligados ao estresse</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>6. Alteração da Consciência</strong>
+                            <ul>
+                                <li>6.1 Sensação de desligamento ou despersonalização</li>
+                                <li>6.2 Flutuações no nível de alerta</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>7. Desregulação da Orientação</strong>
+                            <ul>
+                                <li>7.1 Desorientação episódica</li>
+                                <li>7.2 Necessidade de ajuda para se situar</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Column 2 -->
+                    <div class="ontology-col">
+                        <div class="ontology-item">
+                            <strong>8. Memória / Comunicação</strong>
+                            <ul>
+                                <li>8.1 Esquecimentos e lapsos de memória</li>
+                                <li>8.2 Alterações na linguagem/expressão</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>9. Desregulação da Atenção</strong>
+                            <ul>
+                                <li>9.1 Distraibilidade</li>
+                                <li>9.2 Dificuldade em manter atenção sustentada</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>10. Alteração da Sensopercepção</strong>
+                            <ul>
+                                <li>10.1 Percepções incomuns / exp. perceptivas</li>
+                                <li>10.2 Hiper/hipossensibilidade sensorial</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>11. Desregulação da Volição</strong>
+                            <ul>
+                                <li>11.1 Baixa volição/anedonia</li>
+                                <li>11.2 Aumento de volição/craving</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>12. Impulsividade</strong>
+                            <ul>
+                                <li>12.1 Ações impulsivas</li>
+                                <li>12.2 Decisões precipitadas com consequências</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>13. Conexão Social</strong>
+                            <ul>
+                                <li>13.1 Evitação social e isolamento</li>
+                                <li>13.2 Dificuldade em estabelecer/manter vínculos</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>14. Compulsão</strong>
+                            <ul>
+                                <li>14.1 Comportamentos repetitivos ou rituais</li>
+                                <li>14.2 Tempo excessivo gasto em rituais</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Column 3 -->
+                    <div class="ontology-col">
+                        <div class="ontology-item">
+                            <strong>15. Restrição / Purgação</strong>
+                            <ul>
+                                <li>15.1 Restrição alimentar rígida</li>
+                                <li>15.2 Episódios de purga ou compensação</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>16. Espectro Ansiedade / Fobia / Pânico</strong>
+                            <ul>
+                                <li>16.1 Ansiedade e tensão</li>
+                                <li>16.2 Evitação e medo antecipatório</li>
+                                <li>16.3 Ataques de pânico</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>17. Espectro Irritabilidade / Raiva</strong>
+                            <ul>
+                                <li>17.1 Irritabilidade e explosões de raiva</li>
+                                <li>17.2 Rancor e ressentimento</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>18. Espectro Desconfiança / Agressividade</strong>
+                            <ul>
+                                <li>18.1 Interpretações hostis e desconfiança</li>
+                                <li>18.2 Respostas agressivas ou ameaças</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>19. Espectro Tristeza / Depressão</strong>
+                            <ul>
+                                <li>19.1 Humor deprimido e anedonia</li>
+                                <li>19.2 Ruminação e autocrítica</li>
+                            </ul>
+                        </div>
+                        <div class="ontology-item">
+                            <strong>20. Espectro Euforia / Mania</strong>
+                            <ul>
+                                <li>20.1 Períodos de humor elevado ou euforia</li>
+                                <li>20.2 Comportamentos grandiosos</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toggle All Button -->
+        <div class="compare-actions-row" id="compareActions">
+            <button id="btnToggleAll" class="btn-toggle-all">Expandir tudo</button>
+        </div>
+
+        <!-- Dynamic Patient Cards Container -->
+        <div id="comparePatientsContent" style="display: flex; flex-direction: column; gap: 2rem; width: 100%;">
+            <!-- Populated dynamically by JS -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/compare.js"></script>
+{% endblock %}

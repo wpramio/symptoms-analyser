@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% set active_page = 'index' %}
+
+{% block title %}Symptoms Analyser - Hub{% endblock %}
+
+{% block content %}
+<div class="hub-container">
+    <div class="hub-hero">
+        <h1>Symptoms Analyser</h1>
+        <p>Plataforma de análise clínica avançada (TDPM-20) baseada em IA para transcrições de terapia</p>
+    </div>
+
+    <div class="hub-grid">
+        <a href="/upload" class="hub-card">
+            <div class="hub-icon">✨</div>
+            <h2 class="hub-title">Nova Análise</h2>
+            <p class="hub-desc">Faça upload de transcrições de sessões (TXT ou DOCX) para processamento e sanitização por IA.</p>
+        </a>
+        
+        <a href="/viewer/analysis" class="hub-card">
+            <div class="hub-icon">📊</div>
+            <h2 class="hub-title">Explorar Resultados</h2>
+            <p class="hub-desc">Acesse o dashboard interativo para visualizar avaliações clínicas e comparar sessões históricas.</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

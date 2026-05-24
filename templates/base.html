@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Symptoms Analyser{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="sidebar-brand">Symptoms Analyser</div>
+
+            <div class="sidebar-nav">
+                <div class="sidebar-nav-section">Geral</div>
+                <a href="/" class="sidebar-btn {% if active_page == 'index' %}active{% endif %}">Início</a>
+                <a href="/upload" class="sidebar-btn {% if active_page == 'upload' %}active{% endif %}">Nova Análise</a>
+
+                <div class="sidebar-nav-section">Visualizar Análises</div>
+                <a href="/viewer/analysis"
+                    class="sidebar-btn {% if active_page == 'analysis' %}active{% endif %}">Análise por sessão</a>
+                <a href="/viewer/compare"
+                    class="sidebar-btn {% if active_page == 'compare' %}active{% endif %}">Comparar Análises</a>
+                <a href="/viewer/calculator"
+                    class="sidebar-btn {% if active_page == 'calculator' %}active{% endif %}">Calculadora de Custos</a>
+            </div>
+        </aside>
+
+        <main class="app-main" id="mainContainer">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

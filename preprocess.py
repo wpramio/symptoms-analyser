@@ -350,16 +350,21 @@ def main() -> None:
         print(f"Error: file not found: {docx_path}", file=sys.stderr)
         sys.exit(1)
 
-    if docx_path.suffix.lower() != ".docx":
-        print(f"Error: expected a .docx file, got: {docx_path.suffix}", file=sys.stderr)
+    if docx_path.suffix.lower() not in [".docx", ".txt"]:
+        print(f"Error: expected a .docx or .txt file, got: {docx_path.suffix}", file=sys.stderr)
         sys.exit(1)
 
     session_name = docx_path.stem
     print(f"Processing: {docx_path.name}")
 
     # Step 1 — Extract text
-    print("  [1/2] Extracting text from .docx...")
-    metadata, raw_text = extract_text_from_docx(docx_path)
+    print("  [1/2] Extracting text...")
+    if docx_path.suffix.lower() == ".docx":
+        metadata, raw_text = extract_text_from_docx(docx_path)
+    else:
+        metadata = {}
+        raw_text = docx_path.read_text(encoding="utf-8")
+        
     if metadata:
         print(f"  Session metadata: {metadata}")
 

@@ -29,26 +29,114 @@ body {
 }
 
 .app-header {
+    display: none; /* Navbar hidden in favor of Sidebar */
+}
+
+/* Sidebar Navigation Layout */
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+}
+
+.sidebar {
+    width: 260px;
     background-color: var(--card-bg);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 2rem;
+    border-right: 1px solid var(--border);
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
     position: sticky;
     top: 0;
-    z-index: 10;
+    height: 100vh;
+    flex-shrink: 0;
+    z-index: 100;
 }
 
-.header-content {
+.sidebar-brand {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sidebar-nav-section {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    padding-left: 0.75rem;
+}
+
+.sidebar-nav-section:first-child {
+    margin-top: 0;
+}
+
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-radius: var(--radius);
+    text-decoration: none;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    font-family: inherit;
+}
+
+.sidebar-btn:hover {
+    color: var(--text-main);
+    background-color: #f1f5f9;
+}
+
+.sidebar-btn.active {
+    color: var(--primary);
+    background-color: rgba(59, 130, 246, 0.1);
+    font-weight: 600;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.app-main {
+    flex: 1;
     max-width: 1200px;
     margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    padding: 2rem;
+    min-width: 0;
 }
 
-h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-main);
+.welcome-message {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
 }
 
 .file-selector {
@@ -74,8 +162,8 @@ select {
     cursor: pointer;
     outline: none;
     min-width: 250px;
-    max-width: 380px; /* Limit select width to prevent squishing navbar */
-    text-overflow: ellipsis; /* Truncate long filenames cleanly with ... */
+    max-width: 380px;
+    text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
 }
@@ -83,21 +171,6 @@ select {
 select:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.app-main {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 2rem;
-}
-
-.welcome-message {
-    text-align: center;
-    padding: 4rem 2rem;
-    background-color: var(--card-bg);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
 }
 
 .welcome-message h2 {
@@ -635,10 +708,309 @@ select:focus {
     display: none;
 }
 
+/* Generic Button styling matching the theme */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    background-color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    text-decoration: none;
+}
+
+.btn:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-muted);
+    border-color: var(--border);
+}
+
+.btn-secondary:hover {
+    background-color: #f1f5f9;
+    color: var(--text-main);
+    border-color: var(--text-muted);
+}
+
+#fileInput {
+    display: none;
+}
+
+/* Upload Zone styles matching the design system */
+.upload-card {
+    background-color: var(--card-bg);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.2s;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+}
+
+.upload-card:hover, .upload-card.dragover {
+    border-color: var(--primary);
+    background-color: #f8fafc;
+}
+
+.upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--primary);
+}
+
+.upload-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.upload-hint {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* Spinner and status consoles matching the theme */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-left-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+.log-console {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    font-family: monospace;
+    font-size: 0.875rem;
+    padding: 1rem;
+    border-radius: var(--radius);
+    height: 200px;
+    overflow-y: auto;
+    text-align: left;
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+.log-entry {
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 0.15rem;
+}
+
+.success-text { color: #10b981; }
+.error-text { color: #ef4444; }
+
+/* Grid / Hub Layout */
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.hub-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-main);
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hub-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.hub-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: var(--primary);
+}
+
+.hub-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.hub-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Hub (index.html) Page Styles */
+.hub-container {
+    max-width: 800px;
+    margin: 4rem auto;
+    padding: 0 2rem;
+    text-align: center;
+}
+.hub-hero {
+    margin-bottom: 3rem;
+}
+.hub-hero h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+}
+.hub-hero p {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Upload Page Styles */
+.upload-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.upload-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.upload-header h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.upload-header p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.selected-file-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+}
+
+.selected-file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.file-icon {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.file-name {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.processing-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+    margin-top: 1.5rem;
+}
+
+.processing-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+}
+
+.processing-desc {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+}
+
+/* Top Analysis Selector Card Styles */
+.analysis-selector-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.75rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.selector-label {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.selector-dropdown {
+    padding: 0.65rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: #f8fafc;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    flex: 1;
+    max-width: 450px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.selector-dropdown:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 @media print {
-    /* Hide navigation bar, select fields, buttons, and patient list tabs */
+    /* Hide navigation bar, sidebar, select fields, buttons, and patient list tabs */
     header,
     nav,
+    .sidebar,
     .app-header,
     .compare-selectors,
     .compare-actions-row,
