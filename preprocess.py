@@ -336,9 +336,9 @@ def main() -> None:
     parser.add_argument(
         "--blocks-per-call",
         type=int,
-        default=6,
+        default=100,
         metavar="N",
-        help="Number of timestamp blocks to merge per LLM call (default: 6). "
+        help="Number of timestamp blocks to merge per LLM call. "
              "Increase to reduce API call count; decrease for finer traceability.",
     )
     args = parser.parse_args()

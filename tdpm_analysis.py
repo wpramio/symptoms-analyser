@@ -174,7 +174,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run LLM TDPM analysis on a sanitized transcript")
     parser.add_argument("input", type=Path, help="Path to sanitized transcript (txt)")
     parser.add_argument("--output", type=Path, default=Path("output/tdpm_analysis"), help="Output JSON file path or directory (if not set, prints to stdout)")
-    parser.add_argument("--blocks-per-call", type=int, default=6, help="How many timestamp blocks per LLM call")
+    parser.add_argument("--blocks-per-call", type=int, default=100, help="How many timestamp blocks per LLM call")
     args = parser.parse_args()
 
     if not args.input.exists():
