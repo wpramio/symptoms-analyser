@@ -7,37 +7,41 @@
 <div class="upload-container">
     <div id="uploadView">
         <div class="upload-header">
-            <h1>Iniciar Nova Análise</h1>
-            <p>Faça upload de um arquivo de transcrição para identificar sintomas utilizando o modelo clínico TDPM-20.</p>
+            <h1>Nova análise</h1>
+            <p>Faça upload de um arquivo de transcrição para identificar sintomas utilizando o modelo clínico TDPM-20
+            </p>
         </div>
-        
+
         <div class="upload-card" id="dropZone">
             <div class="upload-icon">📄</div>
             <h3 class="upload-text">Arraste o arquivo aqui ou clique para selecionar</h3>
             <p class="upload-hint">Formatos suportados: .docx, .txt</p>
             <input type="file" id="fileInput" accept=".docx,.txt">
-            <button class="btn btn-secondary" id="browseBtn" onclick="event.stopPropagation();">Selecionar Arquivo</button>
+            <button class="btn btn-secondary" id="browseBtn" onclick="event.stopPropagation();">Selecionar
+                arquivo</button>
         </div>
-        
+
         <div class="selected-file-card" id="selectedFileInfo" style="display: none;">
             <div class="selected-file-info">
                 <span class="file-icon">📄</span>
                 <span class="file-name" id="fileName"></span>
             </div>
-            <button class="btn" id="startBtn">Iniciar Processamento</button>
+            <button class="btn" id="startBtn">Iniciar processamento</button>
         </div>
     </div>
 
     <div class="processing-card" id="processingView" style="display: none;">
         <div class="spinner"></div>
         <h2 class="processing-title" id="statusTitle">Processando...</h2>
-        <p class="processing-desc" id="statusDesc">A IA está analisando a transcrição de terapia. Isso pode levar alguns minutos.</p>
-        
+        <p class="processing-desc" id="statusDesc">A IA está analisando a transcrição de terapia. Isso pode levar alguns
+            minutos.</p>
+
         <div class="log-console" id="logConsole">
             <div class="log-entry">Aguardando início...</div>
         </div>
 
-        <a href="/viewer/analysis" class="btn" id="viewResultsBtn" style="display: none; margin-top: 1.5rem;">Visualizar Resultados</a>
+        <a href="/viewer/analysis" class="btn" id="viewResultsBtn" style="display: none; margin-top: 1.5rem;">Visualizar
+            Resultados</a>
     </div>
 </div>
 {% endblock %}
