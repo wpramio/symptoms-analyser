@@ -20,13 +20,13 @@ from typing import Dict, Any, List
 
 from openai import OpenAI
 
-from utils import (
+from symptoms_analyser.utils import (
     MODEL, LLM_BASE_URL, LLM_API_KEY,
     split_into_chunks, merge_chunks, Spinner
 )
 
-PROMPT_FILE = Path(__file__).parent / "prompts" / "tdpm_analysis.md"
-ONTOLOGY_FILE = Path(__file__).parent / "data" / "tdpm_ontology.json"
+PROMPT_FILE = Path(__file__).resolve().parents[2] / "prompts" / "tdpm_analysis.md"
+ONTOLOGY_FILE = Path(__file__).resolve().parents[2] / "data" / "tdpm_ontology.json"
 
 # Load the ontology mappings once
 with open(ONTOLOGY_FILE, "r", encoding="utf-8") as f:

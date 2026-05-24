@@ -68,7 +68,7 @@ analyse:
 
 .PHONY: viewer
 viewer:
-	uv run python viewer.py
+	uv run python -m symptoms_analyser.app
 
 
 .PHONY: synthetic-scratch
@@ -77,5 +77,5 @@ synthetic-scratch:
 		echo "Error: INJECT is required. Usage: make synthetic-scratch INJECT='Paciente1:1.1,1.2'"; \
 		exit 1; \
 	fi
-	uv run python generate_from_scratch.py --style-ref "$(STYLE_REF)" --output-dir "$(OUTPUT_DIR)/synthetic" --inject $(INJECT) $(if $(SCENES),--scenes $(SCENES),)
+	uv run python -m symptoms_analyser.generate_from_scratch --style-ref "$(STYLE_REF)" --output-dir "$(OUTPUT_DIR)/synthetic" --inject $(INJECT) $(if $(SCENES),--scenes $(SCENES),)
 

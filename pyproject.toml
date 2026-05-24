@@ -12,8 +12,8 @@ dependencies = [
 ]
 
 [project.scripts]
-preprocess = "preprocess:main"
-tdpm_analysis = "tdpm_analysis:main"
+preprocess = "symptoms_analyser.preprocess:main"
+tdpm_analysis = "symptoms_analyser.tdpm_analysis:main"
 
 
 [build-system]
@@ -21,7 +21,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["preprocess", "tdpm_analysis", "utils"]
+packages = ["symptoms_analyser"]
+package-dir = {"" = "src"}
 
 [dependency-groups]
 dev = [

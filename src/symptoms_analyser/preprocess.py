@@ -29,11 +29,11 @@ from pathlib import Path
 from docx import Document
 from openai import OpenAI
 
-from utils import (
+from symptoms_analyser.utils import (
     MODEL, LLM_BASE_URL, LLM_API_KEY,
     TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner
 )
-PROMPTS_DIR = Path(__file__).parent / "prompts"
+PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "preprocess.md"
 
 # ---------------------------------------------------------------------------

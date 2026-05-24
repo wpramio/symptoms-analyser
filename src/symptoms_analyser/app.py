@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import json
 import uuid
@@ -141,8 +142,14 @@ def process_file(task_id, filepath: Path, skip_sanitization: bool = False):
         # We run preprocess.py as a subprocess
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
+        # Add src directory to PYTHONPATH so subprocesses can resolve symptoms_analyser package
+        src_dir = str(Path(__file__).resolve().parents[1])
+        if 'PYTHONPATH' in env:
+            env['PYTHONPATH'] = src_dir + os.pathsep + env['PYTHONPATH']
+        else:
+            env['PYTHONPATH'] = src_dir
         
-        cmd = ["python", "preprocess.py", str(filepath), "--output-dir", str(PREPROCESS_OUTPUT)]
+        cmd = [sys.executable, "-m", "symptoms_analyser.preprocess", str(filepath), "--output-dir", str(PREPROCESS_OUTPUT)]
         if skip_sanitization:
             cmd.append("--skip-sanitization")
             
@@ -180,7 +187,7 @@ def process_file(task_id, filepath: Path, skip_sanitization: bool = False):
         add_log(f"Pré-processamento concluído. Iniciando análise TDPM-20 no arquivo {latest_sanitized.name}...")
         
         proc_ana = subprocess.Popen(
-            ["python", "tdpm_analysis.py", str(latest_sanitized), "--output", str(ANALYSIS_OUTPUT)],
+            [sys.executable, "-m", "symptoms_analyser.tdpm_analysis", str(latest_sanitized), "--output", str(ANALYSIS_OUTPUT)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
