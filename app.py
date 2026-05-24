@@ -52,6 +52,11 @@ def viewer_compare():
 def viewer_calculator():
     return render_template('viewer_calculator.html')
 
+@app.route('/viewer/evolution')
+def viewer_evolution():
+    return render_template('viewer_evolution.html')
+
+
 # API Endpoints
 
 @app.route('/api/files')

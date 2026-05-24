@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% set active_page = 'evolution' %}
+
+{% block title %}Evolução por paciente - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div id="evolutionView" class="evolution-view">
+
+    <!-- Top Selector and Controls -->
+    <div class="analysis-selector-card">
+        <span class="selector-label">Selecionar paciente para acompanhamento:</span>
+        <div class="selector-controls">
+            <select id="patientSelect" class="selector-dropdown">
+                <option value="" disabled selected>Carregando pacientes...</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Welcome / Loading State -->
+    <div id="evolutionWelcome" class="welcome-message">
+        <h2>Acompanhamento Clínico Individual</h2>
+        <p>Selecione um paciente acima para visualizar a evolução temporal e progresso do tratamento.</p>
+    </div>
+
+    <!-- Main Dashboard Container (hidden until loaded) -->
+    <div id="evolutionDashboard" class="evolution-dashboard" style="display: none;">
+
+        <!-- Metrics Summary Cards -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Sessões Analisadas</span>
+                <span class="metric-value" id="metricSessionsCount">-</span>
+                <span class="metric-desc">Total de participações do paciente</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Pico de Gravidade</span>
+                <span class="metric-value text-danger" id="metricPeakScore">-</span>
+                <span class="metric-desc" id="metricPeakSession">Na sessão: -</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Tendência Geral</span>
+                <span class="metric-value" id="metricTrend">-</span>
+                <span class="metric-desc" id="metricTrendDesc">Comparação primeira vs última sessão</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Dimensão Mais Ativa</span>
+                <span class="metric-value text-primary metric-value-dimension" id="metricTopDimension">-</span>
+                <span class="metric-desc" id="metricTopDimensionScore">Média: -</span>
+            </div>
+        </div>
+
+        <!-- Interactive Chart Card -->
+        <div class="evolution-card chart-container-card">
+            <div class="card-header-flex">
+                <div>
+                    <h3 class="card-title">Trajetória Temporal de Sintomas</h3>
+                    <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões específicas do
+                        TDPM-20.</p>
+                </div>
+                <div class="chart-controls">
+                    <label for="chartMetricSelect">Visualizar:</label>
+                    <select id="chartMetricSelect" class="selector-dropdown compact-select">
+                        <option value="total">Gravidade Geral (Soma)</option>
+                        <option value="dimensions">Por Dimensão Clínica (Comparativa)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Checklist of dimensions (only visible when viewing "dimensions" mode) -->
+            <div id="dimensionCheckboxContainer" class="dimension-checkbox-grid" style="display: none;">
+                <!-- Dynamically populated by JS with checkboxes for active dimensions -->
+            </div>
+
+            <div class="chart-wrapper">
+                <canvas id="evolutionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Heatmap / Matrix Card -->
+        <div class="evolution-card heatmap-card">
+            <div class="card-header-flex">
+                <div>
+                    <h3 class="card-title">Matriz de Monitoramento (TDPM-20)</h3>
+                    <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão
+                        realizada.</p>
+                </div>
+                <div class="heatmap-header-controls">
+                    <button type="button" id="btnToggleEmptyDimensions" class="btn btn-secondary btn-heatmap-toggle">Mostrar dimensões sem sintomas</button>
+                    <div class="heatmap-legend">
+                        <span class="legend-box" data-severity="0">0 (Ausente)</span>
+                        <span class="legend-box" data-severity="1">1 (Leve)</span>
+                        <span class="legend-box" data-severity="2">2 (Moderada)</span>
+                        <span class="legend-box" data-severity="3">3 (Alta)</span>
+                        <span class="legend-box" data-severity="4">4 (Grave)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="heatmap-table-container">
+                <table class="heatmap-table" id="heatmapTable">
+                    <thead>
+                        <tr id="heatmapHeaders">
+                            <th>Dimensão Clínica</th>
+                            <!-- Session dates will be injected here -->
+                        </tr>
+                    </thead>
+                    <tbody id="heatmapBody">
+                        <!-- Dimension rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Timeline of Clinical Evidence -->
+        <div class="evolution-card evidence-timeline-card">
+            <div class="card-header-flex">
+                <div>
+                    <h3 class="card-title">Linha do Tempo de Evidências Clínicas</h3>
+                    <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas diagnósticas de
+                        sintomas.</p>
+                </div>
+                <div class="timeline-filters">
+                    <select id="timelineDimensionFilter" class="selector-dropdown compact-select">
+                        <option value="all">Todas as Dimensões</option>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="vertical-timeline" id="evidenceTimeline">
+                <!-- Timeline items will be injected here -->
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Import Chart.js securely from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/js/evolution.js"></script>
+{% endblock %}

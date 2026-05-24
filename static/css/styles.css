@@ -1427,8 +1427,399 @@ select:focus {
     }
 
     /* Force background colors (badges, accent blocks) to print exactly inside the PDF */
+    /* Force background colors (badges, accent blocks) to print exactly inside the PDF */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 }
+
+/* ==========================================================================
+   Patient Evolution Page (Evolução por Paciente) Styles
+   ========================================================================== */
+
+.evolution-view {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.evolution-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
+}
+
+/* Metric Cards */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.metric-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px -2px rgba(50, 50, 93, 0.08), 0 3px 7px -3px rgba(0, 0, 0, 0.08);
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.metric-value-dimension {
+    font-size: 0.95rem;
+    line-height: 1.2;
+    padding-top: 0.25rem;
+}
+
+.metric-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Base Card Styling */
+.evolution-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.card-subtitle {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+/* Chart Styles */
+.chart-wrapper {
+    position: relative;
+    height: 380px;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.chart-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.compact-select {
+    padding: 0.4rem 0.75rem;
+    min-width: 180px;
+}
+
+.dimension-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-main);
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input {
+    cursor: pointer;
+}
+
+/* Heatmap Table */
+.heatmap-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-heatmap-toggle {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    height: fit-content;
+    white-space: nowrap;
+}
+
+.heatmap-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.legend-box {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.legend-box[data-severity="0"], .heatmap-cell[data-severity="0"] { background-color: #f1f5f9; color: #64748b; }
+.legend-box[data-severity="1"], .heatmap-cell[data-severity="1"] { background-color: #e0f2fe; color: #0369a1; }
+.legend-box[data-severity="2"], .heatmap-cell[data-severity="2"] { background-color: #fef9c3; color: #854d0e; }
+.legend-box[data-severity="3"], .heatmap-cell[data-severity="3"] { background-color: #ffedd5; color: #c2410c; }
+.legend-box[data-severity="4"], .heatmap-cell[data-severity="4"] { background-color: #fee2e2; color: #991b1b; }
+
+.heatmap-table-container {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 1rem;
+}
+
+.heatmap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.heatmap-table th, .heatmap-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.heatmap-table th {
+    background-color: var(--bg-color);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.heatmap-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: var(--bg-color);
+    border-right: 2px solid var(--border);
+    width: 320px;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.heatmap-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background-color: var(--card-bg);
+    font-weight: 600;
+    border-right: 2px solid var(--border);
+    width: 320px;
+    max-width: 320px;
+    white-space: normal;
+}
+
+.heatmap-table tbody tr:hover td:first-child {
+    background-color: #f8fafc;
+}
+
+.heatmap-cell {
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: default;
+}
+
+/* Timeline */
+.timeline-filters {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.vertical-timeline {
+    position: relative;
+    margin-top: 2rem;
+    padding-left: 2rem;
+}
+
+.vertical-timeline::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 7px;
+    width: 2px;
+    background-color: var(--border);
+}
+
+.timeline-entry {
+    position: relative;
+    margin-bottom: 2.5rem;
+}
+
+.timeline-entry:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-badge {
+    position: absolute;
+    left: -2rem;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: var(--border);
+    border: 3px solid var(--card-bg);
+    box-shadow: 0 0 0 1px var(--text-muted);
+    z-index: 2;
+    transition: transform 0.2s;
+}
+
+.timeline-entry:hover .timeline-badge {
+    transform: scale(1.3);
+    background-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.timeline-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.timeline-date {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    background-color: var(--bg-color);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+
+.timeline-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.timeline-card {
+    background-color: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.timeline-card:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
+    background-color: white;
+}
+
+.timeline-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.timeline-card-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
+.timeline-card-quotes {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.timeline-quote-item {
+    background-color: var(--card-bg);
+    padding: 0.75rem 1rem;
+    border-left: 4px solid var(--primary);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    line-height: 1.4;
+    transition: background-color 0.2s;
+}
+
+.timeline-quote-item:hover {
+    background-color: #f1f5f9;
+}
+
+/* Metric Colors */
+.text-danger {
+    color: var(--score-4) !important;
+}
+
+.text-primary {
+    color: var(--primary) !important;
+}
+
+.text-success {
+    color: #10b981 !important;
+}
+
+.text-warning {
+    color: var(--score-2) !important;
+}
+
