@@ -13,9 +13,10 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 # Configuration
-UPLOAD_FOLDER = Path('input/uploads')
-PREPROCESS_OUTPUT = Path('output/preprocess')
-ANALYSIS_OUTPUT = Path('output/tdpm_analysis')
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+UPLOAD_FOLDER = PROJECT_ROOT / 'input/uploads'
+PREPROCESS_OUTPUT = PROJECT_ROOT / 'output/preprocess'
+ANALYSIS_OUTPUT = PROJECT_ROOT / 'output/tdpm_analysis'
 ALLOWED_EXTENSIONS = {'txt', 'docx'}
 
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -63,7 +64,7 @@ def viewer_evolution():
 @app.route('/api/files')
 def list_files():
     files = []
-    output_dir = Path("output")
+    output_dir = PROJECT_ROOT / "output"
     if output_dir.exists() and output_dir.is_dir():
         for f in output_dir.rglob("*.tdpm.json"):
             if f.is_file():
@@ -88,7 +89,7 @@ def list_files():
 @app.route('/output/<path:filepath>')
 def serve_output(filepath):
     # Serve analysis JSON files
-    return send_from_directory('output', filepath)
+    return send_from_directory(PROJECT_ROOT / 'output', filepath)
 
 @app.route('/api/upload', methods=['POST'])
 def handle_upload():
