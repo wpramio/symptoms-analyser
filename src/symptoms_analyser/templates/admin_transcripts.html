@@ -53,7 +53,7 @@
     </div>
 
     <!-- Section 2: Detailed Telemetry Logs matching .calc-results table container -->
-    <div class="calc-results">
+    <div class="calc-results margin-bottom-large">
         <h3>Telemetria de pré-processamento e privacidade (PHI)</h3>
         <div class="table-container">
             <table class="cost-table">
@@ -69,6 +69,29 @@
                 <tbody id="telemetryTableBody">
                     <tr>
                         <td colspan="5" class="table-empty-row">Carregando telemetria...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 3: Detailed Evaluation Telemetry Logs matching .calc-results table container -->
+    <div class="calc-results">
+        <h3>Telemetria de avaliação clínica (TDPM-20)</h3>
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-25">ID da avaliação</th>
+                        <th class="col-width-25">Configuração IA</th>
+                        <th class="col-width-20">Tokens consumidos</th>
+                        <th class="col-width-15">Status</th>
+                        <th class="col-width-15">Tempo e data</th>
+                    </tr>
+                </thead>
+                <tbody id="evalTelemetryTableBody">
+                    <tr>
+                        <td colspan="5" class="table-empty-row">Carregando telemetria de avaliação...</td>
                     </tr>
                 </tbody>
             </table>

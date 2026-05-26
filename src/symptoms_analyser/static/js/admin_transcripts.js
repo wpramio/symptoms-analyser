@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Tables
     const jobsTableBody = document.getElementById('jobsTableBody');
     const telemetryTableBody = document.getElementById('telemetryTableBody');
+    const evalTelemetryTableBody = document.getElementById('evalTelemetryTableBody');
 
     // Modal
     const tracebackModal = document.getElementById('tracebackModal');
@@ -176,6 +177,70 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error("Error loading telemetry logs:", err));
     }
 
+    // --- 4. Clinical Evaluation Telemetry Loader ---
+    function fetchEvaluationTelemetryData() {
+        fetch('/api/admin/evaluation-telemetry')
+            .then(res => res.json())
+            .then(items => {
+                if (items.length === 0) {
+                    evalTelemetryTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhum log de telemetria de avaliação encontrado.</td></tr>`;
+                    return;
+                }
+
+                let html = '';
+                items.forEach(tele => {
+                    const statusText = tele.status === 'success' ? 'Sucesso' : 'Falha (Ver erro)';
+                    const statusBadgeVal = tele.status === 'success' ? 'completed' : 'failed';
+                    const cursorStyle = tele.status === 'success' ? '' : 'style="cursor: pointer;"';
+
+                    const promptTokens = tele.prompt_tokens || 0;
+                    const completionTokens = tele.completion_tokens || 0;
+                    const totalTokens = promptTokens + completionTokens;
+
+                    html += `
+                        <tr>
+                            <td><strong style="color: var(--primary);">${tele.evaluation_id}</strong></td>
+                            <td style="font-size: 0.85rem;">
+                                <strong>Modelo:</strong> ${tele.model}<br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">Chunks: ${tele.chunks_analyzed || 0}</span><br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">Blocos/Chamada: ${tele.blocks_per_call || 0}</span>
+                            </td>
+                            <td style="font-size: 0.85rem;">
+                                <strong>Total:</strong> ${totalTokens.toLocaleString()}<br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">Prompt: ${promptTokens.toLocaleString()}</span><br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">Comp: ${completionTokens.toLocaleString()}</span>
+                            </td>
+                            <td>
+                                <div class="status-badge" data-status="${statusBadgeVal}" ${cursorStyle} data-id="${tele.evaluation_id}">
+                                    ${statusText}
+                                </div>
+                            </td>
+                            <td style="font-size: 0.85rem;">
+                                <strong>${tele.elapsed_seconds ? tele.elapsed_seconds + 's' : '-'}</strong><br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">${formatDate(tele.created_at)}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                evalTelemetryTableBody.innerHTML = html;
+
+                // Bind click to open traceback logs modal for evaluation telemetry
+                const failedEvalBadges = evalTelemetryTableBody.querySelectorAll('.status-badge[data-status="failed"]');
+                failedEvalBadges.forEach(badge => {
+                    badge.addEventListener('click', () => {
+                        const evalID = badge.dataset.id;
+                        const tele = items.find(t => t.evaluation_id === evalID);
+                        if (tele && tele.failure_reason) {
+                            tracebackContent.textContent = tele.failure_reason;
+                            tracebackModal.style.display = 'flex';
+                        }
+                    });
+                });
+            })
+            .catch(err => console.error("Error loading evaluation telemetry logs:", err));
+    }
+
     // Modal Closer Events
     closeTracebackBtn.addEventListener('click', () => { tracebackModal.style.display = 'none'; });
     tracebackModal.addEventListener('click', (e) => {
@@ -186,8 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchStats();
     fetchJobs();
     fetchTelemetryData();
+    fetchEvaluationTelemetryData();
 
     setInterval(fetchStats, 60000); // 1 minute stats update
     setInterval(fetchJobs, 3000);   // 3 seconds pipeline update
     setInterval(fetchTelemetryData, 10000); // 10 seconds telemetry log update
+    setInterval(fetchEvaluationTelemetryData, 10000); // 10 seconds evaluation telemetry log update
 });

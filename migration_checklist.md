@@ -33,6 +33,8 @@ Use this checklist to track the implementation of the Symptoms Analyser database
 ### 🟢 Phase 4: Flask API Refactoring (`src/symptoms_analyser/app.py`)
 - [x] Refactor `/api/files` endpoint to strictly query completed clinical assessments chronologically from the database, eliminating all filesystem fallbacks.
 - [x] Refactor `/output/<path:filepath>` to strictly query raw evaluation JSON payloads directly from `evaluation_telemetry.raw_payload` in SQLite, ensuring 100% database-backed integrity.
+- [x] Implement `/api/admin/evaluation-telemetry` endpoint and full visual tracking of the `evaluation_telemetry` table in `/admin/transcripts` admin monitor.
+
 
 ### 🟢 Phase 5: End-to-End Visual Verification
 - [x] Verify dry-run pipelines execute cleanly on sample transcripts using virtual environment tools.

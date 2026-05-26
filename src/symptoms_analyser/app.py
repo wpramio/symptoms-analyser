@@ -351,6 +351,40 @@ def api_admin_telemetry():
             print(f"Error fetching admin telemetry: {e}")
     return jsonify(telemetry_list)
 
+@app.route('/api/admin/evaluation-telemetry')
+def api_admin_evaluation_telemetry():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    telemetry_list = []
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT evaluation_id, model, chunks_analyzed, blocks_per_call, prompt_tokens, completion_tokens, total_elapsed_seconds, status, failure_reason, created_at 
+                FROM evaluation_telemetry 
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                telemetry_list.append({
+                    "evaluation_id": r["evaluation_id"],
+                    "model": r["model"],
+                    "chunks_analyzed": r["chunks_analyzed"],
+                    "blocks_per_call": r["blocks_per_call"],
+                    "prompt_tokens": r["prompt_tokens"],
+                    "completion_tokens": r["completion_tokens"],
+                    "elapsed_seconds": r["total_elapsed_seconds"],
+                    "status": r["status"],
+                    "failure_reason": r["failure_reason"],
+                    "created_at": r["created_at"]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching admin evaluation telemetry: {e}")
+    return jsonify(telemetry_list)
+
+
 @app.route('/api/admin/patients')
 def api_admin_patients():
     db_path = PROJECT_ROOT / "data" / "sqlite.db"
