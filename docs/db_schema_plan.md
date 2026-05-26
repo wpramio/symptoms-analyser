@@ -39,11 +39,17 @@ erDiagram
         string metadata
         datetime created_at
     }
-    analysis_sessions {
+    tdpm_evaluations {
         string id PK
         string transcript_id FK
-        string uploader_id FK
+        string evaluator_id FK
+        string parent_evaluation_id FK
+        string evaluation_type
         string session_name
+        datetime created_at
+    }
+    evaluation_telemetry {
+        string evaluation_id PK, FK
         string model
         int chunks_analyzed
         int blocks_per_call
@@ -52,24 +58,22 @@ erDiagram
         real total_elapsed_seconds
         string status
         string failure_reason
-        datetime created_at
         string raw_payload
+        datetime created_at
     }
     patient_item_scores {
         int id PK
-        string session_id FK
+        string evaluation_id FK
         string patient_id FK
         string dimension_code
         string item_code
-        string item_name
         int score
         string justification
         string evidence
     }
-    sanitization_runs {
+    sanitization_telemetry {
         int id PK
         string transcript_id FK
-        datetime timestamp_utc
         string session_name
         string model
         string strategy
@@ -84,14 +88,17 @@ erDiagram
         string noise_tokens_removed
         string corrections
         string anonymization_flags
+        datetime created_at
     }
 
-    transcripts ||--o{ analysis_sessions : "originates"
-    transcripts ||--o{ sanitization_runs : "logs"
-    users ||--o{ analysis_sessions : "uploads"
+    users ||--o{ tdpm_evaluations : "evaluates"
     users ||--o| patients : "authenticates"
+    transcripts ||--o{ tdpm_evaluations : "originates"
+    transcripts ||--o{ sanitization_telemetry : "logs_sanitization"
     patients ||--o{ patient_item_scores : "evaluates"
-    analysis_sessions ||--o{ patient_item_scores : "contains"
+    tdpm_evaluations ||--o{ patient_item_scores : "contains"
+    tdpm_evaluations ||--o{ tdpm_evaluations : "revised_from"
+    tdpm_evaluations ||--o| evaluation_telemetry : "logs_execution"
 ```
 
 ---
@@ -111,8 +118,8 @@ CREATE TABLE IF NOT EXISTS transcripts (
     id TEXT PRIMARY KEY,               -- e.g. "session_2026_03_16" or a UUID
     filename TEXT NOT NULL,            -- Original uploaded file name (e.g., "session_2026_03_16.docx")
     file_type TEXT,                    -- e.g. "docx", "txt"
-    raw_text TEXT NOT NULL,            -- Full unparsed raw speech
-    sanitized_text TEXT,               -- The FULL sanitized text block (NULL if skipped)
+    raw_text TEXT NOT NULL,            -- Full unparsed raw speech (may contain PHI/real names)
+    sanitized_text TEXT,               -- The FULL preprocessed and anonymized text block (NULL if skipped)
     file_size_bytes INTEGER,
     
     -- Async Batch & Job Processing Status
@@ -149,6 +156,7 @@ Tracks the **true patient registry** containing sensitive Protected Health Infor
 - **`real_name`** is stored *only* here for authorized clinician views.
 - **`pseudonym`** (e.g., `"Paciente1"`) is public and used in transcripts, analysis prompts, and score records.
 - **`user_id`** optionally links the patient profile to credentials *if* portal login access is ever granted.
+- **`Scope of Registry`**: Every speaker detected in a raw transcript is registered in the `patients` table (either via pre-registration or Phase 1 dynamic ingestion), regardless of whether they ever receive a clinical symptom score. This ensures the UI can resolve the real name of *all* speakers in the dynamic transcript view, even if they have no registered scores in `patient_item_scores`.
 ```sql
 CREATE TABLE IF NOT EXISTS patients (
     id TEXT PRIMARY KEY,               -- Unique patient identifier: e.g. a random UUID or secure ID
@@ -163,35 +171,50 @@ CREATE TABLE IF NOT EXISTS patients (
 CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym);
 ```
 
-#### Analysis Sessions Table
-Stores each pipeline run's metadata, execution status (success or failure), input/output file references, token accounts, execution duration, and a full backup of the raw LLM output. Links directly to its source transcript and logs the user account who uploaded the run.
+#### TDPM Evaluations Table
+Stores the clinical evaluation session details. Links directly to its source transcript, the clinical evaluator, and tracks human revisions/audits.
 ```sql
-CREATE TABLE IF NOT EXISTS analysis_sessions (
+CREATE TABLE IF NOT EXISTS tdpm_evaluations (
     id TEXT PRIMARY KEY,               -- Unique identifier: e.g. "session_2026_03_16.20260524_191534"
     transcript_id TEXT NOT NULL,       -- FK to transcripts.id
-    uploader_id TEXT,                  -- FK to users.id (The user account who uploaded or initiated the session)
+    evaluator_id TEXT,                 -- FK to users.id (The clinician who performed/revised the evaluation)
+    parent_evaluation_id TEXT,         -- FK to tdpm_evaluations.id (NULL if original, filled if human revision)
+    evaluation_type TEXT NOT NULL DEFAULT 'automated'
+        CHECK (evaluation_type IN ('automated', 'manual', 'revised')), -- Evaluation classification
     session_name TEXT NOT NULL,        -- e.g. "session_2026_03_16"
-    model TEXT NOT NULL,               -- e.g. "google/gemma-4-31b-it:free"
-    chunks_analyzed INTEGER NOT NULL,  -- Number of chunks in run
-    blocks_per_call INTEGER,           -- Hyperparameter
-    prompt_tokens INTEGER,             -- Token accounting
-    completion_tokens INTEGER,
-    total_elapsed_seconds REAL,        -- Execution timing
-    
-    -- Execution Status (Allows auditing successful and failed executions in one table)
-    status TEXT NOT NULL DEFAULT 'success',  -- 'success' or 'failed'
-    failure_reason TEXT,               -- Error trace if status is 'failed'
-    
-    created_at DATETIME NOT NULL,      -- Accurate run datetime
-    raw_payload TEXT,                  -- Full raw JSON backup (NULL if run failed)
+    created_at DATETIME NOT NULL,      -- Accurate creation datetime
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
-    FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (evaluator_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON analysis_sessions (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sessions_name ON analysis_sessions (session_name);
-CREATE INDEX IF NOT EXISTS idx_sessions_transcript ON analysis_sessions (transcript_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_uploader ON analysis_sessions (uploader_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON tdpm_evaluations (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_evaluations_name ON tdpm_evaluations (session_name);
+CREATE INDEX IF NOT EXISTS idx_evaluations_transcript ON tdpm_evaluations (transcript_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_evaluator ON tdpm_evaluations (evaluator_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_parent ON tdpm_evaluations (parent_evaluation_id);
+```
+
+#### Evaluation Telemetry Table
+Stores computational pipeline metrics, LLM parameters, token counts, execution timing, and complete raw payloads for automated evaluations (1-to-1 relationship with `tdpm_evaluations`). Zero rows are generated for pure human manual runs.
+```sql
+CREATE TABLE IF NOT EXISTS evaluation_telemetry (
+    evaluation_id TEXT PRIMARY KEY,    -- FK to tdpm_evaluations.id
+    model TEXT NOT NULL,               -- e.g. "google/gemma-4-31b-it:free"
+    chunks_analyzed INTEGER,           -- Number of chunks analyzed
+    blocks_per_call INTEGER,           -- Hyperparameter
+    prompt_tokens INTEGER,             -- Token consumption metrics
+    completion_tokens INTEGER,
+    total_elapsed_seconds REAL,        -- API execution duration
+    status TEXT NOT NULL DEFAULT 'success'
+        CHECK (status IN ('success', 'failed')), -- Run execution status
+    failure_reason TEXT,               -- System error message if execution failed
+    raw_payload TEXT,                  -- Full raw JSON response backup
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_status ON evaluation_telemetry (status);
 ```
 
 ---
@@ -203,20 +226,19 @@ Stores scores, justifications, and structured evidence citations for specific su
 ```sql
 CREATE TABLE IF NOT EXISTS patient_item_scores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,          -- FK to analysis_sessions
+    evaluation_id TEXT NOT NULL,       -- FK to tdpm_evaluations
     patient_id TEXT NOT NULL,          -- FK to patients.id (Links to the anonymized patient record)
     dimension_code TEXT NOT NULL,      -- e.g. "19" (groups items into clinical categories)
-    item_code TEXT NOT NULL,           -- e.g. "19.1"
-    item_name TEXT NOT NULL,           -- e.g. "Humor deprimido e anedonia"
+    item_code TEXT NOT NULL,           -- e.g. "19.1" (look up name in tdpm_ontology.json)
     score INTEGER NOT NULL,            -- Severity score (e.g. 2)
     justification TEXT,                -- Clinical reasoning text block
     evidence TEXT,                     -- JSON Array of citations: [{"raw_evidence": "...", "extracted_timestamp": "..."}]
     
-    FOREIGN KEY (session_id) REFERENCES analysis_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE,
     FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_session ON patient_item_scores (session_id, patient_id, item_code);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_evaluation ON patient_item_scores (evaluation_id, patient_id, item_code);
 CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patient_id, dimension_code, item_code);
 ```
 
@@ -226,35 +248,35 @@ CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patie
 
 To preserve and query historic runs, we ingest and represent current JSON log files directly in the schema.
 
-#### Sanitization Runs Table
-Ingests all history from `preprocess.log.json` to monitor sanitization attempts.
+#### Sanitization Telemetry Table
+Tracks historical preprocessing logs and performance characteristics.
 ```sql
-CREATE TABLE IF NOT EXISTS sanitization_runs (
+CREATE TABLE IF NOT EXISTS sanitization_telemetry (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    transcript_id TEXT NOT NULL,          -- FK to transcripts.id
-    timestamp_utc DATETIME NOT NULL,
-    session_name TEXT NOT NULL,           -- e.g. "session_2026_03_16"
-    model TEXT NOT NULL,                  -- Sanitization model
-    strategy TEXT,                        -- e.g. "chunked_4_block(s)_per_call"
-    status TEXT NOT NULL,                 -- "success" or "failed"
-    failure_reason TEXT,                  -- Error detail if failed
+    transcript_id TEXT NOT NULL,       -- FK to transcripts.id
+    session_name TEXT NOT NULL,        -- e.g. "session_2026_03_16"
+    model TEXT NOT NULL,               -- Sanitization model
+    strategy TEXT NOT NULL,            -- e.g. "default"
+    status TEXT NOT NULL,              -- "success" or "failed"
+    failure_reason TEXT,               -- Error trace if failed
     chunks_completed INTEGER,
     chunks_total INTEGER,
     prompt_tokens INTEGER,
     completion_tokens INTEGER,
     total_elapsed_seconds REAL,
     
-    -- Ingested Sanitization Details (Only populated if status = 'success')
-    turns_merged INTEGER DEFAULT 0,    -- Count of speaker turns combined
-    noise_tokens_removed TEXT,          -- JSON list of removed filler tokens (e.g. ["hm", "eh"])
+    -- Sanitization Metrics / Auditing Payload
+    turns_merged INTEGER,
+    noise_tokens_removed TEXT,         -- JSON list of removed tags
     corrections TEXT,                  -- JSON map of word mappings (e.g. {"veinho": "velhinho"})
     anonymization_flags TEXT,          -- JSON list of flagged sensitive words
     
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_sanitization_runs_session ON sanitization_runs (session_name);
-CREATE INDEX IF NOT EXISTS idx_sanitization_runs_transcript ON sanitization_runs (transcript_id);
+CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_session ON sanitization_telemetry (session_name);
+CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id);
 ```
 
 ---
@@ -267,32 +289,32 @@ Having indices on `patient_id` and `dimension_code` on the normalized tables let
 **SQL Query to render an evolution chart for "Tristeza / Depressão" (Dimension 19) for "Paciente1":**
 ```sql
 SELECT 
-    s.session_name,
-    s.created_at,
+    e.session_name,
+    e.created_at,
     SUM(i.score) AS dimension_sum
 FROM patient_item_scores i
-JOIN analysis_sessions s ON i.session_id = s.id
+JOIN tdpm_evaluations e ON i.evaluation_id = e.id
 WHERE i.patient_id = 'Paciente1' 
   AND i.dimension_code = '19'
-GROUP BY s.id, s.session_name, s.created_at
-ORDER BY s.created_at ASC;
+GROUP BY e.id, e.session_name, e.created_at
+ORDER BY e.created_at ASC;
 ```
 
 ---
 
 ### Goal 2: Store Session Metadata and Analysis Results
-Our structure retains the full flexibility of the JSON schema via `analysis_sessions.raw_payload` while extracting common properties:
-- Fast API queries scan structural columns (`model`, `tokens`, `elapsed_seconds`, `created_at`).
-- Complete data-rich views serve the structured JSON stored in `raw_payload`.
+Our structure retains the full flexibility of the JSON schema via `evaluation_telemetry.raw_payload` while extracting common properties:
+- Fast API queries scan structural columns across both clinical metadata (`evaluation_type`, `session_name`, `created_at` on `tdpm_evaluations`) and technical telemetry (`model`, `prompt_tokens`, `completion_tokens`, `total_elapsed_seconds` on `evaluation_telemetry`).
+- Complete data-rich views serve the structured JSON stored in `raw_payload` inside `evaluation_telemetry`.
 
 ---
 
 ### Goal 3: Store Existing Preprocessing & Analysis Logs
 During our migration phase, a Python script will parse:
-1. `output/preprocess/preprocess.log.json` ➔ inserts into `sanitization_runs`.
-2. `output/tdpm_analysis/tdpm_analysis.log.json` ➔ inserts directly into `analysis_sessions`.
+1. `output/preprocess/preprocess.log.json` ➔ inserts into `sanitization_telemetry`.
+2. `output/tdpm_analysis/tdpm_analysis.log.json` ➔ inserts clinical metadata into `tdpm_evaluations` and execution performance metrics into `evaluation_telemetry`.
 
-All subsequent runs of `preprocess.py` and `tdpm_analysis.py` will record execution metrics directly into `sanitization_runs` and `analysis_sessions` automatically.
+All subsequent runs of `preprocess.py` and `tdpm_analysis.py` will record execution metrics directly into `sanitization_telemetry`, `tdpm_evaluations`, and `evaluation_telemetry` automatically.
 
 ---
 
@@ -337,22 +359,22 @@ When loading the UI:
 
 ### Goal 5: Store and Visualize Sanitization (Preprocessing) Results
 
-By storing sanitization quality details in the `sanitization_runs` execution log and keeping the core `transcripts` table lean, we achieve a clean division of responsibilities:
+By storing sanitization quality details in the `sanitization_telemetry` execution log and keeping the core `transcripts` table lean, we achieve a clean division of responsibilities:
 
 #### 1. Ingesting Sanitization Logs
 When parsing `preprocess.log.json`, the migration script writes:
-- The aggregate sanitization telemetry (e.g., number of turns merged, filler words, corrections) directly into the columns of the `sanitization_runs` table for that specific run attempt.
+- The aggregate sanitization telemetry (e.g., number of turns merged, filler words, corrections) directly into the columns of the `sanitization_telemetry` table for that specific run attempt.
 - The raw text (`raw_text`) and the resulting sanitized text (`sanitized_text`) into `transcripts`.
 
 #### 2. Infinite Auditing & Analytics
-Storing sanitization details directly inside the runs log table provides massive clinical benefits:
+Storing sanitization details directly inside the telemetry table provides massive clinical benefits:
 - **Complete Run History:** If you test different sanitization configurations (e.g., different chunking settings or models) for a single session, the database preserves the exact corrections list and quality metrics **for every run** instead of overwriting them.
 - **Minimal Core Table:** The core `transcripts` table stays lightweight, containing only the actual text inputs and outputs.
 - **Premium UI Features:** The UI can load the active pre-processing execution log to populate filler word panels, corrections audit cards, and anonymization warnings, with click-to-highlight links highlighting specific turns parsed in the app layer.
 
 #### 3. Optionality of Sanitization (Time & Cost Optimization)
 Skipping the sanitization step is fully supported by this design to save execution time and LLM token costs:
-- **No Sanitization Entry:** If sanitization is bypassed, no record is added to `sanitization_runs`. The `transcripts.sanitized_text` column simply remains `NULL`.
+- **No Sanitization Entry:** If sanitization is bypassed, no record is added to `sanitization_telemetry`. The `transcripts.sanitized_text` column simply remains `NULL`.
 - **Graceful UI Degradation:** The UI parser dynamically detects if `sanitized_text` is present. If it is null, it gracefully hides the "Sanitization Analytics Panel" and the "Side-by-Side Diff Toggle", displaying the clinical analysis card overlays directly on the raw transcript.
 
 ### Goal 6: Self-Contained Source of Truth (Decoupling the Filesystem)
@@ -363,6 +385,87 @@ Adding the root `transcripts` table completely solves the core challenge of tran
 - **Perfect Portability:** During migration or synchronization, transferring the SQLite file (or running the Postgres transition script) copies every raw transcript to the cloud. You do not need to worry about synchronizing massive nested local folders (`input/preprocess`, `output/preprocess`, etc.).
 - **Clinical Audits:** You can always reconstruct or verify the original text that led to a specific dimension score, ensuring the system satisfies strict medical software audit standards.
 
+### Goal 7: Full Clinical Revision History (Human Overrides & Audits)
+
+By introducing the self-referencing foreign key **`parent_evaluation_id`** in the `tdpm_evaluations` table, we solve a critical clinical workflow challenge: **enabling clinicians to review, override, and revise automated AI assessments while maintaining a complete, legally compliant audit trail.**
+
+#### 1. The Clinical Revision Workflow
+When a clinician reviews an AI-generated evaluation:
+1. **The Base Draft:** The initial automated run is saved with `evaluation_type = 'automated'` (e.g., ID `eval_ai_101`). Its computational metadata and full JSON response are saved in `evaluation_telemetry`.
+2. **The Override:** If the clinician disagrees with a specific severity score (e.g., they change an item score from `4` to `2` based on clinical judgment), the system does **not** overwrite the original AI records.
+3. **The Revision Entry:** The system creates a *new* evaluation record (e.g., ID `eval_rev_202`) with:
+   - `evaluation_type = 'revised'`
+   - `parent_evaluation_id = 'eval_ai_101'`
+   - `evaluator_id = [the clinician's user_id]`
+4. **Isolated Clinical Scores:** The modified scores are written as new rows in `patient_item_scores` linked to `evaluation_id = 'eval_rev_202'`.
+
+#### 2. What this Architectural Decision Enables
+*   **Immutable AI Baselines:** You preserve the exact original raw outputs and token metrics of the AI pipeline. This is vital for medical auditing and research, allowing you to retrospectively study AI scoring accuracy over time.
+*   **Clinician Accountability (Sign-offs):** Every revision has an `evaluator_id` (the clinician who signed off on the change). This ensures clear legal and institutional accountability.
+*   **Interactive "AI vs. Human" Diffs in the UI:** In the frontend, the React application can fetch both the revised evaluation (`eval_rev_202`) and its parent (`eval_ai_101`). The comparison dashboard can display a side-by-side view showing exactly which items the clinician modified and their custom justification text:
+    ```
+    Item 19.1: Humor deprimido e anedonia
+    [AI Score]: 4 (Justification: "Patient expressed deep tristeza multiple times...")
+    [Clinician Override]: 2 (Justification: "Tristeza was context-dependent, not persistent...")
+    ```
+*   **Historical Version Control:** Since `parent_evaluation_id` is a self-referencing foreign key, you can chain multiple revisions together (`AI` ➔ `Resident Revision` ➔ `Senior Attending Revision`), forming a complete clinical genealogy tree.
+
+### Goal 8: Async Batch & Job Processing (State-Machine Architecture)
+
+In healthcare systems, processing long clinical audio transcripts through sanitization and LLM scoring is a time-consuming and resource-intensive workflow (often taking several minutes per file). To provide a responsive, lag-free user experience, **our database implements an asynchronous state-machine architecture directly on the `transcripts` table.**
+
+This completely prevents HTTP connection timeouts, allows bulk/multi-file uploads, and lets clinicians close their browser and return later once the analysis is done.
+
+#### 1. The Async State-Machine Flow
+The progress of a transcript through the AI pipeline is tracked by the `status` state column:
+*   **`queued`**: The file has been successfully uploaded and exists in the database. An offline worker thread (e.g., Celery in Python or BullMQ in Node) is notified.
+*   **`preprocessing`**: The worker has picked up the file and is running the sanitization pipeline. The worker updates the `progress_percent` column in real-time.
+*   **`preprocessed`**: Sanitization is complete. The resulting text is saved in `sanitized_text`.
+*   **`analyzing`**: The transcript is chunked and sent to the LLM for TDPM scoring.
+*   **`completed`**: LLM scoring is fully completed, results are loaded into `patient_item_scores`, and the technical metadata is registered in `evaluation_telemetry`.
+*   **`failed`**: An error occurred in either phase. The `error_message` column stores the exact traceback for clinical admins to troubleshoot.
+
+#### 2. What this Architectural Decision Enables
+*   **Multi-File Bulk Uploads (`batch_id`)**: A clinician can drag-and-drop 10 audio transcripts at once. The system generates a single UUID `batch_id` for the entire upload. The React UI can query all transcripts matching that `batch_id` to show a unified progress dashboard for the upload.
+*   **Live UI Progress Rings**: The frontend polls `/api/transcripts` (or connects via WebSockets) to fetch `progress_percent` and `status` to render smooth loading spinners, skeleton states, and live progress indicators (e.g., `"Preprocessing: 42% completed..."`).
+*   **Decoupled Work Queueing**: Relational state columns allow you to use a simple polling background worker or scale up to high-performance task queues without changing the database layout.
+*   **Graceful Recovery**: If the server crashes mid-analysis, a startup diagnostic task scans the database for `preprocessing` or `analyzing` rows and automatically restarts them, maintaining system reliability.
+
+### Goal 9: HIPAA-Ready PHI Separation & Pseudonym Mapping
+
+In medical software architectures, protecting patient privacy is a legal and ethical imperative (governed by standards like HIPAA in the US and LGPD in Brazil). By completely separating Protected Health Information (PHI) from the clinical analytics pipeline, **our database achieves HIPAA-ready isolation.**
+
+#### 1. The Anonymization Boundary
+*   **The Pseudonym Key**: While **raw transcripts** (as originally uploaded and stored in `transcripts.raw_text`) naturally contain real names, spoken identifiers, and other PHI, an explicit **anonymization step** is executed during preprocessing. In this step, all real names, medical ID numbers, and contact details are identified and replaced with the patient's public, generated **`pseudonym`** (e.g. `"Paciente1"`) or generic placeholders (e.g. `"Fulano1"`). As a result, the preprocessed **sanitized texts** (`transcripts.sanitized_text`), clinical analysis prompts, LLM parameters, and downstream item score records NEVER contain real names or sensitive direct identifiers. Instead, they reference the pseudonym.
+    *   **Two-Phase Pipeline Execution in `sanitized_text`**: To avoid sending real names to cloud LLMs, the pipeline operates in two phases:
+        1.  **Phase 1 (Local/Lightweight Anonymization)**: The system parses the raw text locally and replaces real names with pseudonyms. This intermediate anonymized text is immediately saved into `sanitized_text`.
+        2.  **Phase 2 (LLM Sanitization - Optional)**: To optimize execution speed or conserve token usage, this cloud-based LLM sanitization step (filler word/stutter removal, turn merging, grammar correction) can be optionally skipped. If skipped, the database retains the Phase 1 locally anonymized text directly in `sanitized_text`. If executed, upon successful completion, the system overwrites `sanitized_text` with the final polished, fully sanitized, and anonymized transcript.
+*   **Isolated Patient Registry**: The connection between this public pseudonym and the patient's actual sensitive details (like their true name `"João da Silva"`) is stored **strictly and exclusively** in the `patients` table.
+
+#### 2. What this Architectural Decision Enables
+*   **100% Blind LLM Pipelines**: Since raw transcripts are anonymized during preprocessing, the resulting sanitized transcripts sent to the LLM pipeline only contain the pseudonym and generic placeholders. Consequently, the external LLM APIs (and the developers checking pipeline telemetry logs) are never exposed to any patient PHI.
+*   **Role-Based Dynamic De-anonymization**: In the UI, the frontend displays patient identity safely. When a user logs in, the API checks their role:
+    *   If `users.role = 'clinician'` or `'admin'`, the API performs an internal join on `patients` to dynamically display the patient's real name on their private dashboard.
+    *   If the user does not have clinical clearance, the system only reveals the pseudonym, preventing accidental exposure of sensitive medical identities.
+*   **Flexible Clinical Profiles (`patients.metadata`)**: Storing patient demographics, intake details, and diagnostic history in a single schema-flexible JSON `metadata` field allows hospital staff to record patient information without altering the core relational tables.
+
+#### 3. Securing Raw PHI (`transcripts.raw_text`)
+Because the raw un-anonymized speech transcript is stored inside the database prior to sanitization, it contains direct patient PHI. To guarantee medical privacy standards, we implement the following security layers:
+*   **Application-Level Column Encryption**: The `transcripts.raw_text` field is encrypted at rest prior to database insertion using a secure symmetric encryption standard (e.g., **AES-256-GCM**). The encryption keys are securely managed by a separate external Key Management Service (KMS) or environment secret store.
+*   **Transient Storage & Pruning**: To minimize long-term exposure, `transcripts.raw_text` is treated as transient storage. Once the clinical assessment is validated and signed off by the clinician, a background pruning worker scrubs the raw text (sets `raw_text = NULL`), leaving only the permanent, 100% anonymized `sanitized_text`.
+*   **Access Auditing**: Direct database queries to raw transcripts are disabled at the infrastructure layer. All application-level read and decryption events on `raw_text` automatically generate immutable access logs, recording the timestamp, clinical user ID, and access context for audit purposes.
+
+#### 4. How and When is the Patients Table Populated?
+To ensure the local anonymization engine (Phase 1) has an accurate, secure dictionary for mapping real names to pseudonyms, the `patients` registry is populated via **two distinct channels**:
+*   **Pre-Registration during Patient Intake (Primary / Recommended Workflow)**:
+    *   **When**: Performed during the patient admission or group therapy onboarding process (prior to any audio sessions being recorded or transcripts uploaded).
+    *   **How**: An administrator or clinician registers a new patient in the UI by entering their `real_name` (e.g. `"João da Silva"`) and optional demographic metadata. The system automatically creates a UUID `id` and generates a public, unique `pseudonym` (e.g. `"Paciente1"`).
+    *   **Benefit**: This establishes the definitive mapping dictionary, ensuring the Phase 1 preprocessor immediately knows exactly how to anonymize the transcript upon upload.
+*   **Dynamic On-the-Fly Fallback (Self-Healing Ingestion with Clinician Verification)**:
+    *   **When**: Occurs during Phase 1 local preprocessing if a name is identified in the raw transcript that has no matching entry in the `patients` registry (e.g. a new participant or a clinical guest).
+    *   **How**: The preprocessor flags the unrecognized name and registers a provisional, draft patient row with a newly allocated pseudonym (e.g., `"Paciente5"`).
+    *   **Addressing Imperfect Raw Labels (Human-in-the-Loop)**: Because raw automated transcriptions are prone to spelling errors or speaker misidentifications (e.g. labeling `"João da Silva"` as `"Jão"` or `"J. Silva"`), the system treats all on-the-fly mappings as provisional. In the UI, the clinician is presented with an overlay to either **approve** the new auto-registered profile or **manually merge/correct** it with an existing pre-registered patient profile (e.g., mapping `"Jão"` back to `"João da Silva"`). This ensures clinical database integrity.
+
 ---
 
 ## 4. Next Steps & Action Plan
@@ -371,8 +474,8 @@ Adding the root `transcripts` table completely solves the core challenge of tran
 2. **Database Initialization & Seed Script**: Write a Python migration script `migrate_to_db.py` to:
    - Create all tables inside `data/analysis.db`.
    - Ingest all historic raw transcript files into the new `transcripts` table.
-   - Ingest all historic `.tdpm.json` analysis files into `analysis_sessions` and link them to their transcripts.
+   - Ingest all historic `.tdpm.json` analysis files into `tdpm_evaluations` and `evaluation_telemetry`, linking them to their transcripts.
    - Parse and populate patient records, clinical scores, and evidence links (with exact mapping logic).
-   - Ingest `preprocess.log.json` and `tdpm_analysis.log.json`.
-3. **Integrate Pipeline scripts**: Update `preprocess.py` and `tdpm_analysis.py` to write straight into SQLite database runs log tables.
+   - Ingest `preprocess.log.json` and `tdpm_analysis.log.json` telemetry.
+3. **Integrate Pipeline scripts**: Update `preprocess.py` and `tdpm_analysis.py` to write straight into SQLite database log and telemetry tables.
 4. **Refactor Backend API**: Update the server routes to serve the structured transcript, evolution endpoints, and interactive cards endpoints.

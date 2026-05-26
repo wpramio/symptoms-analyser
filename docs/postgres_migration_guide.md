@@ -37,22 +37,35 @@ Here is the DDL schema to set up your PostgreSQL database:
 -- Enable UUID extension if you want automatic UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS analysis_sessions (
+CREATE TABLE IF NOT EXISTS tdpm_evaluations (
     id VARCHAR(255) PRIMARY KEY,              -- e.g. "interview_session_1"
+    transcript_id VARCHAR(255) NOT NULL,
+    evaluator_id VARCHAR(255),
+    parent_evaluation_id VARCHAR(255),
+    evaluation_type VARCHAR(50) NOT NULL DEFAULT 'automated',
     session_name VARCHAR(255) NOT NULL,       -- e.g. "patient_interview_1"
-    model VARCHAR(100) NOT NULL,              -- e.g. "gpt-4o"
-    chunks_analyzed INTEGER NOT NULL,
-    prompt_tokens INTEGER,
-    completion_tokens INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    raw_payload JSONB NOT NULL                -- High-performance binary JSON
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- B-Tree Index for sorting by date
-CREATE INDEX IF NOT EXISTS idx_postgres_sessions_created_at ON analysis_sessions (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_postgres_evaluations_created_at ON tdpm_evaluations (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS evaluation_telemetry (
+    evaluation_id VARCHAR(255) PRIMARY KEY REFERENCES tdpm_evaluations(id) ON DELETE CASCADE,
+    model VARCHAR(100) NOT NULL,              -- e.g. "gpt-4o"
+    chunks_analyzed INTEGER,
+    blocks_per_call INTEGER,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    total_elapsed_seconds REAL,
+    status VARCHAR(50) NOT NULL DEFAULT 'success',
+    failure_reason TEXT,
+    raw_payload JSONB NOT NULL,               -- High-performance binary JSON
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 -- GIN Index for blazing-fast queries inside the nested JSON data!
-CREATE INDEX IF NOT EXISTS idx_postgres_sessions_payload ON analysis_sessions USING gin (raw_payload);
+CREATE INDEX IF NOT EXISTS idx_postgres_evaluations_payload ON evaluation_telemetry USING gin (raw_payload);
 ```
 
 ### Powerful `jsonb` Query Examples:
@@ -60,15 +73,17 @@ Because of `jsonb`, you can extract nested data directly using SQL standard synt
 
 *   **Find all sessions containing a specific patient name:**
     ```sql
-    SELECT id, session_name 
-    FROM analysis_sessions 
-    WHERE raw_payload -> 'aggregated' -> 'patients' ? 'Patient A';
+    SELECT e.id, e.session_name 
+    FROM tdpm_evaluations e
+    JOIN evaluation_telemetry t ON e.id = t.evaluation_id
+    WHERE t.raw_payload -> 'aggregated' -> 'patients' ? 'Patient A';
     ```
 *   **Find all sessions where a patient scored higher than 4 in a specific clinical item:**
     ```sql
-    SELECT id, session_name
-    FROM analysis_sessions
-    WHERE (raw_payload -> 'aggregated' -> 'patients' -> 'Patient A' -> 'items' -> '1.1' ->> 'score')::integer > 4;
+    SELECT e.id, e.session_name
+    FROM tdpm_evaluations e
+    JOIN evaluation_telemetry t ON e.id = t.evaluation_id
+    WHERE (t.raw_payload -> 'aggregated' -> 'patients' -> 'Patient A' -> 'items' -> '1.1' ->> 'score')::integer > 4;
     ```
 
 ---
@@ -120,13 +135,21 @@ def save_to_postgres(final_output, session_name):
         prompt_tokens = token_usage.get("prompt_tokens") if token_usage else None
         completion_tokens = token_usage.get("completion_tokens") if token_usage else None
         
-        # Insert statement
+        # Insert assessment record
         cursor.execute("""
-            INSERT INTO analysis_sessions 
-            (id, session_name, model, chunks_analyzed, prompt_tokens, completion_tokens, raw_payload)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO tdpm_evaluations 
+            (id, transcript_id, evaluation_type, session_name)
+            VALUES (%s, %s, 'automated', %s)
             ON CONFLICT (id) DO UPDATE SET
-                session_name = EXCLUDED.session_name,
+                session_name = EXCLUDED.session_name;
+        """, (session_id, "dummy_transcript_id", session_name))
+
+        # Insert telemetry record
+        cursor.execute("""
+            INSERT INTO evaluation_telemetry 
+            (evaluation_id, model, chunks_analyzed, prompt_tokens, completion_tokens, raw_payload)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (evaluation_id) DO UPDATE SET
                 model = EXCLUDED.model,
                 chunks_analyzed = EXCLUDED.chunks_analyzed,
                 prompt_tokens = EXCLUDED.prompt_tokens,
@@ -168,7 +191,7 @@ def list_files_postgres():
         conn = psycopg2.connect(DB_CONN, cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         
-        cursor.execute("SELECT id, session_name, created_at FROM analysis_sessions ORDER BY created_at DESC")
+        cursor.execute("SELECT id, session_name, created_at FROM tdpm_evaluations ORDER BY created_at DESC")
         rows = cursor.fetchall()
         
         files = []
@@ -190,7 +213,7 @@ def serve_analysis_postgres(session_id):
         conn = psycopg2.connect(DB_CONN, cursor_factory=RealDictCursor)
         cursor = conn.cursor()
         
-        cursor.execute("SELECT raw_payload FROM analysis_sessions WHERE id = %s", (session_id,))
+        cursor.execute("SELECT raw_payload FROM evaluation_telemetry WHERE evaluation_id = %s", (session_id,))
         row = cursor.fetchone()
         
         cursor.close()
@@ -227,7 +250,7 @@ const pool = new Pool({
 // GET: List all sessions
 router.get('/api/files', async (req, res) => {
     try {
-        const queryResult = await pool.query('SELECT id, session_name, created_at FROM analysis_sessions ORDER BY created_at DESC');
+        const queryResult = await pool.query('SELECT id, session_name, created_at FROM tdpm_evaluations ORDER BY created_at DESC');
         
         const files = queryResult.rows.map(row => ({
             name: `${row.id}.tdpm.json`,
@@ -243,7 +266,7 @@ router.get('/api/files', async (req, res) => {
 // GET: Fetch single session JSONB directly
 router.get('/api/analysis/:id', async (req, res) => {
     try {
-        const queryResult = await pool.query('SELECT raw_payload FROM analysis_sessions WHERE id = $1', [req.params.id]);
+        const queryResult = await pool.query('SELECT raw_payload FROM evaluation_telemetry WHERE evaluation_id = $1', [req.params.id]);
         
         if (queryResult.rows.length === 0) {
             return res.status(404).json({ error: 'Session not found' });
@@ -287,16 +310,29 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 
-class AnalysisSession(SQLModel, table=True):
-    __tablename__: str = "analysis_sessions"
+class TDPMEvaluation(SQLModel, table=True):
+    __tablename__: str = "tdpm_evaluations"
     
     id: str = Field(primary_key=True)
+    transcript_id: str
+    evaluator_id: Optional[str] = None
+    parent_evaluation_id: Optional[str] = None
+    evaluation_type: str = "automated"
     session_name: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class EvaluationTelemetry(SQLModel, table=True):
+    __tablename__: str = "evaluation_telemetry"
+    
+    evaluation_id: str = Field(primary_key=True, foreign_key="tdpm_evaluations.id")
     model: str
-    chunks_analyzed: int
+    chunks_analyzed: Optional[int] = None
+    blocks_per_call: Optional[int] = None
     prompt_tokens: Optional[int] = None
     completion_tokens: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    total_elapsed_seconds: Optional[float] = None
+    status: str = "success"
+    failure_reason: Optional[str] = None
     
     # SQLAlchemy's JSON / JSONB types are automatically mapped to dict in SQLModel
     raw_payload: Dict[str, Any] = Field(sa_column_kwargs={"type_": "JSONB"})
@@ -326,9 +362,13 @@ def save_session(data_dict, session_id):
     prompt_tokens = token_usage.get("prompt_tokens") if token_usage else None
     completion_tokens = token_usage.get("completion_tokens") if token_usage else None
     
-    new_session = AnalysisSession(
+    new_evaluation = TDPMEvaluation(
         id=session_id,
-        session_name=session_name,
+        transcript_id="dummy_transcript_id",
+        session_name=session_name
+    )
+    new_telemetry = EvaluationTelemetry(
+        evaluation_id=session_id,
         model=model,
         chunks_analyzed=chunks,
         prompt_tokens=prompt_tokens,
@@ -337,14 +377,15 @@ def save_session(data_dict, session_id):
     )
     
     with Session(engine) as session:
-        session.add(new_session)
+        session.add(new_evaluation)
+        session.add(new_telemetry)
         session.commit()
-        print("✔ Sessão gravada com sucesso via SQLModel!")
+        print("✔ Avaliação e telemetria gravadas com sucesso via SQLModel!")
 
 # Query sessions (Flask API context)
 def get_all_sessions():
     with Session(engine) as session:
-        statement = select(AnalysisSession).order_by(AnalysisSession.created_at.desc())
+        statement = select(TDPMEvaluation).order_by(TDPMEvaluation.created_at.desc())
         results = session.exec(statement).all()
         return [{"name": f"{s.id}.tdpm.json", "path": f"/api/analysis/{s.id}"} for s in results]
 ```
@@ -368,17 +409,34 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model AnalysisSession {
-  id               String   @id
-  sessionName      String   @map("session_name")
-  model            String
-  chunksAnalyzed   Int      @map("chunks_analyzed")
-  promptTokens     Int?     @map("prompt_tokens")
-  completionTokens Int?     @map("completion_tokens")
-  createdAt        DateTime @default(now()) @map("created_at")
-  rawPayload       Json     @map("raw_payload") // Maps directly to JSONB in Postgres
+model TDPMEvaluation {
+  id                 String               @id
+  transcriptId       String               @map("transcript_id")
+  evaluatorId        String?              @map("evaluator_id")
+  parentEvaluationId String?              @map("parent_evaluation_id")
+  evaluationType     String               @default("automated") @map("evaluation_type")
+  sessionName        String               @map("session_name")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  telemetry          EvaluationTelemetry?
 
-  @@map("analysis_sessions") // Maps to existing database table name
+  @@map("tdpm_evaluations")
+}
+
+model EvaluationTelemetry {
+  evaluationId        String         @id @map("evaluation_id")
+  model               String
+  chunksAnalyzed      Int?           @map("chunks_analyzed")
+  blocksPerCall       Int?           @map("blocks_per_call")
+  promptTokens        Int?           @map("prompt_tokens")
+  completionTokens    Int?           @map("completion_tokens")
+  totalElapsedSeconds Float?         @map("total_elapsed_seconds")
+  status              String         @default("success")
+  failureReason       String?        @map("failure_reason")
+  rawPayload          Json           @map("raw_payload")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  evaluation          TDPMEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  @@map("evaluation_telemetry")
 }
 ```
 
@@ -395,7 +453,7 @@ const prisma = new PrismaClient();
 // GET: List all sessions
 router.get('/api/files', async (req: Request, res: Response) => {
   try {
-    const sessions = await prisma.analysisSession.findMany({
+    const evaluations = await prisma.tDPMEvaluation.findMany({
       select: {
         id: true,
         sessionName: true,
@@ -406,9 +464,9 @@ router.get('/api/files', async (req: Request, res: Response) => {
       },
     });
 
-    const files = sessions.map(session => ({
-      name: `${session.id}.tdpm.json`,
-      path: `/api/analysis/${session.id}`,
+    const files = evaluations.map(evaluation => ({
+      name: `${evaluation.id}.tdpm.json`,
+      path: `/api/analysis/${evaluation.id}`,
     }));
 
     res.json(files);
@@ -420,16 +478,16 @@ router.get('/api/files', async (req: Request, res: Response) => {
 // GET: Fetch individual JSONB payload
 router.get('/api/analysis/:id', async (req: Request, res: Response) => {
   try {
-    const session = await prisma.analysisSession.findUnique({
-      where: { id: req.params.id },
+    const telemetry = await prisma.evaluationTelemetry.findUnique({
+      where: { evaluationId: req.params.id },
     });
 
-    if (!session) {
+    if (!telemetry) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
     // rawPayload is typed as a Prisma.JsonValue automatically
-    res.json(session.rawPayload);
+    res.json(telemetry.rawPayload);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -450,15 +508,28 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 // Define the Schema
-export const analysisSessions = pgTable('analysis_sessions', {
+export const tdpmEvaluations = pgTable('tdpm_evaluations', {
   id: varchar('id', { length: 255 }).primaryKey(),
+  transcriptId: varchar('transcript_id', { length: 255 }).notNull(),
+  evaluatorId: varchar('evaluator_id', { length: 255 }),
+  parentEvaluationId: varchar('parent_evaluation_id', { length: 255 }),
+  evaluationType: varchar('evaluation_type', { length: 50 }).default('automated').notNull(),
   sessionName: varchar('session_name', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const evaluationTelemetry = pgTable('evaluation_telemetry', {
+  evaluationId: varchar('evaluation_id', { length: 255 }).primaryKey().references(() => tdpmEvaluations.id, { onDelete: 'cascade' }),
   model: varchar('model', { length: 100 }).notNull(),
-  chunksAnalyzed: integer('chunks_analyzed').notNull(),
+  chunksAnalyzed: integer('chunks_analyzed'),
+  blocksPerCall: integer('blocks_per_call'),
   promptTokens: integer('prompt_tokens'),
   completionTokens: integer('completion_tokens'),
+  totalElapsedSeconds: doublePrecision('total_elapsed_seconds'),
+  status: varchar('status', { length: 50 }).default('success').notNull(),
+  failureReason: text('failure_reason'),
+  rawPayload: jsonb('raw_payload').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-  rawPayload: jsonb('raw_payload').notNull(), // Maps directly to JSONB
 });
 
 // Query Drizzle equivalent:

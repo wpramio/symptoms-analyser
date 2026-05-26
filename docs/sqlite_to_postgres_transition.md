@@ -25,7 +25,7 @@ graph TD
     style D fill:#f9f,stroke:#333
 ```
 
-1. **Identical Schema Design**: In both systems, you use the exact same columns (`id`, `session_name`, `model`, `chunks_analyzed`, `created_at`, `raw_payload`).
+1. **Identical Schema Design**: In both systems, you use the exact same tables and columns (`tdpm_evaluations` and `evaluation_telemetry`).
 2. **Text vs. `jsonb` Compatibility**: SQLite stores the JSON payload as plain `TEXT`, while Postgres stores it as binary `JSONB`. In both Python and Node.js, the database connectors automatically serialize/deserialize this data to native dictionaries/objects. To your application logic, **the data looks exactly the same.**
 3. **ORM Portability**: If you use an ORM (like Prisma, SQLModel, or Drizzle), changing your database is as simple as modifying a single configuration line.
 
@@ -109,23 +109,33 @@ sqlite_cursor = sqlite_conn.cursor()
 postgres_conn = psycopg2.connect("postgresql://clinician:mysecretpassword@localhost:5432/symptoms_analyser")
 postgres_cursor = postgres_conn.cursor()
 
-# 2. Fetch all records from SQLite
-sqlite_cursor.execute("SELECT id, session_name, model, chunks_analyzed, prompt_tokens, completion_tokens, created_at, raw_payload FROM analysis_sessions")
-rows = sqlite_cursor.fetchall()
+# 2. Transfer tdpm_evaluations
+sqlite_cursor.execute("SELECT id, transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, session_name, created_at FROM tdpm_evaluations")
+evaluations = sqlite_cursor.fetchall()
 
-print(f"Transferring {len(rows)} analysis sessions from SQLite to PostgreSQL...")
-
-# 3. Insert records into PostgreSQL
-for row in rows:
-    raw_payload_json = row[7] # SQLite returns this as a string
-    
+print(f"Transferring {len(evaluations)} clinical evaluations...")
+for row in evaluations:
     postgres_cursor.execute("""
-        INSERT INTO analysis_sessions 
-        (id, session_name, model, chunks_analyzed, prompt_tokens, completion_tokens, created_at, raw_payload)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO tdpm_evaluations 
+        (id, transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, session_name, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO NOTHING;
+    """, row)
+
+# 3. Transfer evaluation_telemetry (Only for automated/revised runs)
+sqlite_cursor.execute("SELECT evaluation_id, model, chunks_analyzed, blocks_per_call, prompt_tokens, completion_tokens, total_elapsed_seconds, status, failure_reason, raw_payload FROM evaluation_telemetry")
+telemetry_rows = sqlite_cursor.fetchall()
+
+print(f"Transferring {len(telemetry_rows)} evaluation telemetry logs...")
+for row in telemetry_rows:
+    raw_payload_json = row[9] # SQLite returns this as a string
+    postgres_cursor.execute("""
+        INSERT INTO evaluation_telemetry 
+        (evaluation_id, model, chunks_analyzed, blocks_per_call, prompt_tokens, completion_tokens, total_elapsed_seconds, status, failure_reason, raw_payload)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (evaluation_id) DO NOTHING;
     """, (
-        row[0], row[1], row[2], row[3], row[4], row[5], row[6], Json(raw_payload_json)
+        row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], Json(raw_payload_json)
     ))
 
 postgres_conn.commit()
