@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import json
+import sqlite3
 import uuid
 import threading
 import subprocess
@@ -63,33 +64,58 @@ def viewer_evolution():
 
 @app.route('/api/files')
 def list_files():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
     files = []
-    output_dir = PROJECT_ROOT / "output"
-    if output_dir.exists() and output_dir.is_dir():
-        for f in output_dir.rglob("*.tdpm.json"):
-            if f.is_file():
-                match = re.search(r"(\d{8}_\d{6})\.tdpm\.json$", f.name)
-                if match:
-                    timestamp = match.group(1)
-                else:
-                    timestamp = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y%m%d_%H%M%S")
-
-                files.append({
-                    "name": f.name,
-                    "path": f"/output/{f.relative_to(output_dir).as_posix()}",
-                    "timestamp": timestamp
-                })
-
-    files.sort(key=lambda x: x["timestamp"], reverse=True)
-    for f in files:
-        del f["timestamp"]
-
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT evaluation_id 
+            FROM evaluation_telemetry 
+            ORDER BY created_at DESC
+        """)
+        rows = cursor.fetchall()
+        for row in rows:
+            eval_id = row["evaluation_id"]
+            name = f"{eval_id}.tdpm.json"
+            files.append({
+                "name": name,
+                "path": f"/output/tdpm_analysis/{name}"
+            })
+        conn.close()
+    except Exception as e:
+        print(f"Error listing files from DB: {e}")
+        return jsonify({"error": str(e)}), 500
+        
     return jsonify(files)
 
 @app.route('/output/<path:filepath>')
 def serve_output(filepath):
-    # Serve analysis JSON files
-    return send_from_directory(PROJECT_ROOT / 'output', filepath)
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    try:
+        filename = Path(filepath).name
+        eval_id = re.sub(r"\.tdpm\.json$", "", filename)
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT raw_payload 
+            FROM evaluation_telemetry 
+            WHERE evaluation_id = ?
+        """, (eval_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row and row[0]:
+            payload = json.loads(row[0])
+            return jsonify(payload)
+    except Exception as e:
+        print(f"Error fetching raw payload from DB for {filepath}: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    return jsonify({"error": "DB entry not found"}), 404
+
 
 @app.route('/api/upload', methods=['POST'])
 def handle_upload():

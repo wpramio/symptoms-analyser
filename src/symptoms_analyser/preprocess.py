@@ -21,6 +21,7 @@ import json
 import math
 import random
 import re
+import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
@@ -215,7 +216,7 @@ def sanitize_chunk(
     }
 
 
-def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1) -> dict:
+def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1, session_name: str = None) -> dict:
     """
     Split transcript into timestamp chunks, optionally merge into batches,
     sanitize each call, then reassemble.
@@ -245,6 +246,24 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
             if val is not None:
                 total_usage[key] += val
 
+        # Live DB progress update!
+        if session_name:
+            progress = round(((i + 1) / len(chunks)) * 100.0, 1)
+            try:
+                db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
+                if db_path.exists():
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE transcripts 
+                        SET progress_percent = ? 
+                        WHERE id = ?
+                    """, (progress, session_name))
+                    conn.commit()
+                    conn.close()
+            except Exception:
+                pass
+
     total_elapsed = time.time() - run_start
     full_sanitized = "\n\n".join(sanitized_sections)
 
@@ -259,6 +278,74 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
+
+def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, list]:
+    """Helper to parse the ## Sanitization Log at the end of a chunk's sanitized text"""
+    turns_merged = 0
+    noise_removed = []
+    corrections = {}
+    anonymization_flags = []
+    
+    if not sanitized_text:
+        return turns_merged, noise_removed, corrections, anonymization_flags
+        
+    # Match the block
+    match = re.search(r"##\s*Sanitization Log\s*\n(.*)$", sanitized_text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        return turns_merged, noise_removed, corrections, anonymization_flags
+        
+    log_content = match.group(1)
+    
+    # Turns merged
+    tm_match = re.search(r"(?:Number of )?turns merged:\s*(\d+)", log_content, re.IGNORECASE)
+    if tm_match:
+        turns_merged = int(tm_match.group(1))
+        
+    # Noise tokens removed
+    noise_match = re.search(r"Noise tokens removed:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
+    if noise_match:
+        noise_removed = [line.strip().lstrip("-").strip() for line in noise_match.group(1).strip().split("\n")]
+    else:
+        # Check single line
+        noise_match2 = re.search(r"Noise tokens removed:\s*(.*)", log_content, re.IGNORECASE)
+        if noise_match2 and "none" not in noise_match2.group(1).lower():
+            val = noise_match2.group(1).strip()
+            if val:
+                noise_removed = [val]
+                
+    # Corrections
+    corr_block = re.search(r"(?:Tokens corrected with|corrections|Corrigidos)\s*(?:\[corrigido\]|`\[corrigido\]`|with `\[corrigido\]`)?:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
+    if corr_block:
+        for line in corr_block.group(1).strip().split("\n"):
+            line_clean = line.strip().lstrip("-").strip()
+            if "→" in line_clean:
+                parts = line_clean.split("→")
+                corrections[parts[0].strip()] = parts[1].strip()
+            elif "->" in line_clean:
+                parts = line_clean.split("->")
+                corrections[parts[0].strip()] = parts[1].strip()
+            elif ":" in line_clean:
+                parts = line_clean.split(":")
+                corrections[parts[0].strip()] = parts[1].strip()
+                
+    # Anonymization flags
+    anon_match = re.search(r"Anonymization flags raised:\s*(.*)", log_content, re.IGNORECASE)
+    if anon_match:
+        val = anon_match.group(1).strip()
+        if "none" not in val.lower() and "0" not in val:
+            flags = re.findall(r"\[NOME_NÃO_ANONIMIZADO:\s*([^\]]+)\]", val)
+            if flags:
+                anonymization_flags.extend(flags)
+            else:
+                anonymization_flags.append(val)
+                
+    anon_block = re.search(r"Anonymization flags raised:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
+    if anon_block:
+        for line in anon_block.group(1).strip().split("\n"):
+            line_clean = line.strip().lstrip("-").strip()
+            anonymization_flags.append(line_clean)
+            
+    return turns_merged, noise_removed, corrections, anonymization_flags
 
 def write_outputs(
     output_dir: Path,
@@ -317,6 +404,59 @@ def write_outputs(
     log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  Run log              → {log_path} (run #{run_number})")
 
+    # Write to SQLite sanitization_telemetry
+    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
+    if db_path.parent.exists():
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Aggregate chunk telemetry
+            chunks_list = sanitization_result.get("chunk_results", [])
+            total_turns_merged = 0
+            all_noise_removed = []
+            all_corrections = {}
+            all_anonymization_flags = []
+            
+            for ch in chunks_list:
+                text_to_parse = ch.get("sanitized_text", "")
+                tm, nr, corr, af = parse_sanitization_log_block(text_to_parse)
+                total_turns_merged += tm
+                all_noise_removed.extend(nr)
+                all_corrections.update(corr)
+                all_anonymization_flags.extend(af)
+                
+            token_usage = sanitization_result.get("total_usage", {})
+            prompt_tokens = token_usage.get("prompt_tokens")
+            completion_tokens = token_usage.get("completion_tokens")
+            
+            cursor.execute("""
+                INSERT INTO sanitization_telemetry (
+                    transcript_id, session_name, model, strategy, status, failure_reason,
+                    chunks_completed, chunks_total, prompt_tokens, completion_tokens,
+                    total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
+                ) VALUES (?, ?, ?, ?, 'success', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                session_name,
+                session_name,
+                "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
+                "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
+                len(chunks_list),
+                len(chunks_list),
+                prompt_tokens,
+                completion_tokens,
+                round(sanitization_result.get("total_elapsed", 0.0), 1),
+                total_turns_merged if total_turns_merged > 0 else None,
+                json.dumps(all_noise_removed) if all_noise_removed else None,
+                json.dumps(all_corrections) if all_corrections else None,
+                json.dumps(all_anonymization_flags) if all_anonymization_flags else None
+            ))
+            conn.commit()
+            conn.close()
+            print("  DB Telemetry Saved   → sqlite.db")
+        except Exception as e:
+            print(f"  [!] Error writing telemetry to SQLite: {e}")
+
 
 # ---------------------------------------------------------------------------
 # CLI
@@ -373,24 +513,77 @@ def main() -> None:
     if metadata:
         print(f"  Session metadata: {metadata}")
 
-    # Step 2 — AI sanitization (chunked)
-    if args.skip_sanitization:
-        print("  [2/2] Skipping AI sanitization step (using raw text)...")
-        result = {
-            "sanitized_transcript": raw_text,
-            "chunk_results": [],
-            "total_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-            "total_elapsed": 0.0,
-            "skipped": True,
-        }
-    else:
-        print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
-        system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
-        client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-        result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call)
+    # Record initial database state for the transcript
+    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
+    if db_path.parent.exists():
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO transcripts (
+                    id, filename, file_type, raw_text, status, progress_percent
+                ) VALUES (?, ?, ?, ?, 'preprocessing', 0.0)
+            """, (session_name, docx_path.name, docx_path.suffix.lstrip("."), raw_text))
+            conn.commit()
+            conn.close()
+            print("  DB Recording State   → preprocessing (0.0%)")
+        except Exception as e:
+            print(f"  [!] Database log error: {e}")
 
-    # Write outputs
-    write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata)
+    try:
+        # Step 2 — AI sanitization (chunked)
+        if args.skip_sanitization:
+            print("  [2/2] Skipping AI sanitization step (using raw text)...")
+            result = {
+                "sanitized_transcript": raw_text,
+                "chunk_results": [],
+                "total_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "total_elapsed": 0.0,
+                "skipped": True,
+            }
+        else:
+            print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
+            system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
+            client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+            result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name)
+
+        # Write outputs
+        write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata)
+
+        # Update database state to preprocessed
+        if db_path.parent.exists():
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE transcripts 
+                    SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ? 
+                    WHERE id = ?
+                """, (result["sanitized_transcript"], session_name))
+                conn.commit()
+                conn.close()
+                print("  DB State Updated     → preprocessed (100.0%)")
+            except Exception as ex:
+                print(f"  [!] Database update error: {ex}")
+
+    except Exception as e:
+        print(f"  [!] Pipeline error during preprocessing: {e}", file=sys.stderr)
+        # Update database state to failed
+        if db_path.parent.exists():
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE transcripts 
+                    SET status = 'failed', error_message = ? 
+                    WHERE id = ?
+                """, (str(e), session_name))
+                conn.commit()
+                conn.close()
+                print("  DB State Updated     → failed")
+            except Exception as ex:
+                pass
+        raise
 
     usage = result["total_usage"]
     elapsed = result["total_elapsed"]
