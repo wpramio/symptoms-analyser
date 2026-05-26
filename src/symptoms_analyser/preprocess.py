@@ -519,11 +519,12 @@ def main() -> None:
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
+            file_size = docx_path.stat().st_size
             cursor.execute("""
                 INSERT OR REPLACE INTO transcripts (
-                    id, filename, file_type, raw_text, status, progress_percent
-                ) VALUES (?, ?, ?, ?, 'preprocessing', 0.0)
-            """, (session_name, docx_path.name, docx_path.suffix.lstrip("."), raw_text))
+                    id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
+                ) VALUES (?, ?, ?, ?, ?, 'preprocessing', 0.0)
+            """, (session_name, docx_path.name, docx_path.suffix.lstrip("."), raw_text, file_size))
             conn.commit()
             conn.close()
             print("  DB Recording State   → preprocessing (0.0%)")
