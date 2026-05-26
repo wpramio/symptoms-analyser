@@ -71,11 +71,21 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="progress-bar-fill" style="width: ${progressVal}%"></div>
                             </div>
                         `;
+                    } else if (job.status === 'completed' || job.status === 'preprocessed' || job.status === 'failed') {
+                        progressHtml = '';
                     } else {
                         progressHtml = `<span>Progresso: ${progressVal.toFixed(0)}%</span>`;
                     }
 
-                    const statusText = job.status === 'failed' ? 'Falha (Ver erro)' : job.status;
+                    const statusMap = {
+                        'queued': 'Na Fila',
+                        'preprocessing': 'Pré-processando',
+                        'preprocessed': 'Pré-processado',
+                        'analyzing': 'Analisando',
+                        'completed': 'Concluído',
+                        'failed': 'Falha (Ver erro)'
+                    };
+                    const statusText = statusMap[job.status] || job.status;
                     const cursorStyle = job.status === 'failed' ? 'style="cursor: pointer;"' : '';
 
                     html += `
@@ -87,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="status-badge" data-status="${job.status}" ${cursorStyle} data-id="${job.id}">
                                     ${statusText}
                                 </div>
-                                <div style="margin-top: 0.5rem;">${progressHtml}</div>
+                                ${progressHtml ? `<div style="margin-top: 0.5rem;">${progressHtml}</div>` : ''}
                             </td>
                             <td style="color: var(--text-muted); font-size: 0.85rem;">${formatDate(job.created_at)}</td>
                         </tr>
