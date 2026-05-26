@@ -400,6 +400,139 @@ def write_outputs(
 
 
 # ---------------------------------------------------------------------------
+# Programmatic entry point
+# ---------------------------------------------------------------------------
+
+def run_preprocess(
+    filepath: Path,
+    skip_sanitization: bool = False,
+    blocks_per_call: int = 100,
+) -> None:
+    """
+    Run the full preprocessing pipeline on a physical transcript file.
+
+    Callable entry point for programmatic use (e.g., from app.py).
+    Raises on failure instead of calling sys.exit().
+    DB connection is managed internally for the duration of the run.
+
+    Args:
+        filepath: Path to the .docx or .txt transcript file.
+        skip_sanitization: If True, skip LLM sanitization and use raw text.
+        blocks_per_call: Number of timestamp blocks to merge per LLM call.
+    """
+    if not filepath.exists():
+        raise FileNotFoundError(f"File not found: {filepath}")
+    if filepath.suffix.lower() not in [".docx", ".txt"]:
+        raise ValueError(f"Expected a .docx or .txt file, got: {filepath.suffix}")
+
+    session_name = filepath.stem
+    print(f"Processing physical file: {filepath.name}")
+
+    # Establish a persistent shared database connection for progress tracking
+    db_conn = None
+    if DB_PATH.parent.exists():
+        try:
+            db_conn = sqlite3.connect(DB_PATH, timeout=30.0)
+            db_conn.execute("PRAGMA journal_mode=WAL")
+            db_conn.execute("PRAGMA synchronous=NORMAL")
+            db_conn.execute("PRAGMA foreign_keys=ON")
+            print("  DB Connection Opened → sqlite.db (WAL mode, timeout=30s)")
+        except Exception as e:
+            print(f"  [!] Database connection error: {e}")
+
+    # Step 1 — Extract text
+    print("  [1/2] Extracting text...")
+    metadata = {}
+    if filepath.suffix.lower() == ".docx":
+        metadata, raw_text = extract_text_from_docx(filepath)
+    else:
+        raw_text = filepath.read_text(encoding="utf-8")
+
+    if metadata:
+        print(f"  Session metadata: {metadata}")
+
+    # Record initial database state
+    if db_conn:
+        try:
+            cursor = db_conn.cursor()
+            file_size = filepath.stat().st_size
+            cursor.execute("""
+                INSERT OR REPLACE INTO transcripts (
+                    id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
+                ) VALUES (?, ?, ?, ?, ?, 'preprocessing', 0.0)
+            """, (session_name, filepath.name, filepath.suffix.lstrip("."), raw_text, file_size))
+            db_conn.commit()
+            print("  DB Recording State   → preprocessing (0.0%)")
+        except Exception as e:
+            print(f"  [!] Database log error: {e}")
+
+    result = None
+    try:
+        # Step 2 — AI sanitization (chunked)
+        if skip_sanitization:
+            print("  [2/2] Skipping AI sanitization step (using raw text)...")
+            result = {
+                "sanitized_transcript": raw_text,
+                "chunk_results": [],
+                "total_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "total_elapsed": 0.0,
+                "skipped": True,
+            }
+        else:
+            print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
+            system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
+            client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+            result = sanitize_transcript(
+                raw_text, system_prompt, client, blocks_per_call,
+                session_name=session_name, db_conn=db_conn
+            )
+
+        write_outputs(session_name, result, blocks_per_call, db_conn=db_conn)
+
+        # Update database state to preprocessed
+        if db_conn:
+            try:
+                cursor = db_conn.cursor()
+                cursor.execute("""
+                    UPDATE transcripts
+                    SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ?
+                    WHERE id = ?
+                """, (result["sanitized_transcript"], session_name))
+                db_conn.commit()
+                print("  DB State Updated     → preprocessed (100.0%)")
+            except Exception as ex:
+                print(f"  [!] Database update error: {ex}")
+
+    except Exception as e:
+        print(f"  [!] Pipeline error during preprocessing: {e}", file=sys.stderr)
+        if db_conn:
+            try:
+                cursor = db_conn.cursor()
+                cursor.execute("""
+                    UPDATE transcripts
+                    SET status = 'failed', error_message = ?
+                    WHERE id = ?
+                """, (str(e), session_name))
+                db_conn.commit()
+                print("  DB State Updated     → failed")
+            except Exception:
+                pass
+        raise
+    finally:
+        if db_conn:
+            db_conn.close()
+            print("  DB Connection Closed")
+
+    usage = result["total_usage"]
+    elapsed = result["total_elapsed"]
+    mins, secs = divmod(int(elapsed), 60)
+    print(f"  Total tokens used: {usage['total_tokens']} "
+          f"(prompt: {usage['prompt_tokens']}, completion: {usage['completion_tokens']})")
+    print(f"  Total time: {mins}m {secs:02d}s")
+    print("Done.")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -438,9 +571,16 @@ def main() -> None:
     if not args.input and not args.transcript_id:
         parser.error("At least one of 'input' or '--transcript-id' must be specified.")
 
-    output_dir: Path = args.output_dir
+    if args.input:
+        # File-based path: delegate to the programmatic entry point
+        run_preprocess(
+            filepath=args.input,
+            skip_sanitization=args.skip_sanitization,
+            blocks_per_call=args.blocks_per_call,
+        )
+        return
 
-    # Establish a persistent shared database connection context
+    # --transcript-id path: CLI-only feature, loads raw_text directly from DB
     db_conn = None
     if DB_PATH.parent.exists():
         try:
@@ -452,55 +592,27 @@ def main() -> None:
         except Exception as e:
             print(f"  [!] Database connection error: {e}")
 
-    docx_path = args.input
-    metadata = {}
-    raw_text = ""
-    session_name = ""
+    if not db_conn:
+        print("Error: Database connection is required when utilizing --transcript-id.", file=sys.stderr)
+        sys.exit(1)
 
-    # Step 1 — Extract text (from DB or physical file)
-    if args.transcript_id:
-        if not db_conn:
-            print("Error: Database connection is required when utilizing --transcript-id.", file=sys.stderr)
-            sys.exit(1)
-        
-        session_name = args.transcript_id
-        print(f"Loading raw text from database for Transcript ID: {session_name}")
-        cursor = db_conn.cursor()
-        cursor.execute("SELECT filename, raw_text FROM transcripts WHERE id = ?", (session_name,))
-        row = cursor.fetchone()
-        if not row:
-            print(f"Error: Transcript ID '{session_name}' not found in database.", file=sys.stderr)
-            sys.exit(1)
-        
-        # Mock docx_path for downstream output compatibility
-        docx_path = Path(row[0])
-        raw_text = row[1]
-    else:
-        if not docx_path.exists():
-            print(f"Error: file not found: {docx_path}", file=sys.stderr)
-            sys.exit(1)
+    session_name = args.transcript_id
+    print(f"Loading raw text from database for Transcript ID: {session_name}")
+    cursor = db_conn.cursor()
+    cursor.execute("SELECT filename, raw_text FROM transcripts WHERE id = ?", (session_name,))
+    row = cursor.fetchone()
+    if not row:
+        db_conn.close()
+        print(f"Error: Transcript ID '{session_name}' not found in database.", file=sys.stderr)
+        sys.exit(1)
 
-        if docx_path.suffix.lower() not in [".docx", ".txt"]:
-            print(f"Error: expected a .docx or .txt file, got: {docx_path.suffix}", file=sys.stderr)
-            sys.exit(1)
+    docx_path = Path(row[0])
+    raw_text = row[1]
 
-        session_name = docx_path.stem
-        print(f"Processing physical file: {docx_path.name}")
-
-        print("  [1/2] Extracting text...")
-        if docx_path.suffix.lower() == ".docx":
-            metadata, raw_text = extract_text_from_docx(docx_path)
-        else:
-            raw_text = docx_path.read_text(encoding="utf-8")
-            
-        if metadata:
-            print(f"  Session metadata: {metadata}")
-
-    # Record/Update initial database state for the transcript using shared connection
     if db_conn:
         try:
             cursor = db_conn.cursor()
-            file_size = docx_path.stat().st_size if not args.transcript_id and docx_path.exists() else len(raw_text.encode('utf-8'))
+            file_size = len(raw_text.encode('utf-8'))
             cursor.execute("""
                 INSERT OR REPLACE INTO transcripts (
                     id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
@@ -511,8 +623,8 @@ def main() -> None:
         except Exception as e:
             print(f"  [!] Database log error: {e}")
 
+    result = None
     try:
-        # Step 2 — AI sanitization (chunked)
         if args.skip_sanitization:
             print("  [2/2] Skipping AI sanitization step (using raw text)...")
             result = {
@@ -528,16 +640,14 @@ def main() -> None:
             client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
             result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name, db_conn=db_conn)
 
-        # Write outputs
         write_outputs(session_name, result, args.blocks_per_call, db_conn=db_conn)
 
-        # Update database state to preprocessed using shared connection
         if db_conn:
             try:
                 cursor = db_conn.cursor()
                 cursor.execute("""
-                    UPDATE transcripts 
-                    SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ? 
+                    UPDATE transcripts
+                    SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ?
                     WHERE id = ?
                 """, (result["sanitized_transcript"], session_name))
                 db_conn.commit()
@@ -547,18 +657,17 @@ def main() -> None:
 
     except Exception as e:
         print(f"  [!] Pipeline error during preprocessing: {e}", file=sys.stderr)
-        # Update database state to failed using shared connection
         if db_conn:
             try:
                 cursor = db_conn.cursor()
                 cursor.execute("""
-                    UPDATE transcripts 
-                    SET status = 'failed', error_message = ? 
+                    UPDATE transcripts
+                    SET status = 'failed', error_message = ?
                     WHERE id = ?
                 """, (str(e), session_name))
                 db_conn.commit()
                 print("  DB State Updated     → failed")
-            except Exception as ex:
+            except Exception:
                 pass
         raise
     finally:
