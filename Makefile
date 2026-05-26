@@ -25,6 +25,12 @@ clean:
 	rm -rf output/
 
 
+.PHONY: db-prune prune-db db-clean clean-db
+# Prune the database and start over completely fresh (empty schema, no seeds)
+db-prune prune-db db-clean clean-db:
+	uv run python scripts/clean_db.py
+
+
 .PHONY: test
 test:
 	@echo "Installing dev dependencies and running tests..."
