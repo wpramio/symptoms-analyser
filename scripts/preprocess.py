@@ -1,14 +1,14 @@
 """
 preprocess.py
 -------------
-Step 1 + Step 2 of the symptoms-analyser pipeline:
+Standalone CLI version (Step 1 + Step 2 of the symptoms-analyser pipeline):
   1. Extract text from a .docx transcript
   2. Chunk by timestamp blocks
   3. Send each chunk to the LLM API for AI-based sanitization
   4. Reassemble and save the sanitized transcript and a full run log
 
 Usage:
-    python preprocess.py <input.docx> [--output-dir <dir>]
+    python scripts/preprocess.py <input.docx> [--output-dir <dir>]
 
 Outputs (written to --output-dir, default: ./output):
     <session_name>.raw.txt         — verbatim extracted text
@@ -27,6 +27,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Add src folder to PYTHONPATH to allow executing this script standalone
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+
 from docx import Document
 from openai import OpenAI
 
@@ -34,7 +37,7 @@ from symptoms_analyser.utils import (
     MODEL, LLM_BASE_URL, LLM_API_KEY,
     TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner
 )
-PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
+PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "preprocess.md"
 
 # ---------------------------------------------------------------------------
@@ -101,7 +104,6 @@ def extract_text_from_docx(docx_path: Path) -> tuple[dict, str]:
             lines.append(text)
 
     return metadata, "\n".join(lines)
-
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +218,7 @@ def sanitize_chunk(
     }
 
 
-def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1, session_name: str = None, db_conn: sqlite3.Connection = None) -> dict:
+def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1, session_name: str = None) -> dict:
     """
     Split transcript into timestamp chunks, optionally merge into batches,
     sanitize each call, then reassemble.
@@ -250,26 +252,17 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
         if session_name:
             progress = round(((i + 1) / len(chunks)) * 100.0, 1)
             try:
-                if db_conn:
-                    cursor = db_conn.cursor()
+                db_path = Path(__file__).resolve().parents[1] / "data" / "sqlite.db"
+                if db_path.exists():
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
                     cursor.execute("""
                         UPDATE transcripts 
                         SET progress_percent = ? 
                         WHERE id = ?
                     """, (progress, session_name))
-                    db_conn.commit()
-                else:
-                    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-                    if db_path.exists():
-                        conn = sqlite3.connect(db_path, timeout=30.0)
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            UPDATE transcripts 
-                            SET progress_percent = ? 
-                            WHERE id = ?
-                        """, (progress, session_name))
-                        conn.commit()
-                        conn.close()
+                    conn.commit()
+                    conn.close()
             except Exception:
                 pass
 
@@ -364,7 +357,6 @@ def write_outputs(
     docx_path: Path,
     blocks_per_call: int,
     metadata: dict,
-    db_conn: sqlite3.Connection = None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -372,26 +364,19 @@ def write_outputs(
     raw_path.write_text(raw_text, encoding="utf-8")
     print(f"  Raw extracted text   → {raw_path}")
 
-    # Determine run number dynamically from database (eliminating cumulative JSON I/O)
-    run_number = 1
-    if db_conn:
+    log_path = output_dir / "preprocess.log.json"
+
+    # Load existing log to determine run number before writing outputs
+    if log_path.exists():
         try:
-            cursor = db_conn.cursor()
-            cursor.execute("SELECT count(*) FROM sanitization_telemetry WHERE session_name = ?", (session_name,))
-            run_number = (cursor.fetchone()[0] or 0) + 1
-        except Exception:
-            pass
+            existing = json.loads(log_path.read_text(encoding="utf-8"))
+            runs = existing.get("runs", [])
+        except json.JSONDecodeError:
+            runs = []
     else:
-        db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-        if db_path.exists():
-            try:
-                conn = sqlite3.connect(db_path, timeout=30.0)
-                cursor = conn.cursor()
-                cursor.execute("SELECT count(*) FROM sanitization_telemetry WHERE session_name = ?", (session_name,))
-                run_number = (cursor.fetchone()[0] or 0) + 1
-                conn.close()
-            except Exception:
-                pass
+        runs = []
+
+    run_number = len(runs) + 1
 
     sanitized_path = output_dir / f"{session_name}.run{run_number}.sanitized.txt"
     sanitized_path.write_text(
@@ -399,29 +384,54 @@ def write_outputs(
     )
     print(f"  Sanitized transcript → {sanitized_path}")
 
+    run_entry = {
+        "run": run_number,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "session": session_name,
+        "session_metadata": metadata,
+        "source_file": str(docx_path.resolve()),
+        "sanitized_file": str(sanitized_path),
+        "model": "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
+        "status": "success",
+        "strategy": "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
+        "chunks_total": len(sanitization_result["chunk_results"]),
+        "blocks_per_call": blocks_per_call,
+        "total_token_usage": sanitization_result["total_usage"],
+        "total_elapsed_seconds": round(sanitization_result["total_elapsed"], 1),
+        "chunks": sanitization_result["chunk_results"],
+    }
+    runs.append(run_entry)
+
+    log = {"runs": runs}
+    log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  Run log              → {log_path} (run #{run_number})")
+
     # Write to SQLite sanitization_telemetry
-    try:
-        # Aggregate chunk telemetry
-        chunks_list = sanitization_result.get("chunk_results", [])
-        total_turns_merged = 0
-        all_noise_removed = []
-        all_corrections = {}
-        all_anonymization_flags = []
-        
-        for ch in chunks_list:
-            text_to_parse = ch.get("sanitized_text", "")
-            tm, nr, corr, af = parse_sanitization_log_block(text_to_parse)
-            total_turns_merged += tm
-            all_noise_removed.extend(nr)
-            all_corrections.update(corr)
-            all_anonymization_flags.extend(af)
+    db_path = Path(__file__).resolve().parents[1] / "data" / "sqlite.db"
+    if db_path.parent.exists():
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
             
-        token_usage = sanitization_result.get("total_usage", {})
-        prompt_tokens = token_usage.get("prompt_tokens")
-        completion_tokens = token_usage.get("completion_tokens")
-        
-        if db_conn:
-            cursor = db_conn.cursor()
+            # Aggregate chunk telemetry
+            chunks_list = sanitization_result.get("chunk_results", [])
+            total_turns_merged = 0
+            all_noise_removed = []
+            all_corrections = {}
+            all_anonymization_flags = []
+            
+            for ch in chunks_list:
+                text_to_parse = ch.get("sanitized_text", "")
+                tm, nr, corr, af = parse_sanitization_log_block(text_to_parse)
+                total_turns_merged += tm
+                all_noise_removed.extend(nr)
+                all_corrections.update(corr)
+                all_anonymization_flags.extend(af)
+                
+            token_usage = sanitization_result.get("total_usage", {})
+            prompt_tokens = token_usage.get("prompt_tokens")
+            completion_tokens = token_usage.get("completion_tokens")
+            
             cursor.execute("""
                 INSERT INTO sanitization_telemetry (
                     transcript_id, session_name, model, strategy, status, failure_reason,
@@ -443,39 +453,11 @@ def write_outputs(
                 json.dumps(all_corrections) if all_corrections else None,
                 json.dumps(all_anonymization_flags) if all_anonymization_flags else None
             ))
-            db_conn.commit()
+            conn.commit()
+            conn.close()
             print("  DB Telemetry Saved   → sqlite.db")
-        else:
-            db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-            if db_path.parent.exists():
-                conn = sqlite3.connect(db_path, timeout=30.0)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO sanitization_telemetry (
-                        transcript_id, session_name, model, strategy, status, failure_reason,
-                        chunks_completed, chunks_total, prompt_tokens, completion_tokens,
-                        total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
-                    ) VALUES (?, ?, ?, ?, 'success', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    session_name,
-                    session_name,
-                    "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
-                    "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
-                    len(chunks_list),
-                    len(chunks_list),
-                    prompt_tokens,
-                    completion_tokens,
-                    round(sanitization_result.get("total_elapsed", 0.0), 1),
-                    total_turns_merged if total_turns_merged > 0 else None,
-                    json.dumps(all_noise_removed) if all_noise_removed else None,
-                    json.dumps(all_corrections) if all_corrections else None,
-                    json.dumps(all_anonymization_flags) if all_anonymization_flags else None
-                ))
-                conn.commit()
-                conn.close()
-                print("  DB Telemetry Saved   → sqlite.db")
-    except Exception as e:
-        print(f"  [!] Error writing telemetry to SQLite: {e}")
+        except Exception as e:
+            print(f"  [!] Error writing telemetry to SQLite: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -486,13 +468,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Preprocess a .docx therapy session transcript (extract + AI sanitize)."
     )
-    parser.add_argument("input", type=Path, nargs="?", default=None, help="Path to the input .docx file")
-    parser.add_argument(
-        "--transcript-id",
-        type=str,
-        default=None,
-        help="Pull raw_text from database by transcript ID instead of reading from file",
-    )
+    parser.add_argument("input", type=Path, help="Path to the input .docx file")
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -514,76 +490,45 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not args.input and not args.transcript_id:
-        parser.error("At least one of 'input' or '--transcript-id' must be specified.")
-
+    docx_path: Path = args.input
     output_dir: Path = args.output_dir
-    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-    
-    # Establish a persistent shared database connection context
-    db_conn = None
+
+    if not docx_path.exists():
+        print(f"Error: file not found: {docx_path}", file=sys.stderr)
+        sys.exit(1)
+
+    if docx_path.suffix.lower() not in [".docx", ".txt"]:
+        print(f"Error: expected a .docx or .txt file, got: {docx_path.suffix}", file=sys.stderr)
+        sys.exit(1)
+
+    session_name = docx_path.stem
+    print(f"Processing: {docx_path.name}")
+
+    # Step 1 — Extract text
+    print("  [1/2] Extracting text...")
+    if docx_path.suffix.lower() == ".docx":
+        metadata, raw_text = extract_text_from_docx(docx_path)
+    else:
+        metadata = {}
+        raw_text = docx_path.read_text(encoding="utf-8")
+        
+    if metadata:
+        print(f"  Session metadata: {metadata}")
+
+    # Record initial database state for the transcript
+    db_path = Path(__file__).resolve().parents[1] / "data" / "sqlite.db"
     if db_path.parent.exists():
         try:
-            db_conn = sqlite3.connect(db_path, timeout=30.0)
-            print("  DB Connection Opened → sqlite.db (timeout=30s)")
-        except Exception as e:
-            print(f"  [!] Database connection error: {e}")
-
-    docx_path = args.input
-    metadata = {}
-    raw_text = ""
-    session_name = ""
-
-    # Step 1 — Extract text (from DB or physical file)
-    if args.transcript_id:
-        if not db_conn:
-            print("Error: Database connection is required when utilizing --transcript-id.", file=sys.stderr)
-            sys.exit(1)
-        
-        session_name = args.transcript_id
-        print(f"Loading raw text from database for Transcript ID: {session_name}")
-        cursor = db_conn.cursor()
-        cursor.execute("SELECT filename, raw_text FROM transcripts WHERE id = ?", (session_name,))
-        row = cursor.fetchone()
-        if not row:
-            print(f"Error: Transcript ID '{session_name}' not found in database.", file=sys.stderr)
-            sys.exit(1)
-        
-        # Mock docx_path for downstream output compatibility
-        docx_path = Path(row[0])
-        raw_text = row[1]
-    else:
-        if not docx_path.exists():
-            print(f"Error: file not found: {docx_path}", file=sys.stderr)
-            sys.exit(1)
-
-        if docx_path.suffix.lower() not in [".docx", ".txt"]:
-            print(f"Error: expected a .docx or .txt file, got: {docx_path.suffix}", file=sys.stderr)
-            sys.exit(1)
-
-        session_name = docx_path.stem
-        print(f"Processing physical file: {docx_path.name}")
-
-        print("  [1/2] Extracting text...")
-        if docx_path.suffix.lower() == ".docx":
-            metadata, raw_text = extract_text_from_docx(docx_path)
-        else:
-            raw_text = docx_path.read_text(encoding="utf-8")
-            
-        if metadata:
-            print(f"  Session metadata: {metadata}")
-
-    # Record/Update initial database state for the transcript using shared connection
-    if db_conn:
-        try:
-            cursor = db_conn.cursor()
-            file_size = docx_path.stat().st_size if not args.transcript_id and docx_path.exists() else len(raw_text.encode('utf-8'))
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            file_size = docx_path.stat().st_size
             cursor.execute("""
                 INSERT OR REPLACE INTO transcripts (
                     id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
                 ) VALUES (?, ?, ?, ?, ?, 'preprocessing', 0.0)
             """, (session_name, docx_path.name, docx_path.suffix.lstrip("."), raw_text, file_size))
-            db_conn.commit()
+            conn.commit()
+            conn.close()
             print("  DB Recording State   → preprocessing (0.0%)")
         except Exception as e:
             print(f"  [!] Database log error: {e}")
@@ -603,45 +548,45 @@ def main() -> None:
             print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
             system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
             client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-            result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name, db_conn=db_conn)
+            result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name)
 
         # Write outputs
-        write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata, db_conn=db_conn)
+        write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata)
 
-        # Update database state to preprocessed using shared connection
-        if db_conn:
+        # Update database state to preprocessed
+        if db_path.parent.exists():
             try:
-                cursor = db_conn.cursor()
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE transcripts 
                     SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ? 
                     WHERE id = ?
                 """, (result["sanitized_transcript"], session_name))
-                db_conn.commit()
+                conn.commit()
+                conn.close()
                 print("  DB State Updated     → preprocessed (100.0%)")
             except Exception as ex:
                 print(f"  [!] Database update error: {ex}")
 
     except Exception as e:
         print(f"  [!] Pipeline error during preprocessing: {e}", file=sys.stderr)
-        # Update database state to failed using shared connection
-        if db_conn:
+        # Update database state to failed
+        if db_path.parent.exists():
             try:
-                cursor = db_conn.cursor()
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
                 cursor.execute("""
                     UPDATE transcripts 
                     SET status = 'failed', error_message = ? 
                     WHERE id = ?
                 """, (str(e), session_name))
-                db_conn.commit()
+                conn.commit()
+                conn.close()
                 print("  DB State Updated     → failed")
             except Exception as ex:
                 pass
         raise
-    finally:
-        if db_conn:
-            db_conn.close()
-            print("  DB Connection Closed")
 
     usage = result["total_usage"]
     elapsed = result["total_elapsed"]

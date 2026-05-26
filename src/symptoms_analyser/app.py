@@ -204,25 +204,11 @@ def process_file(task_id, filepath: Path, skip_sanitization: bool = False):
             raise Exception("Falha no pré-processamento. Verifique os logs.")
             
         # Step 2: Analysis
-        # We need to find the sanitized transcript that was just generated
         session_name = filepath.stem
-        # It usually outputs to <session_name>.runX.sanitized.txt
-        # Let's find the latest one
-        sanitized_files = list(PREPROCESS_OUTPUT.glob(f"{session_name}.run*.sanitized.txt"))
-        if not sanitized_files:
-            # Fallback for .txt or other behavior
-            sanitized_files = list(PREPROCESS_OUTPUT.glob(f"{session_name}*.sanitized.txt"))
-            
-        if not sanitized_files:
-            raise Exception("Arquivo sanitizado não encontrado após pré-processamento.")
-            
-        # Sort by run number or modification time, we assume the latest modified
-        latest_sanitized = max(sanitized_files, key=os.path.getmtime)
-        
-        add_log(f"Pré-processamento concluído. Iniciando análise TDPM-20 no arquivo {latest_sanitized.name}...")
+        add_log(f"Pré-processamento concluído. Iniciando análise TDPM-20 no banco de dados para ID: {session_name}...")
         
         proc_ana = subprocess.Popen(
-            [sys.executable, "-m", "symptoms_analyser.tdpm_analysis", str(latest_sanitized), "--output", str(ANALYSIS_OUTPUT)],
+            [sys.executable, "-m", "symptoms_analyser.tdpm_analysis", "--transcript-id", session_name, "--output", str(ANALYSIS_OUTPUT)],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
