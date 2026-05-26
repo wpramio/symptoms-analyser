@@ -18,6 +18,8 @@ MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash-preview-04-17")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
 LLM_API_KEY = os.getenv("LLM_API_KEY", os.getenv("GEMINI_API_KEY", os.getenv("OPENAI_API_KEY", "")))
 
+DB_PATH = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
+
 
 # ---------------------------------------------------------------------------
 # Text Chunking Helpers

@@ -32,7 +32,7 @@ from openai import OpenAI
 
 from symptoms_analyser.utils import (
     MODEL, LLM_BASE_URL, LLM_API_KEY,
-    TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner
+    TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner, DB_PATH
 )
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
 SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "preprocess.md"
@@ -246,30 +246,17 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
             if val is not None:
                 total_usage[key] += val
 
-        # Live DB progress update!
-        if session_name:
+        # Live DB progress update
+        if session_name and db_conn:
             progress = round(((i + 1) / len(chunks)) * 100.0, 1)
             try:
-                if db_conn:
-                    cursor = db_conn.cursor()
-                    cursor.execute("""
-                        UPDATE transcripts 
-                        SET progress_percent = ? 
-                        WHERE id = ?
-                    """, (progress, session_name))
-                    db_conn.commit()
-                else:
-                    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-                    if db_path.exists():
-                        conn = sqlite3.connect(db_path, timeout=30.0)
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            UPDATE transcripts 
-                            SET progress_percent = ? 
-                            WHERE id = ?
-                        """, (progress, session_name))
-                        conn.commit()
-                        conn.close()
+                cursor = db_conn.cursor()
+                cursor.execute("""
+                    UPDATE transcripts 
+                    SET progress_percent = ? 
+                    WHERE id = ?
+                """, (progress, session_name))
+                db_conn.commit()
             except Exception:
                 pass
 
@@ -357,48 +344,11 @@ def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, 
     return turns_merged, noise_removed, corrections, anonymization_flags
 
 def write_outputs(
-    output_dir: Path,
     session_name: str,
-    raw_text: str,
     sanitization_result: dict,
-    docx_path: Path,
     blocks_per_call: int,
-    metadata: dict,
     db_conn: sqlite3.Connection = None,
 ) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    raw_path = output_dir / f"{session_name}.raw.txt"
-    raw_path.write_text(raw_text, encoding="utf-8")
-    print(f"  Raw extracted text   → {raw_path}")
-
-    # Determine run number dynamically from database (eliminating cumulative JSON I/O)
-    run_number = 1
-    if db_conn:
-        try:
-            cursor = db_conn.cursor()
-            cursor.execute("SELECT count(*) FROM sanitization_telemetry WHERE session_name = ?", (session_name,))
-            run_number = (cursor.fetchone()[0] or 0) + 1
-        except Exception:
-            pass
-    else:
-        db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-        if db_path.exists():
-            try:
-                conn = sqlite3.connect(db_path, timeout=30.0)
-                cursor = conn.cursor()
-                cursor.execute("SELECT count(*) FROM sanitization_telemetry WHERE session_name = ?", (session_name,))
-                run_number = (cursor.fetchone()[0] or 0) + 1
-                conn.close()
-            except Exception:
-                pass
-
-    sanitized_path = output_dir / f"{session_name}.run{run_number}.sanitized.txt"
-    sanitized_path.write_text(
-        sanitization_result["sanitized_transcript"], encoding="utf-8"
-    )
-    print(f"  Sanitized transcript → {sanitized_path}")
-
     # Write to SQLite sanitization_telemetry
     try:
         # Aggregate chunk telemetry
@@ -445,35 +395,6 @@ def write_outputs(
             ))
             db_conn.commit()
             print("  DB Telemetry Saved   → sqlite.db")
-        else:
-            db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-            if db_path.parent.exists():
-                conn = sqlite3.connect(db_path, timeout=30.0)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO sanitization_telemetry (
-                        transcript_id, session_name, model, strategy, status, failure_reason,
-                        chunks_completed, chunks_total, prompt_tokens, completion_tokens,
-                        total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
-                    ) VALUES (?, ?, ?, ?, 'success', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    session_name,
-                    session_name,
-                    "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
-                    "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
-                    len(chunks_list),
-                    len(chunks_list),
-                    prompt_tokens,
-                    completion_tokens,
-                    round(sanitization_result.get("total_elapsed", 0.0), 1),
-                    total_turns_merged if total_turns_merged > 0 else None,
-                    json.dumps(all_noise_removed) if all_noise_removed else None,
-                    json.dumps(all_corrections) if all_corrections else None,
-                    json.dumps(all_anonymization_flags) if all_anonymization_flags else None
-                ))
-                conn.commit()
-                conn.close()
-                print("  DB Telemetry Saved   → sqlite.db")
     except Exception as e:
         print(f"  [!] Error writing telemetry to SQLite: {e}")
 
@@ -518,14 +439,16 @@ def main() -> None:
         parser.error("At least one of 'input' or '--transcript-id' must be specified.")
 
     output_dir: Path = args.output_dir
-    db_path = Path(__file__).resolve().parents[2] / "data" / "sqlite.db"
-    
+
     # Establish a persistent shared database connection context
     db_conn = None
-    if db_path.parent.exists():
+    if DB_PATH.parent.exists():
         try:
-            db_conn = sqlite3.connect(db_path, timeout=30.0)
-            print("  DB Connection Opened → sqlite.db (timeout=30s)")
+            db_conn = sqlite3.connect(DB_PATH, timeout=30.0)
+            db_conn.execute("PRAGMA journal_mode=WAL")
+            db_conn.execute("PRAGMA synchronous=NORMAL")
+            db_conn.execute("PRAGMA foreign_keys=ON")
+            print("  DB Connection Opened → sqlite.db (WAL mode, timeout=30s)")
         except Exception as e:
             print(f"  [!] Database connection error: {e}")
 
@@ -606,7 +529,7 @@ def main() -> None:
             result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name, db_conn=db_conn)
 
         # Write outputs
-        write_outputs(output_dir, session_name, raw_text, result, docx_path, args.blocks_per_call, metadata, db_conn=db_conn)
+        write_outputs(session_name, result, args.blocks_per_call, db_conn=db_conn)
 
         # Update database state to preprocessed using shared connection
         if db_conn:
