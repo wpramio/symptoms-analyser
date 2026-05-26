@@ -51,13 +51,21 @@ def viewer_analysis():
 def viewer_compare():
     return render_template('viewer_compare.html')
 
-@app.route('/viewer/calculator')
-def viewer_calculator():
-    return render_template('viewer_calculator.html')
-
 @app.route('/viewer/evolution')
 def viewer_evolution():
     return render_template('viewer_evolution.html')
+
+@app.route('/admin/transcripts')
+def admin_transcripts():
+    return render_template('admin_transcripts.html')
+
+@app.route('/admin/patients')
+def admin_patients():
+    return render_template('admin_patients.html')
+
+@app.route('/admin/calculator')
+def admin_calculator():
+    return render_template('admin_calculator.html')
 
 
 # API Endpoints
@@ -235,6 +243,174 @@ def process_file(task_id, filepath: Path, skip_sanitization: bool = False):
         task["status"] = "error"
         task["error"] = str(e)
         add_log(f"Erro: {str(e)}")
+
+@app.route('/api/admin/stats')
+def api_admin_stats():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    stats = {
+        "total_transcripts": 0,
+        "success_rate": 100.0,
+        "total_prompt_tokens": 0,
+        "total_completion_tokens": 0,
+        "total_patients": 0
+    }
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            cursor = conn.cursor()
+            
+            # Total Transcripts
+            cursor.execute("SELECT count(*) FROM transcripts")
+            stats["total_transcripts"] = cursor.fetchone()[0] or 0
+            
+            # Success rate
+            cursor.execute("SELECT count(*) FROM transcripts WHERE status IN ('preprocessed', 'completed')")
+            successes = cursor.fetchone()[0] or 0
+            if stats["total_transcripts"] > 0:
+                stats["success_rate"] = round((successes / stats["total_transcripts"]) * 100.0, 1)
+                
+            # Tokens usage
+            cursor.execute("SELECT sum(prompt_tokens), sum(completion_tokens) FROM evaluation_telemetry")
+            row = cursor.fetchone()
+            stats["total_prompt_tokens"] = row[0] or 0
+            stats["total_completion_tokens"] = row[1] or 0
+            
+            # Total Patients
+            cursor.execute("SELECT count(*) FROM patients")
+            stats["total_patients"] = cursor.fetchone()[0] or 0
+            
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching admin stats: {e}")
+    return jsonify(stats)
+
+@app.route('/api/admin/transcripts')
+def api_admin_transcripts():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    rows_list = []
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, filename, file_type, file_size_bytes, status, progress_percent, error_message, created_at 
+                FROM transcripts 
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                rows_list.append({
+                    "id": r["id"],
+                    "filename": r["filename"],
+                    "file_type": r["file_type"],
+                    "file_size_bytes": r["file_size_bytes"],
+                    "status": r["status"],
+                    "progress_percent": r["progress_percent"],
+                    "error_message": r["error_message"],
+                    "created_at": r["created_at"]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching admin transcripts: {e}")
+    return jsonify(rows_list)
+
+@app.route('/api/admin/telemetry')
+def api_admin_telemetry():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    telemetry_list = []
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, transcript_id, model, strategy, total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags, prompt_tokens, completion_tokens, chunks_completed, created_at 
+                FROM sanitization_telemetry 
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                telemetry_list.append({
+                    "id": r["id"],
+                    "transcript_id": r["transcript_id"],
+                    "model": r["model"],
+                    "strategy": r["strategy"],
+                    "elapsed_seconds": r["total_elapsed_seconds"],
+                    "turns_merged": r["turns_merged"],
+                    "noise_removed": json.loads(r["noise_tokens_removed"]) if r["noise_tokens_removed"] else [],
+                    "corrections_map": json.loads(r["corrections"]) if r["corrections"] else {},
+                    "anonymization_flags": json.loads(r["anonymization_flags"]) if r["anonymization_flags"] else [],
+                    "prompt_tokens": r["prompt_tokens"],
+                    "completion_tokens": r["completion_tokens"],
+                    "chunks_completed": r["chunks_completed"],
+                    "created_at": r["created_at"]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching admin telemetry: {e}")
+    return jsonify(telemetry_list)
+
+@app.route('/api/admin/patients')
+def api_admin_patients():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    patients_list = []
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT pseudonym, real_name, created_at 
+                FROM patients 
+                ORDER BY id ASC
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                patients_list.append({
+                    "id": r["pseudonym"],
+                    "real_name": r["real_name"],
+                    "created_at": r["created_at"]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Error fetching admin patients: {e}")
+    return jsonify(patients_list)
+
+@app.route('/api/admin/patients/create', methods=['POST'])
+def create_patient():
+    db_path = PROJECT_ROOT / "data" / "sqlite.db"
+    try:
+        data = request.get_json()
+        if not data or 'pseudonym' not in data or 'real_name' not in data:
+            return jsonify({"error": "Dados inválidos ou incompletos"}), 400
+            
+        pseudonym = data['pseudonym'].strip()
+        real_name = data['real_name'].strip()
+        
+        if not pseudonym or not real_name:
+            return jsonify({"error": "Pseudônimo e nome real não podem estar vazios"}), 400
+            
+        if not re.match(r"^Paciente\d+$", pseudonym):
+            return jsonify({"error": "Pseudônimo deve seguir o formato 'PacienteX' (ex: Paciente8)"}), 400
+            
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        cursor = conn.cursor()
+        
+        # Check if pseudonym already exists
+        cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (pseudonym,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({"error": f"O pseudônimo '{pseudonym}' já está cadastrado"}), 409
+            
+        cursor.execute("INSERT INTO patients (id, pseudonym, real_name) VALUES (?, ?, ?)", (pseudonym, pseudonym, real_name))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"message": "Paciente registrado com sucesso"}), 201
+    except Exception as e:
+        print(f"Error creating patient mapping: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000, debug=True)

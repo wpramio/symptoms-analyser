@@ -27,8 +27,11 @@
                     class="sidebar-btn {% if active_page == 'analysis' %}active{% endif %}">Análise por sessão</a>
                 <a href="/viewer/compare"
                     class="sidebar-btn {% if active_page == 'compare' %}active{% endif %}">Comparar análises</a>
-                <a href="/viewer/calculator"
-                    class="sidebar-btn {% if active_page == 'calculator' %}active{% endif %}">Calculadora de custos</a>
+
+                <div class="sidebar-nav-section">Administração</div>
+                <a href="/admin/transcripts" class="sidebar-btn {% if active_page == 'admin_transcripts' %}active{% endif %}">Pipelines e ingestão</a>
+                <a href="/admin/patients" class="sidebar-btn {% if active_page == 'admin_patients' %}active{% endif %}">Gestão de pacientes</a>
+                <a href="/admin/calculator" class="sidebar-btn {% if active_page == 'admin_calculator' %}active{% endif %}">Calculadora de custos</a>
             </div>
         </aside>
 

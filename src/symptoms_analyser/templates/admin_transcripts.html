@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% set active_page = 'admin_transcripts' %}
+
+{% block title %}Monitor de Pipelines - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="calculator-view">
+    <div class="calc-header">
+        <h2>Pipelines e ingestão</h2>
+        <p>Monitoramento técnico e telemetria de processamento de transcrições.</p>
+    </div>
+
+    <!-- Section 1: Jobs Queue & Progress matching .calc-results table container -->
+    <div class="calc-results margin-bottom-large">
+        <h3>Fila de ingestão e status de execução</h3>
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-25">ID da ingestão</th>
+                        <th class="col-width-25">Nome do arquivo</th>
+                        <th class="col-width-15">Tamanho</th>
+                        <th class="col-width-20">Status e progresso</th>
+                        <th class="col-width-15">Data de ingestão</th>
+                    </tr>
+                </thead>
+                <tbody id="jobsTableBody">
+                    <tr>
+                        <td colspan="5" class="table-empty-row">Carregando estado das pipelines...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Compact statistics row right after Ingestions list -->
+    <div class="stats-compact-row margin-bottom-large margin-top-none">
+        <div class="stats-compact-card">
+            <h4>Ingestões totais</h4>
+            <div class="stats-compact-value" id="statTranscripts">0</div>
+            <span class="stats-compact-desc">Transcrições enviadas</span>
+        </div>
+        <div class="stats-compact-card">
+            <h4>Taxa de sucesso</h4>
+            <div class="stats-compact-value" id="statSuccess">100%</div>
+            <span class="stats-compact-desc">Ingestões concluídas</span>
+        </div>
+        <div class="stats-compact-card">
+            <h4>Tokens consumidos</h4>
+            <div class="stats-compact-value" id="statTokens">0</div>
+            <span class="stats-compact-desc" id="statTokensDesc">Prompt: 0 | Comp: 0</span>
+        </div>
+    </div>
+
+    <!-- Section 2: Detailed Telemetry Logs matching .calc-results table container -->
+    <div class="calc-results">
+        <h3>Telemetria de pré-processamento e privacidade (PHI)</h3>
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-15">ID sessão</th>
+                        <th class="col-width-35">Configuração IA</th>
+                        <th class="col-width-20">Correções de fala</th>
+                        <th class="col-width-20">Vazamento de PHI / anônimo</th>
+                        <th class="col-width-10">Tempo de execução</th>
+                    </tr>
+                </thead>
+                <tbody id="telemetryTableBody">
+                    <tr>
+                        <td colspan="5" class="table-empty-row">Carregando telemetria...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Traceback Overlay -->
+<div id="tracebackModal" class="traceback-modal">
+    <div class="traceback-modal-content">
+        <div class="traceback-modal-header">
+            <span class="traceback-modal-title"><strong>Exception Diagnostics</strong></span>
+            <button id="closeTracebackBtn" class="traceback-close-btn">&times;</button>
+        </div>
+        <div class="traceback-modal-body" id="tracebackContent">
+            Traceback details...
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin_transcripts.js"></script>
+{% endblock %}

@@ -66,9 +66,15 @@ Use this checklist to track the implementation of the Symptoms Analyser database
     *   [ ] Build tools to resolve name mappings, updating the `patients` index with new real-name / pseudonym connections.
 
 #### 🔲 Step 6.4: Cryptographic Field-Level Security
-*   **Goal:** Protect therapy communications from unauthorized local disk reads.
+*   **Goal:** Secure clinical transcripts at rest using field-level cryptography to align with HIPAA/LGPD compliance.
 *   *Tasks:*
-    *   [ ] Integrate python `cryptography` libraries into pipelines.
-    *   [ ] Encrypt `raw_text` and `sanitized_text` values during writing, and decrypt dynamically when requested.
+    *   [ ] Introduce `cryptography` (Fernet) to encrypt `raw_text` and `sanitized_text` fields in the `transcripts` table at rest.
+    *   [ ] Integrate decryption layers in Flask database queries to expose plaintext to authorized users dynamically.
+    *   [ ] Implement key rotation strategies and secure environment-variable key storage.
 
-
+#### 🟢 Step 6.5: Standalone Operational Admin Portals & Governance
+*   **Goal:** Provide full operational visibility and standalone administrative controls over pipeline health, HIPAA privacy mapping registries, and API costs.
+*   *Tasks:*
+    *   [x] Establish modular standalone admin URLs: `/admin/transcripts` (monitor), `/admin/patients` (registry), and `/admin/calculator` (cost limits).
+    *   [x] Build a dynamic patient inclusion form at `/admin/patients` with a secure backend POST handler `POST /api/admin/patients/create` to persist new pseudonym mapping keys directly to SQLite.
+    *   [x] Move the "Calculadora de Custos" from public view to the administrative control scope (`/admin/calculator`).

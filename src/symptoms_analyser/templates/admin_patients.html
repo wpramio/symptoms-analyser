@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% set active_page = 'admin_patients' %}
+
+{% block title %}Gestão de Pacientes - Symptoms Analyser{% endblock %}
+
+
+
+{% block content %}
+<div class="calculator-view">
+    <!-- Header matching calc-header style -->
+    <div class="calc-header">
+        <h2>Gestão de Pacientes</h2>
+        <p>Isolamento de dados clínicos (HIPAA/LGPD) e controle de identificações pseudônimas.</p>
+    </div>
+
+    <div class="patients-split-grid">
+        <!-- Directory table wrapped in table-container + cost-table -->
+        <div class="calc-results margin-bottom-none">
+            <h3>Diretório de mapeamento de pseudônimos</h3>
+            <div class="table-container">
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th class="col-width-40">Pseudônimo de isolamento</th>
+                            <th class="col-width-60">Nome real do paciente (restrito)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registryTableBody">
+                        <tr>
+                            <td colspan="2" class="table-empty-row">
+                                Carregando registros de pacientes...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Ingress/Inclusion Form matching calc-card style -->
+        <div class="calc-card">
+            <h3>Vincular novo paciente</h3>
+            <form id="createPatientForm" onsubmit="event.preventDefault(); submitPatient();">
+                <div class="input-group">
+                    <label for="patientPseudonym">Código pseudônimo:</label>
+                    <input type="text" id="patientPseudonym" placeholder="Ex: Paciente8" required>
+                    <span class="form-helper-text">Use o formato "PacienteX" (ex: Paciente8).</span>
+                </div>
+                <div class="input-group">
+                    <label for="patientRealName">Identidade real (nome completo):</label>
+                    <input type="text" id="patientRealName" placeholder="Ex: Roberto Carlos da Silva" required>
+                </div>
+                <button type="submit" class="btn btn-full-width margin-top-medium">Salvar novo vínculo</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notification element -->
+<div id="toastNotification" class="toast-notification">✓ Vínculo salvo com sucesso!</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin_patients.js"></script>
+{% endblock %}
