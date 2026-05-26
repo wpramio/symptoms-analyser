@@ -20,9 +20,8 @@ tdpm_analysis = "symptoms_analyser.tdpm_analysis:main"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["symptoms_analyser"]
-package-dir = {"" = "src"}
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [dependency-groups]
 dev = [
