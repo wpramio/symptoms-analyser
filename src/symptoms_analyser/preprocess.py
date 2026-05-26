@@ -35,7 +35,7 @@ from symptoms_analyser.utils import (
     TIMESTAMP_RE, split_into_chunks, merge_chunks, Spinner, DB_PATH
 )
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
-SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "preprocess.md"
+SANITIZATION_PROMPT_FILE = PROMPTS_DIR / "sanitization.md"
 
 # ---------------------------------------------------------------------------
 # Step 1 — Text extraction
