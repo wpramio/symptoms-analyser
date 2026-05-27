@@ -35,12 +35,14 @@ db-prune prune-db db-clean clean-db:
 test:
 	@echo "Installing dev dependencies and running tests..."
 	@if command -v uv >/dev/null 2>&1; then \
-		uv sync && uv install -D pytest pytest-cov || true; \
+		uv sync && uv pip install pytest pytest-cov || true; \
+		echo "Running pytest..."; \
+		uv run pytest -q; \
 	else \
 		python3 -m pip install -U '.[dev]' || true; \
+		echo "Running pytest..."; \
+		pytest -q; \
 	fi
-	@echo "Running pytest..."
-	@pytest -q
 
 
 .PHONY: analyse-llm
