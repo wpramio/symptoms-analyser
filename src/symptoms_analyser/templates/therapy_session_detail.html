@@ -12,88 +12,96 @@
 <div class="main-container">
     <!-- Back to sessions link -->
     <a href="/therapy_sessions" class="back-link">
-        <svg width="16" height="16" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+        <svg width="16" height="16" aria-hidden="true">
+            <use href="#icon-arrow-left"></use>
+        </svg>
         Voltar para sessões
     </a>
 
-    <!-- Session Detail Header -->
-    <div class="page-header page-header-flex-start">
-        <div>
-            <div class="session-title-row">
-                <h2 class="mb-1">{{ session.name }}</h2>
-                {% if evaluation_id %}
-                    <span class="status-badge" data-status="completed">
-                        Análise concluída
-                    </span>
-                {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
-                    <span class="status-badge" data-status="preprocessing">
-                        Processando ({{ transcript.progress_percent }}%)
-                    </span>
-                {% else %}
-                    <span class="status-badge" data-status="queued">
-                        Aguardando transcrição
-                    </span>
-                {% endif %}
-            </div>
-            <p class="session-meta-line">
-                Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{ session.start_at }}</strong> | Duração: <strong>{{ (session.duration / 60)|int }} minutos</strong>
-            </p>
-        </div>
-
-        {% if evaluation_id %}
-        <!-- Technical details popover (only shown if analyzed) -->
-        <div class="meta-popover-container">
-            <button type="button" class="btn btn-secondary btn-with-icon" id="btnShowSessionMeta">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-                Detalhes técnicos
-            </button>
-
-            <!-- Floating Popover -->
-            <div class="meta-popover" id="metaPopover">
-                <div class="popover-arrow"></div>
-                <h4 class="popover-title">Telemetria de IA</h4>
-                <div class="popover-grid">
-                    <div class="popover-item">
-                        <span class="popover-label">Modelo LLM</span>
-                        <span class="popover-value" id="metaModel">-</span>
-                    </div>
-                    <div class="popover-item">
-                        <span class="popover-label">Blocos de análise</span>
-                        <span class="popover-value" id="metaChunks">-</span>
-                    </div>
-                    <div class="popover-item">
-                        <span class="popover-label">Tempo de execução</span>
-                        <span class="popover-value" id="metaTime">-</span>
-                    </div>
-                    <div class="popover-item">
-                        <span class="popover-label">Tokens (prompt/resp.)</span>
-                        <span class="popover-value" id="metaTokens">-</span>
-                    </div>
+    <!-- CARD 1: Session Details + Patients -->
+    <div class="dashboard-card session-detail-card">
+        <div class="page-header page-header-flex-start">
+            <div>
+                <div class="session-title-row">
+                    <h2 class="mb-1">{{ session.name }}</h2>
                 </div>
+                <p class="session-meta-line">
+                    Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
+                        session.start_at }}</strong> | Duração: <strong>{{ (session.duration / 60)|int }}
+                        minutos</strong>
+                </p>
             </div>
         </div>
-        {% endif %}
-    </div>
 
-    <!-- Participating Patients Info Row -->
-    <div class="session-participants-panel">
-        <span class="session-participants-label">Pacientes na sessão:</span>
-        <div class="flex-wrap-gap-sm">
-            {% for pat in patients_list %}
+        <!-- Participating Patients -->
+        <div class="session-participants-panel session-participants-panel--incard">
+            <span class="session-participants-label">Pacientes na sessão:</span>
+            <div class="flex-wrap-gap-sm">
+                {% for pat in patients_list %}
                 <a href="/patients/{{ pat }}" class="patient-pill-link">
                     {{ pat }}
                 </a>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
     </div>
 
     <!-- MAIN INTERACTIVE STATE AREA -->
     {% if evaluation_id %}
-        <!-- STATE 1: SESSION IS FULLY ANALYZED -->
+    <!-- STATE 1: SESSION IS FULLY ANALYZED -->
+
+    <!-- CARD 2: TDPM Analysis -->
+    <div class="dashboard-card tdpm-analysis-card">
+        <div class="session-card-header page-header-flex-start">
+            <h3 class="session-card-title">Análise TDPM-20</h3>
+
+            {% if evaluation_id %}
+            <!-- Technical details popover (only shown if analyzed) -->
+            <div class="meta-popover-container">
+                <button type="button" class="btn btn-secondary btn-with-icon" id="btnShowSessionMeta">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    Detalhes técnicos
+                </button>
+
+                <!-- Floating Popover -->
+                <div class="meta-popover" id="metaPopover">
+                    <div class="popover-arrow"></div>
+                    <h4 class="popover-title">Telemetria de IA</h4>
+                    <div class="popover-grid">
+                        <div class="popover-item">
+                            <span class="popover-label">Modelo LLM</span>
+                            <span class="popover-value" id="metaModel">-</span>
+                        </div>
+                        <div class="popover-item">
+                            <span class="popover-label">Blocos de análise</span>
+                            <span class="popover-value" id="metaChunks">-</span>
+                        </div>
+                        <div class="popover-item">
+                            <span class="popover-label">Tempo de execução</span>
+                            <span class="popover-value" id="metaTime">-</span>
+                        </div>
+                        <div class="popover-item">
+                            <span class="popover-label">Tokens (prompt/resp.)</span>
+                            <span class="popover-value" id="metaTokens">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
+            <span class="status-badge" data-status="preprocessing">
+                Processando ({{ transcript.progress_percent }}%)
+            </span>
+            {% else %}
+            <span class="status-badge" data-status="queued">
+                Aguardando transcrição
+            </span>
+            {% endif %}
+        </div>
         <div id="dashboard" class="dashboard">
             <section class="patient-navigation">
                 <ul id="patientTabs" class="patient-tabs">
@@ -105,134 +113,144 @@
                 <!-- Patient specific content will be injected here -->
             </section>
         </div>
+    </div>
 
-        <!-- COLLAPSIBLE TRANSCRIPT VIEW -->
-        {% if transcript %}
-        <div class="calc-results transcript-collapsible-section">
-            <div class="dimension-item">
-                <div class="dimension-header" id="toggleTranscriptHeader">
-                    <div class="flex-align-center-gap-sm">
-                        <span class="transcript-icon">📄</span>
-                        <span class="transcript-title">Transcrição completa da sessão</span>
-                    </div>
-                    <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
+    <!-- CARD 3: Full Transcript -->
+    {% if transcript %}
+    <div class="dashboard-card transcript-card">
+        <div class="dimension-item">
+            <div class="dimension-header" id="toggleTranscriptHeader">
+                <div class="flex-align-center-gap-sm">
+                    <span class="transcript-icon">📄</span>
+                    <span class="transcript-title">Transcrição completa da sessão</span>
                 </div>
-                <div class="transcript-body-scroll" id="transcriptBodyContainer">
-                    <div class="transcript-tab-row">
-                        <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowSanitized">Transcrição higienizada (PHI clean)</button>
-                        <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">Texto bruto original</button>
-                    </div>
-                    <pre id="transcriptTextContent" class="transcript-content-pre">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
+                <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
+            </div>
+            <div class="transcript-body-scroll" id="transcriptBodyContainer">
+                <div class="transcript-tab-row">
+                    <button type="button" class="btn btn-secondary btn-transcript-tab active"
+                        id="btnShowSanitized">Transcrição higienizada (PHI clean)</button>
+                    <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">Texto bruto
+                        original</button>
                 </div>
+                <pre id="transcriptTextContent"
+                    class="transcript-content-pre">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
             </div>
         </div>
-        {% endif %}
+    </div>
+    {% endif %}
 
-        <!-- Template for Patient Content (matching analysis.js expectations) -->
-        <template id="patientTemplate">
-            <div class="patient-view">
-                <div class="section-header section-header-top">
-                    <h3>Top 3 dimensões prioritárias</h3>
-                    <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
-                </div>
-                <div class="top3-grid" id="tplTop3">
-                    <!-- Top 3 cards go here -->
-                </div>
-
-                <div class="section-header section-header-major">
-                    <h3>Detalhamento das dimensões clínicas</h3>
-                    <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
-                </div>
-                <div class="dimensions-list" id="tplDimensions">
-                    <!-- Dimension items go here -->
-                </div>
+    <!-- Template for Patient Content (matching analysis.js expectations) -->
+    <template id="patientTemplate">
+        <div class="patient-view">
+            <div class="section-header section-header-top">
+                <h3>Top 3 dimensões prioritárias</h3>
+                <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
             </div>
-        </template>
+            <div class="top3-grid" id="tplTop3">
+                <!-- Top 3 cards go here -->
+            </div>
+
+            <div class="section-header section-header-major">
+                <h3>Detalhamento das dimensões clínicas</h3>
+                <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
+            </div>
+            <div class="dimensions-list" id="tplDimensions">
+                <!-- Dimension items go here -->
+            </div>
+        </div>
+    </template>
 
     {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
-        <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
-        <div class="calc-results calc-results-centered">
-            <div class="processing-card dashboard-card processing-centered" id="processingView">
-                <div class="spinner spinner-lg"></div>
-                <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
-                <p class="processing-desc" id="statusDesc">
-                    O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando sintomas por IA.
-                </p>
+    <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
+    <div class="calc-results calc-results-centered">
+        <div class="processing-card dashboard-card processing-centered" id="processingView">
+            <div class="spinner spinner-lg"></div>
+            <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
+            <p class="processing-desc" id="statusDesc">
+                O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando
+                sintomas por IA.
+            </p>
 
-                <div class="log-console log-console-lg" id="logConsole">
-                    <div class="log-entry log-entry-muted">[Iniciando sistema...] Aguardando atualização do estado da pipeline no banco de dados...</div>
-                </div>
+            <div class="log-console log-console-lg" id="logConsole">
+                <div class="log-entry log-entry-muted">[Iniciando sistema...] Aguardando atualização do estado da
+                    pipeline no banco de dados...</div>
             </div>
         </div>
+    </div>
 
     {% else %}
-        <!-- STATE 3: NO TRANSCRIPT UPLOADED / UPLOAD FAILED -->
-        <div class="calc-results calc-results-centered">
-            <div class="dashboard-card" id="newSessionView">
-                <div class="upload-state-header">
-                    <span class="upload-icon-large">📄</span>
-                    <h3 class="upload-state-title">Registrar transcrição &amp; analisar sintomas</h3>
-                    <p class="upload-state-desc">Esta sessão de terapia ainda não possui uma transcrição associada. Faça o upload do arquivo para executar a avaliação clínica baseada em IA.</p>
-                </div>
-
-                {% if transcript and transcript.status == 'failed' %}
-                <div class="upload-error-banner">
-                    <strong class="upload-error-label">Falha na tentativa anterior:</strong>
-                    <div class="upload-error-message">{{ transcript.error_message }}</div>
-                </div>
-                {% endif %}
-
-                <!-- File dropzone -->
-                <div class="upload-card-styled" id="dropZone">
-                    <div class="upload-icon-large">📤</div>
-                    <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
-                    <p class="upload-hint-styled">Formatos de diálogo suportados: .docx, .txt</p>
-                    <input type="file" id="fileInput" accept=".docx,.txt" class="display-none">
-                    <button type="button" class="btn btn-secondary btn-transcript-tab" id="browseBtn" onclick="event.stopPropagation();">Selecionar arquivo</button>
-                </div>
-
-                <!-- Selected File Display -->
-                <div id="selectedFilePanel" class="selected-file-panel-styled">
-                    <div class="flex-align-center-gap-sm">
-                        <span>📄</span>
-                        <span id="fileName" class="file-name-styled"></span>
-                    </div>
-                    <button type="button" class="btn btn-secondary btn-remove-file" id="removeFileBtn">Remover</button>
-                </div>
-
-                <!-- Parameters Box -->
-                <div class="parameters-box">
-                    <h4 class="parameters-box-title">Configurações de processamento</h4>
-
-                    <label class="checkbox-container-flex">
-                        <input type="checkbox" id="skipSanitizationOpt" class="checkbox-margin-top">
-                        <div class="checkbox-info">
-                            <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
-                            <span class="checkbox-desc-styled">
-                                Ative apenas se os dados pessoais (PHI) e nomes reais já tiverem sido removidos manualmente da transcrição.
-                            </span>
-                        </div>
-                    </label>
-                </div>
-
-                <div class="btn-submit-row">
-                    <button type="button" class="btn btn-min-width" id="startBtn">
-                        Iniciar processamento &amp; análise
-                    </button>
-                </div>
+    <!-- STATE 3: NO TRANSCRIPT UPLOADED / UPLOAD FAILED -->
+    <div class="calc-results calc-results-centered">
+        <div class="dashboard-card" id="newSessionView">
+            <div class="upload-state-header">
+                <span class="upload-icon-large">📄</span>
+                <h3 class="upload-state-title">Registrar transcrição &amp; analisar sintomas</h3>
+                <p class="upload-state-desc">Esta sessão de terapia ainda não possui uma transcrição associada. Faça o
+                    upload do arquivo para executar a avaliação clínica baseada em IA.</p>
             </div>
 
-            <!-- Processing Console (hidden initially, shown on submit) -->
-            <div class="processing-card dashboard-card processing-centered" id="processingView">
-                <div class="spinner spinner-lg"></div>
-                <h3 class="processing-title" id="statusTitle">Enviando arquivo...</h3>
-                <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é disparada.</p>
+            {% if transcript and transcript.status == 'failed' %}
+            <div class="upload-error-banner">
+                <strong class="upload-error-label">Falha na tentativa anterior:</strong>
+                <div class="upload-error-message">{{ transcript.error_message }}</div>
+            </div>
+            {% endif %}
 
-                <div class="log-console log-console-lg" id="logConsole">
-                    <div class="log-entry">[Sistema] Preparando upload...</div>
+            <!-- File dropzone -->
+            <div class="upload-card-styled" id="dropZone">
+                <div class="upload-icon-large">📤</div>
+                <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
+                <p class="upload-hint-styled">Formatos de diálogo suportados: .docx, .txt</p>
+                <input type="file" id="fileInput" accept=".docx,.txt" class="display-none">
+                <button type="button" class="btn btn-secondary btn-transcript-tab" id="browseBtn"
+                    onclick="event.stopPropagation();">Selecionar arquivo</button>
+            </div>
+
+            <!-- Selected File Display -->
+            <div id="selectedFilePanel" class="selected-file-panel-styled">
+                <div class="flex-align-center-gap-sm">
+                    <span>📄</span>
+                    <span id="fileName" class="file-name-styled"></span>
                 </div>
+                <button type="button" class="btn btn-secondary btn-remove-file" id="removeFileBtn">Remover</button>
+            </div>
+
+            <!-- Parameters Box -->
+            <div class="parameters-box">
+                <h4 class="parameters-box-title">Configurações de processamento</h4>
+
+                <label class="checkbox-container-flex">
+                    <input type="checkbox" id="skipSanitizationOpt" class="checkbox-margin-top">
+                    <div class="checkbox-info">
+                        <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
+                        <span class="checkbox-desc-styled">
+                            Ative apenas se os dados pessoais (PHI) e nomes reais já tiverem sido removidos manualmente
+                            da transcrição.
+                        </span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="btn-submit-row">
+                <button type="button" class="btn btn-min-width" id="startBtn">
+                    Iniciar processamento &amp; análise
+                </button>
             </div>
         </div>
+
+        <!-- Processing Console (hidden initially, shown on submit) -->
+        <div class="processing-card dashboard-card processing-centered" id="processingView">
+            <div class="spinner spinner-lg"></div>
+            <h3 class="processing-title" id="statusTitle">Enviando arquivo...</h3>
+            <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é
+                disparada.</p>
+
+            <div class="log-console log-console-lg" id="logConsole">
+                <div class="log-entry">[Sistema] Preparando upload...</div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

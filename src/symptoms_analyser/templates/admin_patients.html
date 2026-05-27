@@ -37,18 +37,18 @@
 
         <!-- Ingress/Inclusion Form matching calc-card style -->
         <div class="calc-card">
-            <h3>Vincular novo paciente</h3>
+            <h3>Cadastrar novo paciente</h3>
             <form id="createPatientForm" onsubmit="event.preventDefault(); submitPatient();">
                 <div class="input-group">
-                    <label for="patientPseudonym">Código pseudônimo:</label>
+                    <label for="patientPseudonym">Pseudônimo:</label>
                     <input type="text" id="patientPseudonym" placeholder="Ex: Paciente8" required>
                     <span class="form-helper-text">Use o formato "PacienteX" (ex: Paciente8).</span>
                 </div>
                 <div class="input-group">
-                    <label for="patientRealName">Identidade real (nome completo):</label>
+                    <label for="patientRealName">Nome real:</label>
                     <input type="text" id="patientRealName" placeholder="Ex: Roberto Carlos da Silva" required>
                 </div>
-                <button type="submit" class="btn btn-full-width margin-top-medium">Salvar novo vínculo</button>
+                <button type="submit" class="btn btn-full-width margin-top-medium">Salvar</button>
             </form>
         </div>
     </div>

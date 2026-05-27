@@ -29,12 +29,12 @@
                 <div>
                     <div class="patient-card-header">
                         <span class="patient-card-id">{{ patient.id }}</span>
-                        <span class="hipaa-status-badge">HIPAA Ok</span>
                     </div>
                     <!-- Secure Real Name indicator -->
                     <div class="patient-secure-tag">
                         <span class="secure-label">
-                            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor"
+                                stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
@@ -47,7 +47,8 @@
                 <div class="patient-card-footer">
                     <div class="footer-item">
                         <span class="footer-label">Participações</span>
-                        <strong class="footer-value-primary">{{ patient.total_sessions }}</strong> {% if patient.total_sessions == 1 %}sessão{% else %}sessões{% endif %}
+                        <strong class="footer-value-primary">{{ patient.total_sessions }}</strong> {% if
+                        patient.total_sessions == 1 %}sessão{% else %}sessões{% endif %}
                     </div>
                     <div class="footer-item text-right">
                         <span class="footer-label">Cadastro</span>
@@ -57,7 +58,8 @@
 
                 <div class="view-evolution-action">
                     Ver evolução clínica
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
@@ -68,7 +70,8 @@
             <div class="patients-empty-state">
                 <span>👥</span>
                 <h4>Nenhum paciente cadastrado</h4>
-                <p>Faça a ingestão de transcrições com marcações de pacientes ou adicione manualmente em "Configurar Pacientes".</p>
+                <p>Faça a ingestão de transcrições com marcações de pacientes ou adicione manualmente em
+                    "Configurar pacientes".</p>
             </div>
             {% endif %}
         </div>

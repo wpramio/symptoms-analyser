@@ -206,13 +206,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (data.status === 'completed') {
                 const spinner = document.querySelector('.spinner');
                 if (spinner) spinner.style.display = 'none';
-                statusTitle.textContent = 'Sessão Registrada e Analisada!';
+                statusTitle.textContent = 'Sessão registrada e analisada!';
                 statusTitle.style.color = '#10b981';
                 statusDesc.textContent = 'A transcrição foi processada, os dados relacionais salvos e o laudo de sintomas está disponível.';
                 addLog('Sessão registrada e pontuação clínica TDPM-20 finalizada com sucesso.', 'success');
                 viewResultsBtn.style.display = 'inline-flex';
             } else if (data.status === 'error') {
-                handleError(data.error || 'Falha inexplicável durante o processamento.');
+                handleError(data.error || 'Falha durante o processamento.');
             }
         } catch (err) {
             console.error("Polling error", err);

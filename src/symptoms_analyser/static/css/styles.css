@@ -8,7 +8,7 @@
     --border: #e2e8f0;
     --radius: 8px;
     --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    
+
     --score-1: #38bdf8;
     --score-2: #facc15;
     --score-3: #f97316;
@@ -29,7 +29,8 @@ body {
 }
 
 .app-header {
-    display: none; /* Navbar hidden in favor of Sidebar */
+    display: none;
+    /* Navbar hidden in favor of Sidebar */
 }
 
 /* Sidebar Navigation Layout */
@@ -235,7 +236,8 @@ select:focus {
     border-radius: 50%;
     width: 36px;
     height: 36px;
-    display: none; /* Shown dynamically when a session is loaded */
+    display: none;
+    /* Shown dynamically when a session is loaded */
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
@@ -283,6 +285,7 @@ select:focus {
         opacity: 0;
         transform: translateY(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -434,10 +437,21 @@ select:focus {
 }
 
 /* Score colors based on severity */
-.score-badge[data-severity="1"] { background-color: var(--score-1); }
-.score-badge[data-severity="2"] { background-color: var(--score-2); }
-.score-badge[data-severity="3"] { background-color: var(--score-3); }
-.score-badge[data-severity="4"] { background-color: var(--score-4); }
+.score-badge[data-severity="1"] {
+    background-color: var(--score-1);
+}
+
+.score-badge[data-severity="2"] {
+    background-color: var(--score-2);
+}
+
+.score-badge[data-severity="3"] {
+    background-color: var(--score-3);
+}
+
+.score-badge[data-severity="4"] {
+    background-color: var(--score-4);
+}
 
 
 /* Dimensions Accordion */
@@ -541,7 +555,8 @@ select:focus {
     cursor: pointer;
     border-radius: var(--radius);
     transition: all 0.2s;
-    white-space: nowrap; /* Prevent buttons from wrapping to multiple lines */
+    white-space: nowrap;
+    /* Prevent buttons from wrapping to multiple lines */
 }
 
 .nav-btn:hover {
@@ -555,31 +570,40 @@ select:focus {
 }
 
 /* General Dashboard & Interface Layouts */
-.main-container, .dashboard-view {
+.main-container,
+.dashboard-view {
     /* Inherits standard layout */
 }
 
-.page-header, .dashboard-header, .calc-header {
+.page-header,
+.dashboard-header,
+.calc-header {
     margin-bottom: 2rem;
 }
 
-.page-header h2, .dashboard-header h2, .calc-header h2 {
+.page-header h2,
+.dashboard-header h2,
+.calc-header h2 {
     font-size: 1.5rem;
     margin-bottom: 0.5rem;
 }
 
-.page-header p, .dashboard-header p, .calc-header p {
+.page-header p,
+.dashboard-header p,
+.calc-header p {
     color: var(--text-muted);
 }
 
-.dashboard-grid, .calc-grid {
+.dashboard-grid,
+.calc-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2.5rem;
 }
 
-.dashboard-card, .calc-card {
+.dashboard-card,
+.calc-card {
     background-color: var(--card-bg);
     padding: 1.5rem;
     border-radius: var(--radius);
@@ -587,7 +611,8 @@ select:focus {
     box-shadow: var(--shadow);
 }
 
-.dashboard-card h3, .calc-card h3 {
+.dashboard-card h3,
+.calc-card h3 {
     font-size: 1.1rem;
     margin-bottom: 1rem;
     color: var(--text-main);
@@ -780,14 +805,14 @@ select:focus {
     letter-spacing: 0.02em;
 }
 
-.status-badge[data-status="completed"], 
+.status-badge[data-status="completed"],
 .status-badge[data-status="preprocessed"] {
     background: rgba(16, 185, 129, 0.1);
     color: #10b981;
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
-.status-badge[data-status="preprocessing"], 
+.status-badge[data-status="preprocessing"],
 .status-badge[data-status="analyzing"] {
     background: rgba(59, 130, 246, 0.1);
     color: #3b82f6;
@@ -964,6 +989,7 @@ select:focus {
         transform: translateY(20px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -971,8 +997,13 @@ select:focus {
 }
 
 @keyframes pulse {
-    from { opacity: 0.75; }
-    to { opacity: 1; }
+    from {
+        opacity: 0.75;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Compare View */
@@ -983,19 +1014,53 @@ select:focus {
 }
 
 /* Administrative UI Utilities (Removing Inline CSS) */
-.col-width-10 { width: 10%; }
-.col-width-15 { width: 15%; }
-.col-width-20 { width: 20%; }
-.col-width-25 { width: 25%; }
-.col-width-30 { width: 30%; }
-.col-width-35 { width: 35%; }
-.col-width-40 { width: 40%; }
-.col-width-60 { width: 60%; }
+.col-width-10 {
+    width: 10%;
+}
 
-.margin-bottom-none { margin-bottom: 0 !important; }
-.margin-bottom-large { margin-bottom: 2.5rem !important; }
-.margin-top-medium { margin-top: 1rem !important; }
-.margin-top-none { margin-top: 0 !important; }
+.col-width-15 {
+    width: 15%;
+}
+
+.col-width-20 {
+    width: 20%;
+}
+
+.col-width-25 {
+    width: 25%;
+}
+
+.col-width-30 {
+    width: 30%;
+}
+
+.col-width-35 {
+    width: 35%;
+}
+
+.col-width-40 {
+    width: 40%;
+}
+
+.col-width-60 {
+    width: 60%;
+}
+
+.margin-bottom-none {
+    margin-bottom: 0 !important;
+}
+
+.margin-bottom-large {
+    margin-bottom: 2.5rem !important;
+}
+
+.margin-top-medium {
+    margin-top: 1rem !important;
+}
+
+.margin-top-none {
+    margin-top: 0 !important;
+}
 
 .btn-full-width {
     width: 100%;
@@ -1167,7 +1232,8 @@ select:focus {
     cursor: pointer;
 }
 
-.upload-card:hover, .upload-card.dragover {
+.upload-card:hover,
+.upload-card.dragover {
     border-color: var(--primary);
     background-color: #f8fafc;
 }
@@ -1203,7 +1269,9 @@ select:focus {
 }
 
 @keyframes spin {
-    100% { transform: rotate(360deg); }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .log-console {
@@ -1222,12 +1290,17 @@ select:focus {
 
 .log-entry {
     margin-bottom: 0.25rem;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding-bottom: 0.15rem;
 }
 
-.success-text { color: #10b981; }
-.error-text { color: #ef4444; }
+.success-text {
+    color: #10b981;
+}
+
+.error-text {
+    color: #ef4444;
+}
 
 /* Grid / Hub Layout */
 .hub-grid {
@@ -1283,15 +1356,18 @@ select:focus {
     padding: 0 2rem;
     text-align: center;
 }
+
 .hub-hero {
     margin-bottom: 3rem;
 }
+
 .hub-hero h1 {
     font-size: 2.5rem;
     font-weight: 700;
     color: var(--text-main);
     margin-bottom: 0.75rem;
 }
+
 .hub-hero p {
     font-size: 1.1rem;
     color: var(--text-muted);
@@ -1489,6 +1565,7 @@ select:focus {
 }
 
 @media print {
+
     /* Hide navigation bar, sidebar, select fields, buttons, and patient list tabs */
     header,
     nav,
@@ -1599,7 +1676,8 @@ select:focus {
         font-weight: 700 !important;
         font-size: 0.7rem !important;
         color: white !important;
-        margin: 0 0.5rem 0 0 !important; /* Explicitly set all margins to override global auto margins */
+        margin: 0 0.5rem 0 0 !important;
+        /* Explicitly set all margins to override global auto margins */
         box-shadow: none !important;
         flex-shrink: 0 !important;
     }
@@ -1725,7 +1803,7 @@ select:focus {
     }
 
     /* FORCE a page break BEFORE each patient comparison card */
-    #comparePatientsContent > .compare-section-card {
+    #comparePatientsContent>.compare-section-card {
         page-break-before: always !important;
         break-before: page !important;
     }
@@ -1757,8 +1835,15 @@ select:focus {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .evolution-dashboard {
@@ -1925,11 +2010,35 @@ select:focus {
     border-radius: 4px;
 }
 
-.legend-box[data-severity="0"], .heatmap-cell[data-severity="0"] { background-color: #f1f5f9; color: #64748b; }
-.legend-box[data-severity="1"], .heatmap-cell[data-severity="1"] { background-color: #e0f2fe; color: #0369a1; }
-.legend-box[data-severity="2"], .heatmap-cell[data-severity="2"] { background-color: #fef9c3; color: #854d0e; }
-.legend-box[data-severity="3"], .heatmap-cell[data-severity="3"] { background-color: #ffedd5; color: #c2410c; }
-.legend-box[data-severity="4"], .heatmap-cell[data-severity="4"] { background-color: #fee2e2; color: #991b1b; }
+.legend-box[data-severity="0"],
+.heatmap-cell[data-severity="0"] {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+
+.legend-box[data-severity="1"],
+.heatmap-cell[data-severity="1"] {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+
+.legend-box[data-severity="2"],
+.heatmap-cell[data-severity="2"] {
+    background-color: #fef9c3;
+    color: #854d0e;
+}
+
+.legend-box[data-severity="3"],
+.heatmap-cell[data-severity="3"] {
+    background-color: #ffedd5;
+    color: #c2410c;
+}
+
+.legend-box[data-severity="4"],
+.heatmap-cell[data-severity="4"] {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
 
 .heatmap-table-container {
     overflow-x: auto;
@@ -1946,7 +2055,8 @@ select:focus {
     white-space: nowrap;
 }
 
-.heatmap-table th, .heatmap-table td {
+.heatmap-table th,
+.heatmap-table td {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border);
 }
@@ -2227,8 +2337,8 @@ select:focus {
     width: 100%;
     padding: 0.8rem;
     border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
     color: var(--text-main);
     font-size: 0.95rem;
     outline: none;
@@ -2256,7 +2366,7 @@ select:focus {
 }
 
 .session-divider {
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding-top: 1.5rem;
 }
 
@@ -2291,18 +2401,18 @@ select:focus {
 }
 
 .upload-card-styled {
-    border: 2px dashed rgba(255,255,255,0.15);
+    border: 2px dashed rgba(255, 255, 255, 0.15);
     padding: 2.5rem;
     text-align: center;
     border-radius: 8px;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .upload-card-styled:hover {
     border-color: var(--primary);
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .upload-icon-large {
@@ -2334,7 +2444,7 @@ select:focus {
     padding: 0.75rem 1rem;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     margin-top: 1rem;
 }
 
@@ -2359,8 +2469,8 @@ select:focus {
     margin-top: 1.5rem;
     padding: 1rem;
     border-radius: 6px;
-    background: rgba(0,0,0,0.15);
-    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .checkbox-container-spaced {
@@ -2380,7 +2490,7 @@ select:focus {
 .btn-submit-row {
     display: flex;
     justify-content: flex-end;
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     padding-top: 1.5rem;
     margin-top: 1rem;
 }
@@ -2411,6 +2521,7 @@ select:focus {
         opacity: 0;
         transform: translateY(8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -2808,7 +2919,7 @@ select:focus {
     padding: 1.5rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .processing-centered {
@@ -2836,6 +2947,61 @@ select:focus {
 /* ==========================================================================
    Therapy Session Detail Page
    ========================================================================== */
+
+/* ---- 3-Card layout ---- */
+
+/* Card 1: session info + patients */
+.session-detail-card {
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Remove the bottom border/margin on page-header when it lives inside a card */
+.session-detail-card .page-header-flex-start {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.25rem;
+    margin-bottom: 0;
+}
+
+/* Participants row when nested inside the detail card */
+.session-participants-panel--incard {
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 1rem 0 0;
+    margin-bottom: 0;
+}
+
+/* Card 2: TDPM analysis */
+.tdpm-analysis-card {
+    margin-bottom: 1.5rem;
+    padding: 1.75rem 2rem;
+}
+
+/* Card header label inside the TDPM card */
+.session-card-header {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+}
+
+.session-card-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+}
+
+/* Card 3: full transcript */
+.transcript-card {
+    padding: 0;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+/* ---- Session header elements ---- */
 
 /* Session header title row (name + status badge inline) */
 .session-title-row {
@@ -2985,6 +3151,3 @@ select:focus {
     margin-bottom: 0.75rem;
     color: var(--text-main);
 }
-
-
-
