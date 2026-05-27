@@ -14,7 +14,7 @@ from symptoms_analyser.controllers.admin import (
     get_stats,
     get_transcripts,
 )
-from symptoms_analyser.controllers.pipeline import get_analysis_payload, list_analysis_files
+from symptoms_analyser.controllers.pipeline import get_evaluation_payload, list_evaluation_ids
 from symptoms_analyser.preprocess import run_preprocess
 from symptoms_analyser.tdpm_analysis import run_analysis
 
@@ -91,27 +91,27 @@ def admin_calculator():
 
 
 # ---------------------------------------------------------------------------
-# File / output API
+# Evaluations API  (/api/evaluations)
 # ---------------------------------------------------------------------------
 
-@app.route("/api/files")
-def list_files():
+@app.route("/api/evaluations")
+def list_evaluations():
     try:
-        return jsonify(list_analysis_files())
+        return jsonify(list_evaluation_ids())
     except Exception as e:
-        print(f"Error listing files from DB: {e}")
+        print(f"Error listing evaluations from DB: {e}")
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/output/<path:filepath>")
-def serve_output(filepath):
+@app.route("/api/evaluations/<eval_id>")
+def serve_evaluation(eval_id):
     try:
-        payload = get_analysis_payload(filepath)
+        payload = get_evaluation_payload(eval_id)
         if payload is not None:
             return jsonify(payload)
-        return jsonify({"error": "DB entry not found"}), 404
+        return jsonify({"error": "Evaluation not found"}), 404
     except Exception as e:
-        print(f"Error fetching raw payload from DB for {filepath}: {e}")
+        print(f"Error fetching evaluation payload for {eval_id}: {e}")
         return jsonify({"error": str(e)}), 500
 
 

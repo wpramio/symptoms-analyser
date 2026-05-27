@@ -1,36 +1,35 @@
 """
 controllers/pipeline.py
 -----------------------
-Query functions for the file listing and analysis payload endpoints.
+Query functions for the evaluation listing and evaluation payload endpoints.
 """
 
 import json
-import re
-from pathlib import Path
 
 from symptoms_analyser.db import get_db
 
 
-def list_analysis_files() -> list[dict]:
+def list_evaluation_ids() -> list[dict]:
     """Return a list of available analysis results (one per evaluation_telemetry row)."""
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT evaluation_id FROM evaluation_telemetry ORDER BY created_at DESC")
         return [
             {
+                "id": row["evaluation_id"],
                 "name": f"{row['evaluation_id']}.tdpm.json",
-                "path": f"/output/tdpm_analysis/{row['evaluation_id']}.tdpm.json",
+                "path": f"/api/evaluations/{row['evaluation_id']}",
             }
             for row in cursor.fetchall()
         ]
 
 
-def get_analysis_payload(filepath: str) -> dict | None:
+def get_evaluation_payload(eval_id: str) -> dict | None:
     """
-    Load the raw TDPM analysis JSON payload for the given virtual file path.
+    Load the raw TDPM analysis JSON payload for the given evaluation ID.
 
     Args:
-        filepath: Virtual path like 'tdpm_analysis/Paciente1.20250526_123456.tdpm.json'
+        eval_id: The evaluation_id from evaluation_telemetry.
 
     Returns:
         Parsed dict if found, None if not found.
@@ -38,9 +37,6 @@ def get_analysis_payload(filepath: str) -> dict | None:
     Raises:
         Exception on DB or JSON errors.
     """
-    filename = Path(filepath).name
-    eval_id = re.sub(r"\.tdpm\.json$", "", filename)
-
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(

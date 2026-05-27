@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     // Fetch and Compile Data
-    fetch('/api/files')
+    fetch('/api/evaluations')
         .then(res => res.json())
         .then(files => {
             if (files.length === 0) {

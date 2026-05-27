@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const metaChunks = document.getElementById('metaChunks');
     const metaTime = document.getElementById('metaTime');
     const metaTokens = document.getElementById('metaTokens');
-    
+
     // Floating popover metadata elements
     const btnShowSessionMeta = document.getElementById('btnShowSessionMeta');
     const metaPopover = document.getElementById('metaPopover');
@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fetch list of files
-    fetch('/api/files')
+    // Fetch list of evaluations
+    fetch('/api/evaluations')
         .then(res => res.json())
         .then(files => {
             fileSelect.innerHTML = '<option value="" disabled selected>Selecione uma sessão...</option>';

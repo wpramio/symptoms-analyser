@@ -24,8 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let compareData2 = null;
     let allExpanded = false;
 
-    // Fetch list of files
-    fetch('/api/files')
+    // Fetch list of evaluations
+    fetch('/api/evaluations')
         .then(res => res.json())
         .then(files => {
             compareSelect1.innerHTML = '<option value="" disabled selected>Selecione a análise A...</option>';
