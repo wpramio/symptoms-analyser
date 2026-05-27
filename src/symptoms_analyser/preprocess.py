@@ -6,14 +6,6 @@ Step 1 + Step 2 of the symptoms-analyser pipeline:
   2. Chunk by timestamp blocks
   3. Send each chunk to the LLM API for AI-based sanitization
   4. Reassemble and save the sanitized transcript and a full run log
-
-Usage:
-    python preprocess.py <input.docx> [--output-dir <dir>]
-
-Outputs (written to --output-dir, default: ./output):
-    <session_name>.raw.txt         — verbatim extracted text
-    <session_name>.sanitized.txt   — cleaned transcript
-    <session_name>.log.json        — full run log (model, prompt, raw response)
 """
 
 import argparse
@@ -103,7 +95,6 @@ def extract_text_from_docx(docx_path: Path) -> tuple[dict, str]:
     return metadata, "\n".join(lines)
 
 
-
 # ---------------------------------------------------------------------------
 # Step 2 — Load sanitization prompt
 # ---------------------------------------------------------------------------
@@ -120,6 +111,66 @@ def load_system_prompt(prompt_file: Path) -> str:
             f"Could not find '## System Prompt' and '## User Prompt' sections in {prompt_file}"
         )
     return match.group(1).strip()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for relational DB mappings
+# ---------------------------------------------------------------------------
+
+def estimate_duration_from_text(text: str) -> int:
+    """Helper to dynamically estimate session duration in seconds based on highest timestamp match."""
+    # Find all timestamps like HH:MM:SS
+    matches_hms = re.findall(r"(\d{1,2}):(\d{2}):(\d{2})", text)
+    if matches_hms:
+        max_secs = 0
+        for m in matches_hms:
+            secs = int(m[0]) * 3600 + int(m[1]) * 60 + int(m[2])
+            max_secs = max(max_secs, secs)
+        return max_secs if max_secs > 0 else 3600
+        
+    # Find all timestamps like MM:SS
+    matches_ms = re.findall(r"(\d{1,2}):(\d{2})", text)
+    if matches_ms:
+        max_secs = 0
+        for m in matches_ms:
+            secs = int(m[0]) * 60 + int(m[1])
+            max_secs = max(max_secs, secs)
+        return max_secs if max_secs > 0 else 3600
+        
+    return 3600  # Default to 1 hour (3600 seconds)
+
+
+def get_or_create_session(conn, session_name: str, raw_text: str) -> int:
+    """Gets or creates a therapy session from DB, automatically parsing metadata if not present."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM therapy_sessions WHERE name = ? OR name = ?", 
+                   (session_name, f"Sessão: {session_name}"))
+    row = cursor.fetchone()
+    if row:
+        return row[0]
+        
+    # Format name nicely and extract start date if possible
+    public_name = session_name
+    match = re.search(r"session_(\d{4})_(\d{2})_(\d{2})", session_name)
+    start_at_str = None
+    if match:
+        year, month, day = match.groups()
+        public_name = f"Sessão {day}/{month}/{year}"
+        start_at_str = f"{year}-{month}-{day} 14:00:00"
+    else:
+        public_name = f"Sessão: {session_name}"
+        start_at_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        
+    duration = estimate_duration_from_text(raw_text)
+    
+    cursor.execute("""
+        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
+        VALUES (?, 'clinician_1', ?, ?)
+    """, (public_name, start_at_str, duration))
+    
+    session_id = cursor.lastrowid
+    print(f"  [+] Criada Therapy Session: '{public_name}' (ID: {session_id}, Duração: {duration}s)")
+    return session_id
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +241,7 @@ def sanitize_chunk(
                 else:
                     wait = int(2 ** attempt + random.uniform(0, 2))
                     
-                print(f"\r  ⚠ API Error. Waiting {wait:.0f}s before retry"
+                print(f"\n  ⚠ API Error. Waiting {wait:.0f}s before retry"
                       f" {attempt}/{MAX_RETRIES - 1}...", flush=True)
                 time.sleep(wait)
             else:
@@ -216,17 +267,22 @@ def sanitize_chunk(
     }
 
 
-def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, blocks_per_call: int = 1, session_name: str = None, db_conn: sqlite3.Connection = None) -> dict:
+def sanitize_transcript(
+    raw_text: str,
+    system_prompt: str,
+    client: OpenAI,
+    blocks_per_call: int = 1,
+    transcript_id: int = None,
+    db_conn: sqlite3.Connection = None,
+) -> dict:
     """
     Split transcript into timestamp chunks, optionally merge into batches,
     sanitize each call, then reassemble.
-    Returns a dict with the full sanitized transcript, per-chunk logs, and aggregated usage.
     """
     base_chunks = split_into_chunks(raw_text)
     chunks = merge_chunks(base_chunks, blocks_per_call)
     print(f"  → {len(base_chunks)} timestamp blocks → {len(chunks)} API call(s)"
           f" ({blocks_per_call} block(s) per call)")
-    print(f"  → API Params: temperature=0, max_completion_tokens=20000")
 
     chunk_results = []
     total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
@@ -237,7 +293,6 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
         result = sanitize_chunk(chunk, system_prompt, client, i, len(chunks))
         chunk_results.append(result)
 
-        # Write chunk to output immediately for real-time monitoring
         sanitized_sections.append(f"{result['timestamp']}\n\n{result['sanitized_text']}")
 
         # Aggregate token usage
@@ -247,7 +302,7 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
                 total_usage[key] += val
 
         # Live DB progress update
-        if session_name and db_conn:
+        if transcript_id and db_conn:
             progress = round(((i + 1) / len(chunks)) * 100.0, 1)
             try:
                 cursor = db_conn.cursor()
@@ -255,7 +310,7 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
                     UPDATE transcripts 
                     SET progress_percent = ? 
                     WHERE id = ?
-                """, (progress, session_name))
+                """, (progress, transcript_id))
                 db_conn.commit()
             except Exception:
                 pass
@@ -272,7 +327,7 @@ def sanitize_transcript(raw_text: str, system_prompt: str, client: OpenAI, block
 
 
 # ---------------------------------------------------------------------------
-# Output
+# Output & Telemetry
 # ---------------------------------------------------------------------------
 
 def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, list]:
@@ -285,31 +340,26 @@ def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, 
     if not sanitized_text:
         return turns_merged, noise_removed, corrections, anonymization_flags
         
-    # Match the block
     match = re.search(r"##\s*Sanitization Log\s*\n(.*)$", sanitized_text, re.DOTALL | re.IGNORECASE)
     if not match:
         return turns_merged, noise_removed, corrections, anonymization_flags
         
     log_content = match.group(1)
     
-    # Turns merged
     tm_match = re.search(r"(?:Number of )?turns merged:\s*(\d+)", log_content, re.IGNORECASE)
     if tm_match:
         turns_merged = int(tm_match.group(1))
         
-    # Noise tokens removed
     noise_match = re.search(r"Noise tokens removed:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
     if noise_match:
         noise_removed = [line.strip().lstrip("-").strip() for line in noise_match.group(1).strip().split("\n")]
     else:
-        # Check single line
         noise_match2 = re.search(r"Noise tokens removed:\s*(.*)", log_content, re.IGNORECASE)
         if noise_match2 and "none" not in noise_match2.group(1).lower():
             val = noise_match2.group(1).strip()
             if val:
                 noise_removed = [val]
                 
-    # Corrections
     corr_block = re.search(r"(?:Tokens corrected with|corrections|Corrigidos)\s*(?:\[corrigido\]|`\[corrigido\]`|with `\[corrigido\]`)?:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
     if corr_block:
         for line in corr_block.group(1).strip().split("\n"):
@@ -324,7 +374,6 @@ def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, 
                 parts = line_clean.split(":")
                 corrections[parts[0].strip()] = parts[1].strip()
                 
-    # Anonymization flags
     anon_match = re.search(r"Anonymization flags raised:\s*(.*)", log_content, re.IGNORECASE)
     if anon_match:
         val = anon_match.group(1).strip()
@@ -343,15 +392,16 @@ def parse_sanitization_log_block(sanitized_text: str) -> tuple[int, list, dict, 
             
     return turns_merged, noise_removed, corrections, anonymization_flags
 
+
 def write_outputs(
     session_name: str,
     sanitization_result: dict,
     blocks_per_call: int,
+    transcript_id: int = None,
     db_conn: sqlite3.Connection = None,
 ) -> None:
-    # Write to SQLite sanitization_telemetry
+    """Writes the results and telemetries to the relational tables."""
     try:
-        # Aggregate chunk telemetry
         chunks_list = sanitization_result.get("chunk_results", [])
         total_turns_merged = 0
         all_noise_removed = []
@@ -370,17 +420,16 @@ def write_outputs(
         prompt_tokens = token_usage.get("prompt_tokens")
         completion_tokens = token_usage.get("completion_tokens")
         
-        if db_conn:
+        if db_conn and transcript_id:
             cursor = db_conn.cursor()
             cursor.execute("""
                 INSERT INTO sanitization_telemetry (
-                    transcript_id, session_name, model, strategy, status, failure_reason,
+                    transcript_id, model, strategy, status, failure_reason,
                     chunks_completed, chunks_total, prompt_tokens, completion_tokens,
                     total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
-                ) VALUES (?, ?, ?, ?, 'success', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, 'success', NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                session_name,
-                session_name,
+                transcript_id,
                 "None (Skipped)" if sanitization_result.get("skipped", False) else MODEL,
                 "skipped" if sanitization_result.get("skipped", False) else f"chunked_{blocks_per_call}_block(s)_per_call",
                 len(chunks_list),
@@ -407,18 +456,16 @@ def run_preprocess(
     filepath: Path,
     skip_sanitization: bool = False,
     blocks_per_call: int = 100,
-) -> None:
+    therapy_session_id: int = None,
+) -> int:
     """
     Run the full preprocessing pipeline on a physical transcript file.
 
     Callable entry point for programmatic use (e.g., from app.py).
     Raises on failure instead of calling sys.exit().
-    DB connection is managed internally for the duration of the run.
 
-    Args:
-        filepath: Path to the .docx or .txt transcript file.
-        skip_sanitization: If True, skip LLM sanitization and use raw text.
-        blocks_per_call: Number of timestamp blocks to merge per LLM call.
+    Returns:
+        transcript_id: The integer primary key of the created/updated transcript.
     """
     if not filepath.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
@@ -428,7 +475,6 @@ def run_preprocess(
     session_name = filepath.stem
     print(f"Processing physical file: {filepath.name}")
 
-    # Establish a persistent shared database connection for progress tracking
     db_conn = None
     if DB_PATH.parent.exists():
         try:
@@ -451,18 +497,25 @@ def run_preprocess(
     if metadata:
         print(f"  Session metadata: {metadata}")
 
+    transcript_id = None
     # Record initial database state
     if db_conn:
         try:
             cursor = db_conn.cursor()
             file_size = filepath.stat().st_size
+            
+            # Setup session relationship
+            if therapy_session_id is None:
+                therapy_session_id = get_or_create_session(db_conn, session_name, raw_text)
+                
             cursor.execute("""
-                INSERT OR REPLACE INTO transcripts (
-                    id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
+                INSERT INTO transcripts (
+                    therapy_session_id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
                 ) VALUES (?, ?, ?, ?, ?, 'preprocessing', 0.0)
-            """, (session_name, filepath.name, filepath.suffix.lstrip("."), raw_text, file_size))
+            """, (therapy_session_id, filepath.name, filepath.suffix.lstrip("."), raw_text, file_size))
             db_conn.commit()
-            print("  DB Recording State   → preprocessing (0.0%)")
+            transcript_id = cursor.lastrowid
+            print(f"  DB Recording State   → preprocessing (0.0%, Transcript ID: {transcript_id})")
         except Exception as e:
             print(f"  [!] Database log error: {e}")
 
@@ -484,20 +537,20 @@ def run_preprocess(
             client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
             result = sanitize_transcript(
                 raw_text, system_prompt, client, blocks_per_call,
-                session_name=session_name, db_conn=db_conn
+                transcript_id=transcript_id, db_conn=db_conn
             )
 
-        write_outputs(session_name, result, blocks_per_call, db_conn=db_conn)
+        write_outputs(session_name, result, blocks_per_call, transcript_id=transcript_id, db_conn=db_conn)
 
         # Update database state to preprocessed
-        if db_conn:
+        if db_conn and transcript_id:
             try:
                 cursor = db_conn.cursor()
                 cursor.execute("""
                     UPDATE transcripts
                     SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ?
                     WHERE id = ?
-                """, (result["sanitized_transcript"], session_name))
+                """, (result["sanitized_transcript"], transcript_id))
                 db_conn.commit()
                 print("  DB State Updated     → preprocessed (100.0%)")
             except Exception as ex:
@@ -505,14 +558,14 @@ def run_preprocess(
 
     except Exception as e:
         print(f"  [!] Pipeline error during preprocessing: {e}", file=sys.stderr)
-        if db_conn:
+        if db_conn and transcript_id:
             try:
                 cursor = db_conn.cursor()
                 cursor.execute("""
                     UPDATE transcripts
                     SET status = 'failed', error_message = ?
                     WHERE id = ?
-                """, (str(e), session_name))
+                """, (str(e), transcript_id))
                 db_conn.commit()
                 print("  DB State Updated     → failed")
             except Exception:
@@ -530,10 +583,11 @@ def run_preprocess(
           f"(prompt: {usage['prompt_tokens']}, completion: {usage['completion_tokens']})")
     print(f"  Total time: {mins}m {secs:02d}s")
     print("Done.")
+    return transcript_id
 
 
 # ---------------------------------------------------------------------------
-# CLI
+# CLI Entry Point
 # ---------------------------------------------------------------------------
 
 def main() -> None:
@@ -545,7 +599,7 @@ def main() -> None:
         "--transcript-id",
         type=str,
         default=None,
-        help="Pull raw_text from database by transcript ID instead of reading from file",
+        help="Pull raw_text from database by transcript ID/name instead of reading from file",
     )
     parser.add_argument(
         "--output-dir",
@@ -572,7 +626,6 @@ def main() -> None:
         parser.error("At least one of 'input' or '--transcript-id' must be specified.")
 
     if args.input:
-        # File-based path: delegate to the programmatic entry point
         run_preprocess(
             filepath=args.input,
             skip_sanitization=args.skip_sanitization,
@@ -580,7 +633,7 @@ def main() -> None:
         )
         return
 
-    # --transcript-id path: CLI-only feature, loads raw_text directly from DB
+    # --transcript-id path: CLI feature
     db_conn = None
     if DB_PATH.parent.exists():
         try:
@@ -597,31 +650,26 @@ def main() -> None:
         sys.exit(1)
 
     session_name = args.transcript_id
-    print(f"Loading raw text from database for Transcript ID: {session_name}")
+    print(f"Loading raw text from database for Transcript reference: {session_name}")
     cursor = db_conn.cursor()
-    cursor.execute("SELECT filename, raw_text FROM transcripts WHERE id = ?", (session_name,))
+    
+    # Adaptive lookup: try parsing as int, fallback to session name string
+    try:
+        t_id = int(session_name)
+        cursor.execute("SELECT filename, raw_text, id FROM transcripts WHERE id = ?", (t_id,))
+    except ValueError:
+        cursor.execute("SELECT filename, raw_text, id FROM transcripts WHERE filename LIKE ? OR id = ?", 
+                       (f"%{session_name}%", session_name))
+                       
     row = cursor.fetchone()
     if not row:
         db_conn.close()
-        print(f"Error: Transcript ID '{session_name}' not found in database.", file=sys.stderr)
+        print(f"Error: Transcript reference '{session_name}' not found in database.", file=sys.stderr)
         sys.exit(1)
 
     docx_path = Path(row[0])
     raw_text = row[1]
-
-    if db_conn:
-        try:
-            cursor = db_conn.cursor()
-            file_size = len(raw_text.encode('utf-8'))
-            cursor.execute("""
-                INSERT OR REPLACE INTO transcripts (
-                    id, filename, file_type, raw_text, file_size_bytes, status, progress_percent
-                ) VALUES (?, ?, ?, ?, ?, 'preprocessing', 0.0)
-            """, (session_name, docx_path.name, docx_path.suffix.lstrip("."), raw_text, file_size))
-            db_conn.commit()
-            print("  DB Recording State   → preprocessing (0.0%)")
-        except Exception as e:
-            print(f"  [!] Database log error: {e}")
+    transcript_id = row[2]
 
     result = None
     try:
@@ -638,9 +686,9 @@ def main() -> None:
             print(f"  [2/2] Sanitizing with LLM ({MODEL}), chunk by chunk...")
             system_prompt = load_system_prompt(SANITIZATION_PROMPT_FILE)
             client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
-            result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, session_name=session_name, db_conn=db_conn)
+            result = sanitize_transcript(raw_text, system_prompt, client, args.blocks_per_call, transcript_id=transcript_id, db_conn=db_conn)
 
-        write_outputs(session_name, result, args.blocks_per_call, db_conn=db_conn)
+        write_outputs(session_name, result, args.blocks_per_call, transcript_id=transcript_id, db_conn=db_conn)
 
         if db_conn:
             try:
@@ -649,7 +697,7 @@ def main() -> None:
                     UPDATE transcripts
                     SET status = 'preprocessed', progress_percent = 100.0, sanitized_text = ?
                     WHERE id = ?
-                """, (result["sanitized_transcript"], session_name))
+                """, (result["sanitized_transcript"], transcript_id))
                 db_conn.commit()
                 print("  DB State Updated     → preprocessed (100.0%)")
             except Exception as ex:
@@ -664,7 +712,7 @@ def main() -> None:
                     UPDATE transcripts
                     SET status = 'failed', error_message = ?
                     WHERE id = ?
-                """, (str(e), session_name))
+                """, (str(e), transcript_id))
                 db_conn.commit()
                 print("  DB State Updated     → failed")
             except Exception:

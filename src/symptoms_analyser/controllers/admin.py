@@ -44,9 +44,11 @@ def get_transcripts() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, filename, file_type, file_size_bytes, status, progress_percent, error_message, created_at
-            FROM transcripts
-            ORDER BY created_at DESC
+            SELECT t.id, t.filename, t.file_type, t.file_size_bytes, t.status, t.progress_percent, t.error_message, t.created_at,
+                   s.name as session_name
+            FROM transcripts t
+            LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
+            ORDER BY t.created_at DESC
         """)
         return [
             {
@@ -58,6 +60,7 @@ def get_transcripts() -> list[dict]:
                 "progress_percent": r["progress_percent"],
                 "error_message": r["error_message"],
                 "created_at": r["created_at"],
+                "session_name": r["session_name"] or "Sem sessão vinculada",
             }
             for r in cursor.fetchall()
         ]
@@ -67,11 +70,14 @@ def get_sanitization_telemetry() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, transcript_id, model, strategy, total_elapsed_seconds,
-                   turns_merged, noise_tokens_removed, corrections, anonymization_flags,
-                   prompt_tokens, completion_tokens, chunks_completed, created_at
-            FROM sanitization_telemetry
-            ORDER BY created_at DESC
+            SELECT st.id, st.transcript_id, st.model, st.strategy, st.total_elapsed_seconds,
+                   st.turns_merged, st.noise_tokens_removed, st.corrections, st.anonymization_flags,
+                   st.prompt_tokens, st.completion_tokens, st.chunks_completed, st.created_at,
+                   s.name as session_name
+            FROM sanitization_telemetry st
+            JOIN transcripts t ON st.transcript_id = t.id
+            LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
+            ORDER BY st.created_at DESC
         """)
         return [
             {
@@ -88,9 +94,11 @@ def get_sanitization_telemetry() -> list[dict]:
                 "completion_tokens": r["completion_tokens"],
                 "chunks_completed": r["chunks_completed"],
                 "created_at": r["created_at"],
+                "session_name": r["session_name"] or "Sem sessão vinculada",
             }
             for r in cursor.fetchall()
         ]
+
 
 
 def get_evaluation_telemetry() -> list[dict]:

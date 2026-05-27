@@ -18,7 +18,9 @@
             <div class="sidebar-nav">
                 <div class="sidebar-nav-section">Geral</div>
                 <a href="/" class="sidebar-btn {% if active_page == 'index' %}active{% endif %}">Início</a>
-                <a href="/upload" class="sidebar-btn {% if active_page == 'upload' %}active{% endif %}">Nova análise</a>
+                <a href="/therapy_sessions/new"
+                    class="sidebar-btn {% if active_page == 'new_therapy_session' %}active{% endif %}">Nova sessão de
+                    terapia</a>
 
                 <div class="sidebar-nav-section">Visualizar análises</div>
                 <a href="/viewer/evolution"
@@ -29,9 +31,15 @@
                     class="sidebar-btn {% if active_page == 'compare' %}active{% endif %}">Comparar análises</a>
 
                 <div class="sidebar-nav-section">Administração</div>
-                <a href="/admin/transcripts" class="sidebar-btn {% if active_page == 'admin_transcripts' %}active{% endif %}">Pipelines e ingestão</a>
-                <a href="/admin/patients" class="sidebar-btn {% if active_page == 'admin_patients' %}active{% endif %}">Gestão de pacientes</a>
-                <a href="/admin/calculator" class="sidebar-btn {% if active_page == 'admin_calculator' %}active{% endif %}">Calculadora de custos</a>
+                <a href="/admin/transcripts"
+                    class="sidebar-btn {% if active_page == 'admin_transcripts' %}active{% endif %}">Pipelines e
+                    ingestão</a>
+                <a href="/admin/patients"
+                    class="sidebar-btn {% if active_page == 'admin_patients' %}active{% endif %}">Gestão de
+                    pacientes</a>
+                <a href="/admin/calculator"
+                    class="sidebar-btn {% if active_page == 'admin_calculator' %}active{% endif %}">Calculadora de
+                    custos</a>
             </div>
         </aside>
 

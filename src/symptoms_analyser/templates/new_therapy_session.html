@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% set active_page = 'new_therapy_session' %}
+
+{% block title %}Nova sessão de terapia - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Page Header conforms to Design System -->
+    <div class="page-header">
+        <h2>Nova sessão de terapia</h2>
+        <p>Cadastre os dados de agendamento de uma sessão de terapia. Você pode importar um arquivo de transcrição para
+            analisar os sintomas imediatamente ou apenas registrar a sessão no banco de dados.</p>
+    </div>
+
+    <!-- Main Workspace in a two-column or grid style, capped for readable form-width -->
+    <div class="form-container-limited">
+        <div id="newSessionView" class="dashboard-card">
+            <h3 class="session-section-title">
+                <span>📝</span> Identificação da sessão
+            </h3>
+
+            <div class="input-group">
+                <label for="sessionName">Nome público da sessão *</label>
+                <input type="text" id="sessionName" placeholder="Ex: Acompanhamento semanal - Grupo 1">
+            </div>
+
+            <div class="form-row-spaced">
+                <div class="input-group flex-1">
+                    <label for="sessionStart">Data e hora da sessão *</label>
+                    <input type="datetime-local" id="sessionStart">
+                </div>
+                <div class="input-group flex-1">
+                    <label for="sessionDuration">Duração (minutos)</label>
+                    <input type="number" id="sessionDuration" value="60">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="sessionPatients">Pacientes (pseudônimos, vírgula para múltiplos)</label>
+                <input type="text" id="sessionPatients" placeholder="Paciente1, Paciente2">
+            </div>
+
+            <!-- Section 2: Transcript Import (Optional feature toggle) -->
+            <div class="session-divider">
+                <label class="checkbox-container-flex">
+                    <input type="checkbox" id="enableImportOpt" class="checkbox-margin-top">
+                    <div class="checkbox-info">
+                        <span class="checkbox-title-spaced">Importar arquivo de transcrição (opcional)</span>
+                        <span class="checkbox-desc-spaced">Marque esta opção para fazer o upload do diálogo da sessão
+                            (TXT ou DOCX) e disparar a análise automatizada de sintomas.</span>
+                    </div>
+                </label>
+
+                <!-- Hidden file dropzone, revealed upon toggle -->
+                <div id="importContainer" class="import-container-spaced">
+                    <div class="upload-card-styled" id="dropZone">
+                        <div class="upload-icon-large">📄</div>
+                        <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
+                        <p class="upload-hint-styled">Formatos suportados: .docx, .txt</p>
+                        <input type="file" id="fileInput" accept=".docx,.txt" class="display-none">
+                        <button type="button" class="btn btn-secondary" id="browseBtn"
+                            onclick="event.stopPropagation();">Selecionar arquivo</button>
+                    </div>
+
+                    <div id="selectedFilePanel" class="selected-file-panel-styled">
+                        <div class="flex-align-center-gap">
+                            <span>📄</span>
+                            <span id="fileName" class="file-name-styled"></span>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-remove-styled"
+                            id="removeFileBtn">Remover</button>
+                    </div>
+
+                    <div class="option-box-styled">
+                        <div class="checkbox-container checkbox-container-spaced">
+                            <input type="checkbox" id="autoExtractInfoOpt" checked>
+                            <div class="checkbox-info">
+                                <span class="checkbox-title-styled">Auto-detectar metadados da sessão</span>
+                                <span class="checkbox-desc-styled">Sobrescrever os metadados manuais e estimar
+                                    duração/data com base na análise do texto da transcrição.</span>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="skipSanitizationOpt">
+                            <div class="checkbox-info">
+                                <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
+                                <span class="checkbox-desc-styled">Útil para transcrições já previamente higienizadas de
+                                    dados pessoais (PHI).</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit trigger button -->
+            <div class="btn-submit-row">
+                <button type="button" class="btn btn-min-width" id="startBtn">
+                    Registrar sessão
+                </button>
+            </div>
+        </div>
+
+        <!-- Async Processing Console inside matching dashboard-card style -->
+        <div class="processing-card dashboard-card" id="processingView">
+            <div class="spinner"></div>
+            <h2 class="processing-title" id="statusTitle">Processando
+                transcrição...</h2>
+            <p class="processing-desc" id="statusDesc">A IA está processando e
+                analisando clinicamente o diálogo da sessão.</p>
+
+            <div class="log-console" id="logConsole">
+                <div class="log-entry">Aguardando início...</div>
+            </div>
+
+            <a href="/viewer/analysis" class="btn view-results-btn" id="viewResultsBtn">Visualizar relatório de
+                sintomas</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/new_therapy_session.js"></script>
+{% endblock %}

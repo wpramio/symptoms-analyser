@@ -22,6 +22,70 @@ PATIENT_REGISTRY = {
     "Paciente7": "Cristina Medeiros"
 }
 
+# Module level maps to preserve relationships during migration
+transcripts_map = {}  # session_name -> DB integer id
+sessions_map = {}      # session_name -> DB integer id
+
+def estimate_duration_from_text(text: str) -> int:
+    """Helper to dynamically estimate session duration in seconds based on highest timestamp match."""
+    # Find all timestamps like HH:MM:SS
+    matches_hms = re.findall(r"(\d{1,2}):(\d{2}):(\d{2})", text)
+    if matches_hms:
+        max_secs = 0
+        for m in matches_hms:
+            secs = int(m[0]) * 3600 + int(m[1]) * 60 + int(m[2])
+            max_secs = max(max_secs, secs)
+        return max_secs if max_secs > 0 else 3600
+        
+    # Find all timestamps like MM:SS
+    matches_ms = re.findall(r"(\d{1,2}):(\d{2})", text)
+    if matches_ms:
+        max_secs = 0
+        for m in matches_ms:
+            secs = int(m[0]) * 60 + int(m[1])
+            max_secs = max(max_secs, secs)
+        return max_secs if max_secs > 0 else 3600
+        
+    return 3600  # Default to 1 hour (3600 seconds)
+
+def get_or_create_session(conn, session_name, raw_text):
+    """Helper to get or create a normalized therapy session based on the filename/session label."""
+    cursor = conn.cursor()
+    if session_name in sessions_map:
+        return sessions_map[session_name]
+        
+    # Check if already exists in DB
+    cursor.execute("SELECT id FROM therapy_sessions WHERE name = ? OR name = ?", 
+                   (session_name, f"Sessão: {session_name}"))
+    row = cursor.fetchone()
+    if row:
+        sessions_map[session_name] = row[0]
+        return row[0]
+        
+    # Format name nicely and extract start date if possible
+    public_name = session_name
+    match = re.search(r"session_(\d{4})_(\d{2})_(\d{2})", session_name)
+    start_at_str = None
+    if match:
+        year, month, day = match.groups()
+        public_name = f"Sessão {day}/{month}/{year}"
+        start_at_str = f"{year}-{month}-{day} 14:00:00"
+    else:
+        public_name = f"Sessão: {session_name}"
+        start_at_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        
+    duration = estimate_duration_from_text(raw_text)
+    
+    cursor.execute("""
+        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
+        VALUES (?, 'clinician_1', ?, ?)
+    """, (public_name, start_at_str, duration))
+    
+    session_id = cursor.lastrowid
+    sessions_map[session_name] = session_id
+    print(f"  [+] Criada Therapy Session: '{public_name}' (ID: {session_id}, Duração: {duration}s)")
+    return session_id
+
 def setup_database():
     """Initializes the database schema using the exact specifications from db_schema_plan.md"""
     print(f"[*] Inicializando banco de dados SQLite em: {DB_PATH.resolve()}")
@@ -30,27 +94,9 @@ def setup_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # 1. Transcripts Table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transcripts (
-            id TEXT PRIMARY KEY,
-            filename TEXT NOT NULL,
-            file_type TEXT,
-            raw_text TEXT NOT NULL,
-            sanitized_text TEXT,
-            file_size_bytes INTEGER,
-            batch_id TEXT,
-            status TEXT NOT NULL DEFAULT 'queued' 
-                CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'analyzing', 'completed', 'failed')),
-            progress_percent REAL DEFAULT 0.0,
-            error_message TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcripts_batch ON transcripts (batch_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts (status)")
+    cursor.execute("PRAGMA foreign_keys = ON")
     
-    # 2. Users Table
+    # 1. Users Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
@@ -63,7 +109,7 @@ def setup_database():
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)")
     
-    # 3. Patients Table (Pseudonym Boundary)
+    # 2. Patients Table (Pseudonym Boundary)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patients (
             id TEXT PRIMARY KEY,
@@ -77,32 +123,81 @@ def setup_database():
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym)")
     
-    # 4. TDPM Evaluations Table
+    # 3. Therapy Sessions Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS therapy_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            clinician_id TEXT NOT NULL,
+            start_at DATETIME,
+            duration INTEGER, -- in seconds
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_clinician ON therapy_sessions (clinician_id)")
+    
+    # 4. Therapy Session Patients Join Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS therapy_session_patients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            therapy_session_id INTEGER NOT NULL,
+            patient_id TEXT NOT NULL,
+            FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            UNIQUE(therapy_session_id, patient_id)
+        )
+    """)
+    
+    # 5. Transcripts Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS transcripts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            therapy_session_id INTEGER,
+            filename TEXT NOT NULL,
+            file_type TEXT,
+            raw_text TEXT NOT NULL,
+            sanitized_text TEXT,
+            file_size_bytes INTEGER,
+            batch_id TEXT,
+            status TEXT NOT NULL DEFAULT 'queued' 
+                CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'analyzing', 'completed', 'failed')),
+            progress_percent REAL DEFAULT 0.0,
+            error_message TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE SET NULL
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcripts_session ON transcripts (therapy_session_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcripts_batch ON transcripts (batch_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts (status)")
+    
+    # 6. TDPM Evaluations Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tdpm_evaluations (
-            id TEXT PRIMARY KEY,
-            transcript_id TEXT NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transcript_id INTEGER NOT NULL,
             evaluator_id TEXT,
-            parent_evaluation_id TEXT,
+            parent_evaluation_id INTEGER,
             evaluation_type TEXT NOT NULL DEFAULT 'automated'
                 CHECK (evaluation_type IN ('automated', 'manual', 'revised')),
-            session_name TEXT NOT NULL,
+            therapy_session_id INTEGER NOT NULL,
             created_at DATETIME NOT NULL,
             FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
             FOREIGN KEY (evaluator_id) REFERENCES users(id) ON DELETE SET NULL,
-            FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL
+            FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL,
+            FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
         )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON tdpm_evaluations (created_at DESC)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_name ON tdpm_evaluations (session_name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_session ON tdpm_evaluations (therapy_session_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_transcript ON tdpm_evaluations (transcript_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_evaluator ON tdpm_evaluations (evaluator_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_evaluations_parent ON tdpm_evaluations (parent_evaluation_id)")
     
-    # 5. Evaluation Telemetry Table
+    # 7. Evaluation Telemetry Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS evaluation_telemetry (
-            evaluation_id TEXT PRIMARY KEY,
+            evaluation_id INTEGER PRIMARY KEY,
             model TEXT NOT NULL,
             chunks_analyzed INTEGER,
             blocks_per_call INTEGER,
@@ -117,13 +212,12 @@ def setup_database():
             FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE
         )
     """)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_status ON evaluation_telemetry (status)")
     
-    # 6. Patient Item Scores Table
+    # 8. Patient Item Scores Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS patient_item_scores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            evaluation_id TEXT NOT NULL,
+            evaluation_id INTEGER NOT NULL,
             patient_id TEXT NOT NULL,
             dimension_code TEXT NOT NULL,
             item_code TEXT NOT NULL,
@@ -137,12 +231,11 @@ def setup_database():
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_evaluation ON patient_item_scores (evaluation_id, patient_id, item_code)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patient_id, dimension_code, item_code)")
     
-    # 7. Sanitization Telemetry Table
+    # 9. Sanitization Telemetry Table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS sanitization_telemetry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            transcript_id TEXT NOT NULL,
-            session_name TEXT NOT NULL,
+            transcript_id INTEGER NOT NULL,
             model TEXT NOT NULL,
             strategy TEXT NOT NULL,
             status TEXT NOT NULL,
@@ -160,7 +253,6 @@ def setup_database():
             FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
         )
     """)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_session ON sanitization_telemetry (session_name)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id)")
     
     conn.commit()
@@ -183,7 +275,6 @@ def seed_users_and_patients(conn):
     
     # Patient Pseudonym Map Registry
     for pseudonym, real_name in PATIENT_REGISTRY.items():
-        # Clean UUID or pseudonym string is used as patient primary key
         cursor.execute("""
             INSERT OR REPLACE INTO patients (id, real_name, pseudonym, metadata)
             VALUES (?, ?, ?, ?)
@@ -201,31 +292,26 @@ def parse_sanitization_log_block(sanitized_text):
     if not sanitized_text:
         return turns_merged, noise_removed, corrections, anonymization_flags
         
-    # Match the block
     match = re.search(r"##\s*Sanitization Log\s*\n(.*)$", sanitized_text, re.DOTALL | re.IGNORECASE)
     if not match:
         return turns_merged, noise_removed, corrections, anonymization_flags
         
     log_content = match.group(1)
     
-    # Turns merged
     tm_match = re.search(r"(?:Number of )?turns merged:\s*(\d+)", log_content, re.IGNORECASE)
     if tm_match:
         turns_merged = int(tm_match.group(1))
         
-    # Noise tokens removed
     noise_match = re.search(r"Noise tokens removed:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
     if noise_match:
         noise_removed = [line.strip().lstrip("-").strip() for line in noise_match.group(1).strip().split("\n")]
     else:
-        # Check single line
         noise_match2 = re.search(r"Noise tokens removed:\s*(.*)", log_content, re.IGNORECASE)
         if noise_match2 and "none" not in noise_match2.group(1).lower():
             val = noise_match2.group(1).strip()
             if val:
                 noise_removed = [val]
                 
-    # Corrections
     corr_block = re.search(r"(?:Tokens corrected with|corrections|Corrigidos)\s*(?:\[corrigido\]|`\[corrigido\]`|with `\[corrigido\]`)?:\s*\n((?:\s*-\s*.*?\n)+)", log_content, re.IGNORECASE)
     if corr_block:
         for line in corr_block.group(1).strip().split("\n"):
@@ -240,7 +326,6 @@ def parse_sanitization_log_block(sanitized_text):
                 parts = line_clean.split(":")
                 corrections[parts[0].strip()] = parts[1].strip()
                 
-    # Anonymization flags
     anon_match = re.search(r"Anonymization flags raised:\s*(.*)", log_content, re.IGNORECASE)
     if anon_match:
         val = anon_match.group(1).strip()
@@ -270,28 +355,31 @@ def ingest_transcripts_and_preprocessing_logs(conn):
         session_name = rf.stem.replace(".raw", "")
         raw_text = rf.read_text(encoding="utf-8")
         
-        # Look for the latest successful preprocessed file
         sanitized_files = list(PREPROCESS_DIR.glob(f"{session_name}.run*.sanitized.txt"))
         sanitized_text = None
         if sanitized_files:
-            # Sort by run number extracted from filename
             def run_num(p):
                 match = re.search(r"\.run(\d+)\.", p.name)
                 return int(match.group(1)) if match else 0
             latest_sanitized = max(sanitized_files, key=run_num)
             sanitized_text = latest_sanitized.read_text(encoding="utf-8")
             
+        therapy_session_id = get_or_create_session(conn, session_name, raw_text)
+            
         cursor.execute("""
-            INSERT OR REPLACE INTO transcripts 
-            (id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent)
+            INSERT INTO transcripts 
+            (therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent)
             VALUES (?, ?, 'docx', ?, ?, ?, 'completed', 100.0)
         """, (
-            session_name,
+            therapy_session_id,
             f"{session_name}.docx",
             raw_text,
             sanitized_text,
             len(raw_text.encode('utf-8'))
         ))
+        
+        transcript_id = cursor.lastrowid
+        transcripts_map[session_name] = transcript_id
     
     # 2. Ingest the global preprocessing runs log
     log_path = PREPROCESS_DIR / "preprocess.log.json"
@@ -311,23 +399,22 @@ def ingest_transcripts_and_preprocessing_logs(conn):
         if not session_name:
             continue
             
-        # Ensure base transcript entry exists (e.g. synthetic files)
-        cursor.execute("SELECT id FROM transcripts WHERE id = ?", (session_name,))
-        if cursor.fetchone() is None:
-            # Create a skeleton transcript
+        if session_name not in transcripts_map:
             skeleton_text = 'Transcript raw text missing in migration'
+            therapy_session_id = get_or_create_session(conn, session_name, skeleton_text)
             cursor.execute("""
                 INSERT INTO transcripts 
-                (id, filename, file_type, raw_text, file_size_bytes, status, progress_percent)
+                (therapy_session_id, filename, file_type, raw_text, file_size_bytes, status, progress_percent)
                 VALUES (?, ?, 'txt', ?, ?, 'completed', 100.0)
-            """, (session_name, f"{session_name}.txt", skeleton_text, len(skeleton_text.encode('utf-8'))))
+            """, (therapy_session_id, f"{session_name}.txt", skeleton_text, len(skeleton_text.encode('utf-8'))))
+            transcripts_map[session_name] = cursor.lastrowid
             
-        # Parse token usage
+        transcript_db_id = transcripts_map[session_name]
+            
         token_usage = run.get("total_token_usage", run.get("token_usage", {}))
         prompt_tokens = token_usage.get("prompt_tokens") if token_usage else None
         completion_tokens = token_usage.get("completion_tokens") if token_usage else None
         
-        # Aggregate chunk telemetry
         chunks = run.get("chunks", [])
         total_turns_merged = 0
         all_noise_removed = []
@@ -342,7 +429,6 @@ def ingest_transcripts_and_preprocessing_logs(conn):
             all_corrections.update(corr)
             all_anonymization_flags.extend(af)
             
-        # Set default values if chunks is empty or skips sanitization
         strategy = run.get("strategy", "skipped")
         model = run.get("model", "None")
         status = run.get("status", "success")
@@ -350,13 +436,12 @@ def ingest_transcripts_and_preprocessing_logs(conn):
         
         cursor.execute("""
             INSERT INTO sanitization_telemetry (
-                transcript_id, session_name, model, strategy, status, failure_reason,
+                transcript_id, model, strategy, status, failure_reason,
                 chunks_completed, chunks_total, prompt_tokens, completion_tokens,
                 total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            session_name,
-            session_name,
+            transcript_db_id,
             model,
             strategy,
             status,
@@ -391,18 +476,14 @@ def ingest_clinical_evaluations(conn):
     runs = log_data.get("runs", [])
     print(f"  [+] Encontrados {len(runs)} logs de análises clínicas para migrar.")
     
-    migrated_eval_ids = set()
-    
     for run in runs:
         session_id = run.get("session")
         timestamp_utc = run.get("timestamp_utc")
         
-        # Load the details file
         out_file_name = Path(run.get("output_file", "")).name
         out_path = ANALYSIS_DIR / out_file_name
         
         if not out_path.exists():
-            # Fallback scan inside directory
             fallback_match = list(ANALYSIS_DIR.glob(f"*{session_id}*.tdpm.json"))
             if fallback_match:
                 out_path = fallback_match[0]
@@ -413,49 +494,40 @@ def ingest_clinical_evaluations(conn):
         with open(out_path, "r", encoding="utf-8") as f_det:
             det_data = json.load(f_det)
             
-        # Parse exact creation timestamp
         created_at_str = det_data.get("timestamp_utc", timestamp_utc)
         try:
             created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
         except Exception:
             created_at = datetime.now(timezone.utc)
             
-        # Unique ID combining session name and creation timestamp
-        # to support historical runs of the same file
-        timestamp_slug = created_at.strftime("%Y%m%d_%H%M%S")
-        
-        # Extract clean transcript id
         clean_transcript_id = re.sub(r"\.run\d+\.sanitized$", "", session_id)
         clean_transcript_id = re.sub(r"\.raw$", "", clean_transcript_id)
         
-        eval_id = f"{clean_transcript_id}.{timestamp_slug}"
-        if eval_id in migrated_eval_ids:
-            # Add secondary salt if collision
-            eval_id = f"{eval_id}_{run.get('run', 0)}"
-        migrated_eval_ids.add(eval_id)
-        
-        # Verify the transcript exists
-        cursor.execute("SELECT id FROM transcripts WHERE id = ?", (clean_transcript_id,))
-        if cursor.fetchone() is None:
-            # Try to register standard transcript
+        if clean_transcript_id not in transcripts_map:
             skeleton_text = 'Autogenerated transcript during scoring ingestion'
+            therapy_session_id = get_or_create_session(conn, clean_transcript_id, skeleton_text)
             cursor.execute("""
-                INSERT INTO transcripts (id, filename, file_type, raw_text, file_size_bytes, status, progress_percent)
+                INSERT INTO transcripts (therapy_session_id, filename, file_type, raw_text, file_size_bytes, status, progress_percent)
                 VALUES (?, ?, 'txt', ?, ?, 'completed', 100.0)
-            """, (clean_transcript_id, f"{clean_transcript_id}.txt", skeleton_text, len(skeleton_text.encode('utf-8'))))
+            """, (therapy_session_id, f"{clean_transcript_id}.txt", skeleton_text, len(skeleton_text.encode('utf-8'))))
+            transcripts_map[clean_transcript_id] = cursor.lastrowid
             
+        transcript_db_id = transcripts_map[clean_transcript_id]
+        therapy_session_id = get_or_create_session(conn, clean_transcript_id, "")
+        
         # 1. Insert into tdpm_evaluations
         cursor.execute("""
-            INSERT OR REPLACE INTO tdpm_evaluations 
-            (id, transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, session_name, created_at)
-            VALUES (?, ?, ?, NULL, 'automated', ?, ?)
+            INSERT INTO tdpm_evaluations 
+            (transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, therapy_session_id, created_at)
+            VALUES (?, ?, NULL, 'automated', ?, ?)
         """, (
-            eval_id,
-            clean_transcript_id,
+            transcript_db_id,
             "clinician_1",
-            clean_transcript_id,
+            therapy_session_id,
             created_at.strftime("%Y-%m-%d %H:%M:%S")
         ))
+        
+        eval_id = cursor.lastrowid
         
         # 2. Insert into evaluation_telemetry
         token_usage = det_data.get("token_usage", {})
@@ -484,7 +556,6 @@ def ingest_clinical_evaluations(conn):
         patients_dict = det_data.get("aggregated", {}).get("patients", {})
         for patient_id, pat_payload in patients_dict.items():
             
-            # Ensure the patient exists in registry (self-healing ingestion)
             cursor.execute("SELECT id FROM patients WHERE id = ?", (patient_id,))
             if cursor.fetchone() is None:
                 cursor.execute("""
@@ -492,17 +563,21 @@ def ingest_clinical_evaluations(conn):
                     VALUES (?, ?, ?, ?)
                 """, (patient_id, f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-ingestão dinâmica"})))
                 
+            # Self-healing: establish patient relationship in join table
+            cursor.execute("""
+                INSERT OR IGNORE INTO therapy_session_patients (therapy_session_id, patient_id)
+                VALUES (?, ?)
+            """, (therapy_session_id, patient_id))
+            
             items_dict = pat_payload.get("items", {})
             for item_code, it in items_dict.items():
                 dimension_code = item_code.split(".")[0]
                 score = it.get("score", 0)
                 justification = it.get("justification")
                 
-                # Consolidate evidence citations into JSON [{"raw_evidence": "...", "extracted_timestamp": "..."}]
                 raw_evidence_quotes = it.get("evidence", [])
                 citations = []
                 for q in raw_evidence_quotes:
-                    # Regex parses standard timestamps like 00:03:18
                     ts_match = re.match(r"^(\d{2}:\d{2}:\d{2})\s*(.*)$", q)
                     if ts_match:
                         extracted_ts = ts_match.group(1)

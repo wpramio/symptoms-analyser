@@ -1,9 +1,11 @@
 import os
-import threading
+import sqlite3
 import uuid
+import json
 from pathlib import Path
+from datetime import datetime, timezone
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
 from symptoms_analyser.controllers.admin import (
@@ -15,8 +17,13 @@ from symptoms_analyser.controllers.admin import (
     get_transcripts,
 )
 from symptoms_analyser.controllers.pipeline import get_evaluation_payload, list_evaluation_ids
-from symptoms_analyser.preprocess import run_preprocess
-from symptoms_analyser.tdpm_analysis import run_analysis
+from symptoms_analyser.controllers.sessions import (
+    allowed_file,
+    create_session_from_parameters,
+    handle_session_upload_task,
+    tasks,
+)
+from symptoms_analyser.utils import DB_PATH
 
 app = Flask(__name__)
 
@@ -26,24 +33,11 @@ app = Flask(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UPLOAD_FOLDER = PROJECT_ROOT / "input/uploads"
-ALLOWED_EXTENSIONS = {"txt", "docx"}
 
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
-
-# ---------------------------------------------------------------------------
-# Background task store
-# tasks = { task_id: { "status": "processing"|"completed"|"error", "logs": [], "error": "" } }
-# ---------------------------------------------------------------------------
-
-tasks: dict = {}
-
-
-def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 # ---------------------------------------------------------------------------
 # Page routes
@@ -54,9 +48,9 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/upload")
-def upload():
-    return render_template("upload.html")
+@app.route("/therapy_sessions/new")
+def new_therapy_session():
+    return render_template("new_therapy_session.html")
 
 
 @app.route("/viewer")
@@ -119,31 +113,59 @@ def serve_evaluation(eval_id):
 # Upload & pipeline
 # ---------------------------------------------------------------------------
 
-@app.route("/api/upload", methods=["POST"])
-def handle_upload():
-    if "file" not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    if not (file and allowed_file(file.filename)):
-        return jsonify({"error": "File type not allowed"}), 400
-
-    filename = secure_filename(file.filename)
-    filepath = UPLOAD_FOLDER / filename
-    file.save(filepath)
-
+@app.route("/api/upload_transcript", methods=["POST"])
+def handle_upload_transcript():
+    # Form data checklist
     skip_sanitization = request.form.get("skip_sanitization") == "true"
+    
+    form_data = {
+        "skip_sanitization": skip_sanitization,
+        "therapy_session_id": request.form.get("therapy_session_id"),
+        "auto_fill": request.form.get("auto_fill"),
+        "session_name": request.form.get("session_name"),
+        "clinician_id": request.form.get("clinician_id"),
+        "start_at": request.form.get("start_at"),
+        "duration": request.form.get("duration"),
+        "patient_ids": request.form.get("patient_ids")
+    }
 
-    task_id = str(uuid.uuid4())
-    tasks[task_id] = {"status": "processing", "logs": [], "error": ""}
+    # If transcript file is uploaded, secure and save it, then delegate to async runner
+    if "file" in request.files and request.files["file"].filename != "":
+        file = request.files["file"]
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
 
-    thread = threading.Thread(target=process_file, args=(task_id, filepath, skip_sanitization))
-    thread.start()
+        filename = secure_filename(file.filename)
+        filepath = UPLOAD_FOLDER / filename
+        file.save(filepath)
 
-    return jsonify({"task_id": task_id})
+        task_id = handle_session_upload_task(filepath, form_data)
+        return jsonify({"task_id": task_id})
+
+    # Otherwise: This is a manual session creation without immediate transcript processing
+    try:
+        session_name = form_data.get("session_name")
+        if not session_name:
+            return jsonify({"error": "Session name is required for manual creation"}), 400
+
+        clinician_id = form_data.get("clinician_id") or "clinician_1"
+        start_at = form_data.get("start_at")
+        if not start_at:
+            start_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        
+        try:
+            duration = int(form_data.get("duration") or 3600)
+        except ValueError:
+            duration = 3600
+
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON")
+        session_id = create_session_from_parameters(conn, session_name, clinician_id, start_at, duration, form_data.get("patient_ids"))
+        conn.close()
+
+        return jsonify({"message": "Sessão criada com sucesso!", "session_id": session_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/status/<task_id>")
@@ -151,30 +173,6 @@ def get_status(task_id):
     if task_id not in tasks:
         return jsonify({"error": "Task not found"}), 404
     return jsonify(tasks[task_id])
-
-
-def process_file(task_id: str, filepath: Path, skip_sanitization: bool = False) -> None:
-    task = tasks[task_id]
-
-    def add_log(msg: str) -> None:
-        task["logs"].append(msg)
-        print(f"[{task_id}] {msg}")
-
-    try:
-        add_log(f"Iniciando pré-processamento de {filepath.name}...")
-        run_preprocess(filepath, skip_sanitization=skip_sanitization)
-
-        session_name = filepath.stem
-        add_log(f"Pré-processamento concluído. Iniciando análise TDPM-20 para: {session_name}...")
-        run_analysis(transcript_id=session_name)
-
-        add_log("Análise concluída com sucesso.")
-        task["status"] = "completed"
-
-    except Exception as e:
-        task["status"] = "error"
-        task["error"] = str(e)
-        add_log(f"Erro: {str(e)}")
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +232,67 @@ def api_create_patient():
         return jsonify(result), status
     except Exception as e:
         print(f"Error creating patient mapping: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/sessions", methods=["GET", "POST"])
+def api_admin_sessions():
+    if request.method == "POST":
+        try:
+            data = request.get_json() or {}
+            name = data.get("name")
+            if not name:
+                return jsonify({"error": "Session name is required"}), 400
+                
+            clinician_id = data.get("clinician_id", "clinician_1")
+            start_at = data.get("start_at")
+            if not start_at:
+                start_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                
+            try:
+                duration = int(data.get("duration", 3600))
+            except ValueError:
+                duration = 3600
+                
+            patient_ids_str = data.get("patient_ids", "")
+            
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("PRAGMA foreign_keys = ON")
+            session_id = create_session_from_parameters(conn, name, clinician_id, start_at, duration, patient_ids_str)
+            conn.close()
+            
+            return jsonify({"message": "Sessão criada com sucesso!", "session_id": session_id}), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+            
+    # GET
+    try:
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
+                       u.name as clinician_name,
+                       (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
+                FROM therapy_sessions s
+                LEFT JOIN users u ON s.clinician_id = u.id
+                ORDER BY s.created_at DESC
+            """)
+            sessions = [
+                {
+                    "id": r["id"],
+                    "name": r["name"],
+                    "clinician_id": r["clinician_id"],
+                    "clinician_name": r["clinician_name"] or "Sem clínico",
+                    "start_at": r["start_at"],
+                    "duration": r["duration"],
+                    "patients": r["patients"] or "Nenhum paciente",
+                    "created_at": r["created_at"],
+                }
+                for r in cursor.fetchall()
+            ]
+        return jsonify(sessions)
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 

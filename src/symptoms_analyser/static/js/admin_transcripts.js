@@ -249,22 +249,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             })
             .catch(err => console.error("Error loading evaluation telemetry logs:", err));
-    }
-
-    // Modal Closer Events
+    }    // Modal Closer Events
     closeTracebackBtn.addEventListener('click', () => { tracebackModal.style.display = 'none'; });
     tracebackModal.addEventListener('click', (e) => {
         if (e.target === tracebackModal) tracebackModal.style.display = 'none';
     });
 
+    // --- 5. Therapy Sessions Manager ---
+    const sessionsTableBody = document.getElementById('sessionsTableBody');
+
+    function fetchSessions() {
+        fetch('/api/admin/sessions')
+            .then(res => res.json())
+            .then(sessions => {
+                if (sessions.length === 0) {
+                    sessionsTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 3rem;">Nenhuma sessão de terapia cadastrada.</td></tr>`;
+                    return;
+                }
+
+                let html = '';
+                sessions.forEach(s => {
+                    html += `
+                        <tr>
+                            <td><strong style="color: var(--primary);">#${s.id}</strong></td>
+                            <td><strong style="color: var(--text-main); font-size: 0.95rem;">${s.name}</strong></td>
+                            <td style="font-size: 0.9rem;">
+                                <span>${s.clinician_name}</span><br>
+                                <span style="color: var(--text-muted); font-size: 0.75rem;">ID: ${s.clinician_id}</span>
+                            </td>
+                            <td style="font-size: 0.85rem; color: var(--text-muted);">
+                                <strong>${formatDate(s.start_at)}</strong><br>
+                                <span>Duração: ${Math.round(s.duration / 60)} min</span>
+                            </td>
+                            <td>
+                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    ${s.patients}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+                sessionsTableBody.innerHTML = html;
+            })
+            .catch(err => console.error("Error loading therapy sessions:", err));
+    }
+
+
+
     // Boot and start poller loops
     fetchStats();
     fetchJobs();
+    fetchSessions();
     fetchTelemetryData();
     fetchEvaluationTelemetryData();
 
     setInterval(fetchStats, 60000); // 1 minute stats update
     setInterval(fetchJobs, 3000);   // 3 seconds pipeline update
+    setInterval(fetchSessions, 5000); // 5 seconds session list update
     setInterval(fetchTelemetryData, 10000); // 10 seconds telemetry log update
     setInterval(fetchEvaluationTelemetryData, 10000); // 10 seconds evaluation telemetry log update
 });

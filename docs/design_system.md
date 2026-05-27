@@ -16,7 +16,7 @@ The visual system is built on centralized custom CSS properties defined in `/sta
 
 ## 2. Page Hierarchy & Grid Framework
 
-Every new template page must extend `base.html` and wrap its visual body in a unified `.calculator-view` container:
+Every new template page must extend `base.html` and wrap its visual body in a unified `.main-container` (or legacy `.dashboard-view` / `.calculator-view`) container:
 
 ```html
 {% extends 'base.html' %}
@@ -25,9 +25,9 @@ Every new template page must extend `base.html` and wrap its visual body in a un
 {% block title %}Nome da Página - Symptoms Analyser{% endblock %}
 
 {% block content %}
-<div class="calculator-view">
+<div class="main-container">
     <!-- Page Header -->
-    <div class="calc-header">
+    <div class="page-header">
         <h2>Título Principal da Página</h2>
         <p>Subtítulo ou descrição curta da funcionalidade desta interface.</p>
     </div>
@@ -41,13 +41,13 @@ Every new template page must extend `base.html` and wrap its visual body in a un
 
 ## 3. Structural Components
 
-### A. The Responsive Cards Grid (`.calc-grid` + `.calc-card`)
-Use this for KPI metrics, configuration parameters, or small summaries:
+### A. The Responsive Cards Grid (`.dashboard-grid` + `.dashboard-card`)
+Use this for KPI metrics, configuration parameters, or small summaries (legacy names: `.calc-grid` / `.calc-card`):
 
 ```html
-<div class="calc-grid">
+<div class="dashboard-grid">
     <!-- Component Card -->
-    <div class="calc-card">
+    <div class="dashboard-card">
         <h3>Título do Card</h3>
         <!-- Content (Inputs, statistics, graphs, list items) -->
     </div>

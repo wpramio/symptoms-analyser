@@ -10,8 +10,22 @@ The database serves as a single source of truth for the entire application. Belo
 
 ```mermaid
 erDiagram
+    therapy_sessions {
+        int id PK
+        string name
+        string clinician_id FK
+        datetime start_at
+        int duration
+        datetime created_at
+    }
+    therapy_session_patients {
+        int id PK
+        int therapy_session_id FK
+        string patient_id FK
+    }
     transcripts {
-        string id PK
+        int id PK
+        int therapy_session_id FK
         string filename
         string file_type
         string raw_text
@@ -40,16 +54,16 @@ erDiagram
         datetime created_at
     }
     tdpm_evaluations {
-        string id PK
-        string transcript_id FK
+        int id PK
+        int transcript_id FK
         string evaluator_id FK
-        string parent_evaluation_id FK
+        int parent_evaluation_id FK
         string evaluation_type
-        string session_name
+        int therapy_session_id FK
         datetime created_at
     }
     evaluation_telemetry {
-        string evaluation_id PK, FK
+        int evaluation_id PK, FK
         string model
         int chunks_analyzed
         int blocks_per_call
@@ -63,7 +77,7 @@ erDiagram
     }
     patient_item_scores {
         int id PK
-        string evaluation_id FK
+        int evaluation_id FK
         string patient_id FK
         string dimension_code
         string item_code
@@ -73,8 +87,7 @@ erDiagram
     }
     sanitization_telemetry {
         int id PK
-        string transcript_id FK
-        string session_name
+        int transcript_id FK
         string model
         string strategy
         string status
@@ -91,6 +104,11 @@ erDiagram
         datetime created_at
     }
 
+    users ||--o{ therapy_sessions : "hosts"
+    therapy_sessions ||--o{ therapy_session_patients : "includes"
+    patients ||--o{ therapy_session_patients : "participates_in"
+    therapy_sessions ||--o{ transcripts : "has_transcripts"
+    therapy_sessions ||--o{ tdpm_evaluations : "has_evaluations"
     users ||--o{ tdpm_evaluations : "evaluates"
     users ||--o| patients : "authenticates"
     transcripts ||--o{ tdpm_evaluations : "originates"
@@ -111,11 +129,41 @@ Here are the SQL table declarations designed to support high performance and fut
 
 ### 2.1. Core Entities
 
+#### Therapy Sessions Table
+Stores the core therapy session information, representing the main entity linking clinicians, patients, and transcripts.
+```sql
+CREATE TABLE IF NOT EXISTS therapy_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,                -- Public display name of the session (e.g. "Sessão 16/03/2026")
+    clinician_id TEXT NOT NULL,        -- FK to users.id
+    start_at DATETIME,                 -- Scheduled date and time
+    duration INTEGER,                  -- Scheduled/actual duration in seconds
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_clinician ON therapy_sessions (clinician_id);
+```
+
+#### Therapy Session Patients Join Table
+Many-to-many relationship join table linking therapy sessions to their participating patients.
+```sql
+CREATE TABLE IF NOT EXISTS therapy_session_patients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    therapy_session_id INTEGER NOT NULL,
+    patient_id TEXT NOT NULL,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    UNIQUE(therapy_session_id, patient_id)
+);
+```
+
 #### Transcripts Table
-Preserves the complete, original source text of uploaded transcript files alongside its optional sanitized/preprocessed state. This serves as our ultimate clinical source of truth, keeping text records lean and lightweight.
+Preserves the complete, original source text of uploaded transcript files alongside its optional sanitized/preprocessed state.
 ```sql
 CREATE TABLE IF NOT EXISTS transcripts (
-    id TEXT PRIMARY KEY,               -- e.g. "session_2026_03_16" or a UUID
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Changed to sequential integer
+    therapy_session_id INTEGER,        -- FK to therapy_sessions.id
     filename TEXT NOT NULL,            -- Original uploaded file name (e.g., "session_2026_03_16.docx")
     file_type TEXT,                    -- e.g. "docx", "txt"
     raw_text TEXT NOT NULL,            -- Full unparsed raw speech (may contain PHI/real names)
@@ -129,22 +177,24 @@ CREATE TABLE IF NOT EXISTS transcripts (
     progress_percent REAL DEFAULT 0.0, -- Live progress tracking (0.0 to 100.0)
     error_message TEXT,                -- Error stack trace if processing failed
     
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_transcripts_session ON transcripts (therapy_session_id);
 CREATE INDEX IF NOT EXISTS idx_transcripts_batch ON transcripts (batch_id);
 CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts (status);
 ```
 
 #### Users Table
-Tracks all authenticated system actors (Clinicians/Healthcare Professionals, Administrators, and Patients with portal access) to support secure logins, token authorization, and multi-tenant roles.
+Tracks all authenticated system actors.
 ```sql
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,               -- e.g. "dr_smith", "therapist_jane", or a UUID
-    email TEXT UNIQUE NOT NULL,        -- User email for login/auth (strictly required for account holders)
+    id TEXT PRIMARY KEY,               -- e.g. "dr_smith"
+    email TEXT UNIQUE NOT NULL,        -- User email for login/auth
     name TEXT NOT NULL,                -- Full display name
     role TEXT NOT NULL CHECK (role IN ('patient', 'clinician', 'admin')), -- Auth roles
-    password_hash TEXT NOT NULL,       -- Secure password hash (e.g. Bcrypt/Argon2)
+    password_hash TEXT NOT NULL,       -- Secure password hash
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -152,18 +202,14 @@ CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);
 ```
 
 #### Patients Table
-Tracks the **true patient registry** containing sensitive Protected Health Information (PHI). Completely separates real identity data from clinical runs and scores. This table serves as the secure pseudonym-matching key:
-- **`real_name`** is stored *only* here for authorized clinician views.
-- **`pseudonym`** (e.g., `"Paciente1"`) is public and used in transcripts, analysis prompts, and score records.
-- **`user_id`** optionally links the patient profile to credentials *if* portal login access is ever granted.
-- **`Scope of Registry`**: Every speaker detected in a raw transcript is registered in the `patients` table (either via pre-registration or Phase 1 dynamic ingestion), regardless of whether they ever receive a clinical symptom score. This ensures the UI can resolve the real name of *all* speakers in the dynamic transcript view, even if they have no registered scores in `patient_item_scores`.
+Tracks the true patient registry containing sensitive Protected Health Information.
 ```sql
 CREATE TABLE IF NOT EXISTS patients (
-    id TEXT PRIMARY KEY,               -- Unique patient identifier: e.g. a random UUID or secure ID
-    user_id TEXT UNIQUE,               -- FK to users.id (NULL if the patient has no portal login credentials)
-    real_name TEXT NOT NULL,           -- PHI: The patient's actual name (e.g. "João da Silva")
-    pseudonym TEXT UNIQUE NOT NULL,    -- Public token: The anonymized identifier used in transcripts (e.g. "Paciente1")
-    metadata TEXT,                     -- Flexible JSON: Clinical patient attributes (e.g., birth_date, notes)
+    id TEXT PRIMARY KEY,               -- Unique pseudonym or secure ID: e.g. "Paciente1"
+    user_id TEXT UNIQUE,               -- FK to users.id
+    real_name TEXT NOT NULL,           -- PHI: The patient's actual name
+    pseudonym TEXT UNIQUE NOT NULL,    -- Public token: The anonymized identifier used in transcripts
+    metadata TEXT,                     -- Flexible JSON: Clinical patient attributes
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -172,49 +218,47 @@ CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym);
 ```
 
 #### TDPM Evaluations Table
-Stores the clinical evaluation session details. Links directly to its source transcript, the clinical evaluator, and tracks human revisions/audits.
+Stores the clinical evaluation session details. Replaces `session_name` with `therapy_session_id` and uses sequential integer IDs.
 ```sql
 CREATE TABLE IF NOT EXISTS tdpm_evaluations (
-    id TEXT PRIMARY KEY,               -- Unique identifier: e.g. "session_2026_03_16.20260524_191534"
-    transcript_id TEXT NOT NULL,       -- FK to transcripts.id
-    evaluator_id TEXT,                 -- FK to users.id (The clinician who performed/revised the evaluation)
-    parent_evaluation_id TEXT,         -- FK to tdpm_evaluations.id (NULL if original, filled if human revision)
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Changed to sequential integer
+    transcript_id INTEGER NOT NULL,    -- FK to transcripts.id (integer)
+    evaluator_id TEXT,                 -- FK to users.id
+    parent_evaluation_id INTEGER,      -- FK to tdpm_evaluations.id (integer)
     evaluation_type TEXT NOT NULL DEFAULT 'automated'
-        CHECK (evaluation_type IN ('automated', 'manual', 'revised')), -- Evaluation classification
-    session_name TEXT NOT NULL,        -- e.g. "session_2026_03_16"
+        CHECK (evaluation_type IN ('automated', 'manual', 'revised')),
+    therapy_session_id INTEGER NOT NULL, -- FK to therapy_sessions.id
     created_at DATETIME NOT NULL,      -- Accurate creation datetime
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
     FOREIGN KEY (evaluator_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL
+    FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON tdpm_evaluations (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_evaluations_name ON tdpm_evaluations (session_name);
+CREATE INDEX IF NOT EXISTS idx_evaluations_session ON tdpm_evaluations (therapy_session_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_transcript ON tdpm_evaluations (transcript_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_evaluator ON tdpm_evaluations (evaluator_id);
-CREATE INDEX IF NOT EXISTS idx_evaluations_parent ON tdpm_evaluations (parent_evaluation_id);
 ```
 
 #### Evaluation Telemetry Table
-Stores computational pipeline metrics, LLM parameters, token counts, execution timing, and complete raw payloads for automated evaluations (1-to-1 relationship with `tdpm_evaluations`). Zero rows are generated for pure human manual runs.
+Stores computational pipeline metrics linked to TDPM Evaluations.
 ```sql
 CREATE TABLE IF NOT EXISTS evaluation_telemetry (
-    evaluation_id TEXT PRIMARY KEY,    -- FK to tdpm_evaluations.id
-    model TEXT NOT NULL,               -- e.g. "google/gemma-4-31b-it:free"
+    evaluation_id INTEGER PRIMARY KEY, -- FK to tdpm_evaluations.id (integer)
+    model TEXT NOT NULL,               -- e.g. "google/gemma-2-9b-it"
     chunks_analyzed INTEGER,           -- Number of chunks analyzed
     blocks_per_call INTEGER,           -- Hyperparameter
     prompt_tokens INTEGER,             -- Token consumption metrics
     completion_tokens INTEGER,
     total_elapsed_seconds REAL,        -- API execution duration
     status TEXT NOT NULL DEFAULT 'success'
-        CHECK (status IN ('success', 'failed')), -- Run execution status
+        CHECK (status IN ('success', 'failed')),
     failure_reason TEXT,               -- System error message if execution failed
     raw_payload TEXT,                  -- Full raw JSON response backup
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE
 );
-
-CREATE INDEX IF NOT EXISTS idx_telemetry_status ON evaluation_telemetry (status);
 ```
 
 ---
@@ -222,17 +266,17 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_status ON evaluation_telemetry (status)
 ### 2.2. Clinical Scores & Evidence
 
 #### Patient Item Scores Table
-Stores scores, justifications, and structured evidence citations for specific sub-items (e.g., Item `19.1` - Humor deprimido e anedonia) using a hybrid relational/document model.
+Stores scores, justifications, and structured evidence citations for specific sub-items linked to TDPM Evaluations.
 ```sql
 CREATE TABLE IF NOT EXISTS patient_item_scores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    evaluation_id TEXT NOT NULL,       -- FK to tdpm_evaluations
-    patient_id TEXT NOT NULL,          -- FK to patients.id (Links to the anonymized patient record)
-    dimension_code TEXT NOT NULL,      -- e.g. "19" (groups items into clinical categories)
-    item_code TEXT NOT NULL,           -- e.g. "19.1" (look up name in tdpm_ontology.json)
-    score INTEGER NOT NULL,            -- Severity score (e.g. 2)
+    evaluation_id INTEGER NOT NULL,    -- FK to tdpm_evaluations.id (integer)
+    patient_id TEXT NOT NULL,          -- FK to patients.id
+    dimension_code TEXT NOT NULL,      -- e.g. "19"
+    item_code TEXT NOT NULL,           -- e.g. "19.1"
+    score INTEGER NOT NULL,            -- Severity score
     justification TEXT,                -- Clinical reasoning text block
-    evidence TEXT,                     -- JSON Array of citations: [{"raw_evidence": "...", "extracted_timestamp": "..."}]
+    evidence TEXT,                     -- JSON Array of citations
     
     FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE,
     FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
@@ -246,15 +290,12 @@ CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patie
 
 ### 2.3. System Logs Ingestion
 
-To preserve and query historic runs, we ingest and represent current JSON log files directly in the schema.
-
 #### Sanitization Telemetry Table
-Tracks historical preprocessing logs and performance characteristics.
+Tracks historical preprocessing logs linked to transcripts. Removes `session_name` column.
 ```sql
 CREATE TABLE IF NOT EXISTS sanitization_telemetry (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    transcript_id TEXT NOT NULL,       -- FK to transcripts.id
-    session_name TEXT NOT NULL,        -- e.g. "session_2026_03_16"
+    transcript_id INTEGER NOT NULL,    -- FK to transcripts.id (integer)
     model TEXT NOT NULL,               -- Sanitization model
     strategy TEXT NOT NULL,            -- e.g. "default"
     status TEXT NOT NULL,              -- "success" or "failed"
@@ -268,14 +309,13 @@ CREATE TABLE IF NOT EXISTS sanitization_telemetry (
     -- Sanitization Metrics / Auditing Payload
     turns_merged INTEGER,
     noise_tokens_removed TEXT,         -- JSON list of removed tags
-    corrections TEXT,                  -- JSON map of word mappings (e.g. {"veinho": "velhinho"})
+    corrections TEXT,                  -- JSON map of word mappings
     anonymization_flags TEXT,          -- JSON list of flagged sensitive words
     
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_session ON sanitization_telemetry (session_name);
 CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id);
 ```
 
