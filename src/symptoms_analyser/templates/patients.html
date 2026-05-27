@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% set active_page = 'patients' %}
+
+{% block title %}Pacientes - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="page-header page-header-flex">
+        <div>
+            <h2>Gestão de pacientes</h2>
+            <p>Registro confidencial de participantes e histórico de evolução clínica.</p>
+        </div>
+        <a href="/admin/patients" class="btn btn-secondary btn-with-icon">
+            <span>⚙️</span> Configurar pacientes
+        </a>
+    </div>
+
+    <!-- Patients Grid Card Layout -->
+    <div class="calc-results">
+        <h3>Lista de prontuários</h3>
+
+        <div class="patients-grid">
+            {% if patients %}
+            {% for patient in patients %}
+            <div onclick="window.location.href='/patients/{{ patient.id }}'" class="patient-card patient-card-hover">
+                <!-- Top Accent line -->
+                <div class="patient-card-accent"></div>
+
+                <div>
+                    <div class="patient-card-header">
+                        <span class="patient-card-id">{{ patient.id }}</span>
+                        <span class="hipaa-status-badge">HIPAA Ok</span>
+                    </div>
+                    <!-- Secure Real Name indicator -->
+                    <div class="patient-secure-tag">
+                        <span class="secure-label">
+                            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            Nome real:
+                        </span>
+                        <span class="secure-value">{{ patient.real_name }}</span>
+                    </div>
+                </div>
+
+                <div class="patient-card-footer">
+                    <div class="footer-item">
+                        <span class="footer-label">Participações</span>
+                        <strong class="footer-value-primary">{{ patient.total_sessions }}</strong> {% if patient.total_sessions == 1 %}sessão{% else %}sessões{% endif %}
+                    </div>
+                    <div class="footer-item text-right">
+                        <span class="footer-label">Cadastro</span>
+                        <strong class="footer-value">{{ patient.created_at[:10] }}</strong>
+                    </div>
+                </div>
+
+                <div class="view-evolution-action">
+                    Ver evolução clínica
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="patients-empty-state">
+                <span>👥</span>
+                <h4>Nenhum paciente cadastrado</h4>
+                <p>Faça a ingestão de transcrições com marcações de pacientes ou adicione manualmente em "Configurar Pacientes".</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .patient-card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+        border-color: rgba(59, 130, 246, 0.3) !important;
+    }
+
+    .patient-card-hover:hover .view-evolution-action {
+        gap: 0.5rem !important;
+    }
+</style>
+{% endblock %}

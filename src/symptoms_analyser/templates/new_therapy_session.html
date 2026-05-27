@@ -5,6 +5,12 @@
 
 {% block content %}
 <div class="main-container">
+    <!-- Back to sessions link -->
+    <a href="/therapy_sessions" class="back-link">
+        <svg width="16" height="16" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+        Voltar para sessões
+    </a>
+
     <!-- Page Header conforms to Design System -->
     <div class="page-header">
         <h2>Nova sessão de terapia</h2>
@@ -113,8 +119,7 @@
                 <div class="log-entry">Aguardando início...</div>
             </div>
 
-            <a href="/viewer/analysis" class="btn view-results-btn" id="viewResultsBtn">Visualizar relatório de
-                sintomas</a>
+            <a href="/therapy_sessions" class="btn view-results-btn" id="viewResultsBtn">Ir para lista de sessões</a>
         </div>
     </div>
 </div>

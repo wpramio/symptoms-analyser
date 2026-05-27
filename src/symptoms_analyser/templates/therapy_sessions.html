@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% set active_page = 'therapy_sessions' %}
+
+{% block title %}Sessões de terapia - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="page-header page-header-flex">
+        <div>
+            <h2>Sessões de terapia</h2>
+            <p>Gerenciamento clínico de reuniões e relatórios de desregulação (TDPM-20).</p>
+        </div>
+        <a href="/therapy_sessions/new" class="btn btn-primary btn-with-icon">
+            <span>+</span> Nova sessão
+        </a>
+    </div>
+
+    <!-- Sessions List -->
+    <div class="calc-results">
+        <h3>Histórico de sessões</h3>
+
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-25">Sessão</th>
+                        <th class="col-width-20">Clínico</th>
+                        <th class="col-width-20">Agendamento</th>
+                        <th class="col-width-15">Participantes</th>
+                        <th class="col-width-20">Análise de sintomas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sessions %}
+                    {% for session in sessions %}
+                    <tr onclick="window.location.href='/therapy_sessions/{{ session.id }}'" class="clickable-row">
+                        <td>
+                            <div class="font-semibold">{{ session.name }}</div>
+                            <div class="text-xs-muted">Duração: {{ (session.duration / 60)|int }} min</div>
+                        </td>
+                        <td>{{ session.clinician_name }}</td>
+                        <td>{{ session.start_at }}</td>
+                        <td>
+                            <span class="participant-badge">
+                                {{ session.patients }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if session.transcript_status == 'completed' %}
+                            <span class="status-badge" data-status="completed">
+                                Disponível
+                            </span>
+                            {% elif session.transcript_status == 'preprocessing' or session.transcript_status == 'analyzing' %}
+                            <span class="status-badge" data-status="preprocessing">
+                                Processando ({{ session.transcript_progress }}%)
+                            </span>
+                            {% elif session.transcript_status == 'failed' %}
+                            <span class="status-badge" data-status="failed">
+                                Erro
+                            </span>
+                            {% else %}
+                            <span class="status-badge" data-status="queued">
+                                Sem transcrição
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="table-empty-row">
+                            Nenhuma sessão registrada. Clique em "Nova sessão" acima para cadastrar a primeira!
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

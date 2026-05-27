@@ -11,24 +11,24 @@
 </head>
 
 <body>
+    <!-- SVG Sprite: reusable icon symbols referenced via <use href="#icon-..."> -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;" aria-hidden="true">
+        <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </symbol>
+    </svg>
+
     <div class="app-layout">
         <aside class="sidebar">
             <div class="sidebar-brand">Symptoms Analyser</div>
 
             <div class="sidebar-nav">
-                <div class="sidebar-nav-section">Geral</div>
                 <a href="/" class="sidebar-btn {% if active_page == 'index' %}active{% endif %}">Início</a>
-                <a href="/therapy_sessions/new"
-                    class="sidebar-btn {% if active_page == 'new_therapy_session' %}active{% endif %}">Nova sessão de
-                    terapia</a>
-
-                <div class="sidebar-nav-section">Visualizar análises</div>
-                <a href="/viewer/evolution"
-                    class="sidebar-btn {% if active_page == 'evolution' %}active{% endif %}">Evolução por paciente</a>
-                <a href="/viewer/analysis"
-                    class="sidebar-btn {% if active_page == 'analysis' %}active{% endif %}">Análise por sessão</a>
-                <a href="/viewer/compare"
-                    class="sidebar-btn {% if active_page == 'compare' %}active{% endif %}">Comparar análises</a>
+                <a href="/therapy_sessions"
+                    class="sidebar-btn {% if active_page == 'therapy_sessions' %}active{% endif %}">Sessões de terapia</a>
+                <a href="/patients"
+                    class="sidebar-btn {% if active_page == 'patients' %}active{% endif %}">Pacientes</a>
 
                 <div class="sidebar-nav-section">Administração</div>
                 <a href="/admin/transcripts"
@@ -40,6 +40,8 @@
                 <a href="/admin/calculator"
                     class="sidebar-btn {% if active_page == 'admin_calculator' %}active{% endif %}">Calculadora de
                     custos</a>
+                <a href="/admin/compare_tdpm_analysis"
+                    class="sidebar-btn {% if active_page == 'compare' %}active{% endif %}">Comparar análises</a>
             </div>
         </aside>
 

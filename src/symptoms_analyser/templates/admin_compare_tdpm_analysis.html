@@ -1,11 +1,16 @@
 {% extends 'base.html' %}
 {% set active_page = 'compare' %}
 
-{% block title %}Comparar Análises - Symptoms Analyser{% endblock %}
+{% block title %}Comparar análises - Symptoms Analyser{% endblock %}
 
 {% block content %}
-<div id="compareView" class="compare-view">
-    <div class="compare-selectors">
+<div id="compareView" class="main-container compare-view">
+    <div class="page-header">
+        <h2>Comparar análises</h2>
+        <p>Selecione duas análises de sessões de terapia para comparar as avaliações clínicas e as métricas de desregulação (TDPM-20).</p>
+    </div>
+
+    <div class="compare-selectors" style="margin-bottom: 2rem;">
         <div class="file-selector">
             <label for="compareSelect1">Análise A:</label>
             <select id="compareSelect1">
@@ -23,9 +28,8 @@
     <div id="compareDashboard" class="compare-dashboard" style="display: none;">
         <!-- Print-Only Cover Title -->
         <div class="print-only-title">
-            <h1>Relatório Comparativo de Sintomas (TDPM-20)</h1>
-            <p class="print-subtitle">Comparação de dimensões e
-                evidências citadas em sessões de terapia de grupo.</p>
+            <h1>Relatório comparativo de sintomas (TDPM-20)</h1>
+            <p class="print-subtitle">Comparação de dimensões e evidências citadas em sessões de terapia de grupo.</p>
         </div>
 
         <!-- Metadata Card -->
@@ -40,13 +44,12 @@
                         <div class="meta-value" id="compareMetaModel1">-</div>
                         <div class="meta-label">Blocos</div>
                         <div class="meta-value" id="compareMetaChunks1">-</div>
-                        <div class="meta-label">Tempo de Execução</div>
+                        <div class="meta-label">Tempo de execução</div>
                         <div class="meta-value" id="compareMetaTime1">-</div>
-                        <div class="meta-label">Tokens (Prompt/Resposta)</div>
+                        <div class="meta-label">Tokens (prompt/resposta)</div>
                         <div class="meta-value" id="compareMetaTokens1">-</div>
                     </div>
-                    <div id="compareMetaPlaceholder1" class="compare-meta-placeholder">Aguardando Análise A...
-                    </div>
+                    <div id="compareMetaPlaceholder1" class="compare-meta-placeholder">Aguardando análise A...</div>
                 </div>
 
                 <!-- Meta Column B -->
@@ -58,22 +61,18 @@
                         <div class="meta-value" id="compareMetaModel2">-</div>
                         <div class="meta-label">Blocos</div>
                         <div class="meta-value" id="compareMetaChunks2">-</div>
-                        <div class="meta-label">Tempo de Execução</div>
+                        <div class="meta-label">Tempo de execução</div>
                         <div class="meta-value" id="compareMetaTime2">-</div>
-                        <div class="meta-label">Tokens (Prompt/Resposta)</div>
+                        <div class="meta-label">Tokens (prompt/resposta)</div>
                         <div class="meta-value" id="compareMetaTokens2">-</div>
                     </div>
-                    <div id="compareMetaPlaceholder2" class="compare-meta-placeholder">Aguardando Análise B...
-                    </div>
+                    <div id="compareMetaPlaceholder2" class="compare-meta-placeholder">Aguardando análise B...</div>
                 </div>
             </div>
         </div>
         <div class="compare-section-card print-only-legend">
-            <h3 class="legend-title">Guia de Referência Clínico & Escala de Severidade (TDPM-20)</h3>
-            <p class="legend-intro">O instrumento TDPM-20 (Transdiagnostic Dysregulation of the Predostatic
-                Mind) avalia a frequência e intensidade de manifestação
-                de sintomas através de 20 dimensões clínicas. As pontuações são classificadas de acordo com os
-                níveis de severidade abaixo:</p>
+            <h3 class="legend-title">Guia de referência clínico & escala de severidade (TDPM-20)</h3>
+            <p class="legend-intro">O instrumento TDPM-20 (Transdiagnostic Dysregulation of the Predostatic Mind) avalia a frequência e intensidade de manifestação de sintomas através de 20 dimensões clínicas. As pontuações são classificadas de acordo com os níveis de severidade abaixo:</p>
 
             <!-- Horizontal Severity Scale -->
             <div class="legend-scale-row">
@@ -84,8 +83,7 @@
                     </div>
                     <div class="legend-scale-item">
                         <span class="score-badge" data-severity="2">2</span>
-                        <span><strong>Moderada (2):</strong> Manifestações perceptíveis, com impacto clínico
-                            moderado.</span>
+                        <span><strong>Moderada (2):</strong> Manifestações perceptíveis, com impacto clínico moderado.</span>
                     </div>
                     <div class="legend-scale-item">
                         <span class="score-badge" data-severity="3">3</span>
@@ -93,15 +91,14 @@
                     </div>
                     <div class="legend-scale-item">
                         <span class="score-badge" data-severity="4">4</span>
-                        <span><strong>Grave (4):</strong> Manifestação severa e contínua do sintoma
-                            clínico.</span>
+                        <span><strong>Grave (4):</strong> Manifestação severa e contínua do sintoma clínico.</span>
                     </div>
                 </div>
             </div>
 
             <!-- 3-Column Diagnostic Taxonomy -->
             <div class="legend-dimensions-section">
-                <h4>Mapeamento de Dimensões Clínicas & Itens Diagnósticos</h4>
+                <h4>Mapeamento de dimensões clínicas & itens diagnósticos</h4>
                 <div class="ontology-grid">
                     <!-- Column 1 -->
                     <div class="ontology-col">

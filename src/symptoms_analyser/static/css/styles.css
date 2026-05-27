@@ -2423,4 +2423,568 @@ select:focus {
     transform: scale(1.01);
 }
 
+/* Layout & Page Flex Helpers */
+.page-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header-flex-start {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* Button & Nav Helpers */
+.btn-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s;
+}
+
+.back-link:hover {
+    color: var(--primary);
+}
+
+.back-link svg {
+    vertical-align: middle;
+}
+
+/* Table Helpers */
+.clickable-row {
+    cursor: pointer;
+}
+
+.font-semibold {
+    font-weight: 600;
+}
+
+.text-xs-muted {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.participant-badge {
+    font-size: 0.9rem;
+    font-weight: 500;
+    background: #f1f5f9;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+.table-empty-row {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--text-muted);
+}
+
+/* Patients Page / Grid Styles */
+.patients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.patient-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.patient-card-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: var(--primary);
+}
+
+.patient-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.patient-card-id {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.hipaa-status-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background-color: #f1f5f9;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+.patient-secure-tag {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.secure-label {
+    font-size: 0.8rem;
+    background-color: rgba(59, 130, 246, 0.08);
+    color: var(--primary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.secure-value {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.patient-card-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: auto;
+}
+
+.footer-item {
+    /* flex item */
+}
+
+.footer-item.text-right {
+    text-align: right;
+}
+
+.footer-label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.footer-value {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.footer-value-primary {
+    font-size: 1.1rem;
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.patients-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+}
+
+/* Patient Detail & Session Detail Elements */
+.analysis-selector-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border-left: 5px solid var(--primary);
+    background-color: var(--card-bg);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.patient-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.patient-id-title {
+    margin: 0;
+}
+
+.hipaa-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
+    background-color: rgba(59, 130, 246, 0.08);
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.patient-meta-desc {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.patient-sessions-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.patient-sessions-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.flex-gap-xs {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.session-pill-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--primary);
+    background-color: #f1f5f9;
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.session-pill-link:hover {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.patient-no-sessions {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.welcome-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3rem 1rem;
+}
+
+.evolution-dashboard {
+    display: none;
+}
+
+/* Compare Selectors / Views */
+.compare-selectors-margin {
+    margin-bottom: 2rem;
+}
+
+.compare-dashboard-view {
+    display: none;
+}
+
+.flex-column-gap {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
+}
+
+.session-participants-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--shadow);
+}
+
+.session-participants-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+}
+
+.flex-wrap-gap-sm {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.patient-pill-link {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--primary);
+    background-color: rgba(59, 130, 246, 0.1);
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    transition: all 0.2s;
+}
+
+.patient-pill-link:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.transcript-body-scroll {
+    display: none;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    background-color: #fafafa;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.transcript-tab-row {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.transcript-content-pre {
+    font-family: 'Inter', system-ui, sans-serif;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.7;
+    color: var(--text-main);
+    font-size: 0.925rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.processing-centered {
+    display: block;
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.flex-align-center-gap {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.flex-align-center-gap-sm {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem;
+}
+
+/* ==========================================================================
+   Therapy Session Detail Page
+   ========================================================================== */
+
+/* Session header title row (name + status badge inline) */
+.session-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Subtitle / meta description line below the session title */
+.session-meta-line {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+/* SVG icon inside a button (vertical alignment) */
+.btn-svg-icon {
+    vertical-align: middle;
+}
+
+/* Transcript collapsible section wrapper (top spacing) */
+.transcript-collapsible-section {
+    margin-top: 3rem;
+}
+
+/* Icon emoji in the transcript accordion header */
+.transcript-icon {
+    font-size: 1.2rem;
+}
+
+/* Title text in the transcript accordion header */
+.transcript-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--text-main);
+}
+
+/* Toggle indicator ("Expandir ▼") in the transcript accordion header */
+.transcript-toggle-indicator {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* Small padding variant for transcript / section header buttons */
+.btn-transcript-tab {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+
+/* Section header with tighter top margin (used in template) */
+.section-header-top {
+    margin: 1.5rem 0 1rem;
+}
+
+/* Section header with larger top margin */
+.section-header-major {
+    margin: 2.5rem 0 1rem;
+}
+
+/* Max-width centered results container */
+.calc-results-centered {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Larger spinner for processing states */
+.spinner-lg {
+    width: 50px;
+    height: 50px;
+    border-width: 4px;
+    margin-bottom: 1.5rem;
+}
+
+/* Larger log console with dark theme (active pipeline view) */
+.log-console-lg {
+    background-color: #1e293b;
+    color: #f8fafc;
+    padding: 1.25rem;
+    height: 220px;
+    font-size: 0.875rem;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    line-height: 1.6;
+}
+
+/* Muted / inactive initial log entry */
+.log-entry-muted {
+    color: #64748b;
+}
+
+/* State 3: Upload / no-transcript header block */
+.upload-state-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.upload-state-title {
+    font-size: 1.4rem;
+    margin: 0.5rem 0;
+    color: var(--text-main);
+}
+
+.upload-state-desc {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Error banner shown when a previous upload attempt failed */
+.upload-error-banner {
+    background-color: rgba(239, 68, 68, 0.08);
+    border-left: 4px solid var(--error, #ef4444);
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.upload-error-label {
+    color: var(--error, #ef4444);
+}
+
+.upload-error-message {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    margin-top: 0.25rem;
+    font-family: monospace;
+}
+
+/* Remove file button (error-coloured secondary button) */
+.btn-remove-file {
+    padding: 0.4rem 0.8rem;
+    color: var(--error, #ef4444);
+    border-color: rgba(239, 68, 68, 0.2);
+    background: white;
+}
+
+/* Parameters / options box in the upload form */
+.parameters-box {
+    background-color: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+}
+
+.parameters-box-title {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-main);
+}
+
+
 

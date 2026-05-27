@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startBtn');
     const newSessionView = document.getElementById('newSessionView');
     const processingView = document.getElementById('processingView');
-    
+
     // Status Console
     const statusTitle = document.getElementById('statusTitle');
     const statusDesc = document.getElementById('statusDesc');
@@ -42,10 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     enableImportOpt.addEventListener('change', () => {
         if (enableImportOpt.checked) {
             importContainer.style.display = 'block';
-            startBtn.textContent = 'Salvar e Analisar Transcrição';
+            startBtn.textContent = 'Salvar e analisar transcrição';
         } else {
             importContainer.style.display = 'none';
-            startBtn.textContent = 'Registrar Sessão';
+            startBtn.textContent = 'Registrar sessão';
         }
     });
 
@@ -153,8 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // Successful manual creation without file
                     alert('Sessão registrada com sucesso no banco de dados!');
-                    // Redirect to sessions listings table inside monitor
-                    window.location.href = '/admin/transcripts';
+                    // Redirect to sessions list
+                    window.location.href = '/therapy_sessions';
                 }
             } else {
                 handleError(data.error || 'Erro no registro da sessão.');
@@ -167,10 +167,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function addLog(msg, type = 'normal') {
         const entry = document.createElement('div');
         entry.className = `log-entry ${type === 'success' ? 'success-text' : type === 'error' ? 'error-text' : ''}`;
-        
+
         const time = new Date().toLocaleTimeString();
         entry.textContent = `[${time}] ${msg}`;
-        
+
         logConsole.appendChild(entry);
         logConsole.scrollTop = logConsole.scrollHeight;
     }

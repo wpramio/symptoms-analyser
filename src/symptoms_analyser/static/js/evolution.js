@@ -82,18 +82,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Step 1: Group by session base name, selecting the latest run
             const latestRunsMap = {};
             files.forEach(file => {
-                const parts = file.name.split('.');
-                if (parts.length < 3) return; // Expecting session_name.run_timestamp.tdpm.json
-                
-                const baseSession = parts[0];
-                const runTimestamp = parts[1];
-
-                if (!latestRunsMap[baseSession] || runTimestamp > latestRunsMap[baseSession].timestamp) {
-                    latestRunsMap[baseSession] = {
-                        base: baseSession,
+                // Split by " (" to isolate the session base name from clinician info
+                const sessionBase = file.name.split(' (')[0];
+                if (!latestRunsMap[sessionBase]) {
+                    latestRunsMap[sessionBase] = {
+                        base: sessionBase,
                         name: file.name,
-                        path: file.path,
-                        timestamp: runTimestamp
+                        path: file.path
                     };
                 }
             });
@@ -109,7 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         let clinicalDateStr = sess.base.replace('session_', '').replace('synthetic_from_scratch_', '');
                         clinicalDateStr = clinicalDateStr.replace(/_/g, '-');
                         
-                        if (clinicalDateStr.length === 15 && clinicalDateStr.includes('-')) {
+                        // Check if there is a date of format DD/MM/YYYY in sess.base
+                        const ddmmyyyyMatch = sess.base.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                        if (ddmmyyyyMatch) {
+                            clinicalDateStr = `${ddmmyyyyMatch[3]}-${ddmmyyyyMatch[2]}-${ddmmyyyyMatch[1]}`;
+                        } else if (clinicalDateStr.length === 15 && clinicalDateStr.includes('-')) {
                             // synthetic_from_scratch_YYYYMMDD_HHMMSS -> YYYY-MM-DD
                             const datePart = clinicalDateStr.split('-')[0];
                             clinicalDateStr = `${datePart.substring(0, 4)}-${datePart.substring(4, 6)}-${datePart.substring(6, 8)}`;

@@ -15,13 +15,18 @@ from symptoms_analyser.controllers.admin import (
     get_sanitization_telemetry,
     get_stats,
     get_transcripts,
+    get_patients_list_with_stats,
+    get_patient_evolution_data,
 )
 from symptoms_analyser.controllers.pipeline import get_evaluation_payload, list_evaluation_ids
-from symptoms_analyser.controllers.sessions import (
+from symptoms_analyser.controllers.therapy_sessions import (
     allowed_file,
     create_session_from_parameters,
     handle_session_upload_task,
     tasks,
+    get_therapy_sessions,
+    get_therapy_session_detail,
+    get_session_transcript_status,
 )
 from symptoms_analyser.utils import DB_PATH
 
@@ -53,20 +58,104 @@ def new_therapy_session():
     return render_template("new_therapy_session.html")
 
 
-@app.route("/viewer")
-@app.route("/viewer/analysis")
-def viewer_analysis():
-    return render_template("viewer_analysis.html")
+@app.route("/therapy_sessions")
+def therapy_sessions():
+    try:
+        sessions = get_therapy_sessions()
+        return render_template("therapy_sessions.html", sessions=sessions)
+    except Exception as e:
+        print(f"Error serving therapy sessions list: {e}")
+        return str(e), 500
 
 
-@app.route("/viewer/compare")
-def viewer_compare():
-    return render_template("viewer_compare.html")
+@app.route("/therapy_sessions/<int:session_id>")
+def therapy_session_detail(session_id):
+    try:
+        data = get_therapy_session_detail(session_id)
+        if not data:
+            return "Session not found", 404
+        return render_template(
+            "therapy_session_detail.html",
+            session=data["session"],
+            patients_list=data["patients_list"],
+            transcript=data["transcript"],
+            evaluation_id=data["evaluation_id"]
+        )
+    except Exception as e:
+        print(f"Error serving session detail for {session_id}: {e}")
+        return str(e), 500
 
 
-@app.route("/viewer/evolution")
-def viewer_evolution():
-    return render_template("viewer_evolution.html")
+@app.route("/therapy_sessions/<int:session_id>/upload_transcript", methods=["POST"])
+def therapy_session_upload_transcript(session_id):
+    try:
+        skip_sanitization = request.form.get("skip_sanitization") == "true"
+        form_data = {
+            "skip_sanitization": skip_sanitization,
+            "therapy_session_id": str(session_id)
+        }
+        
+        if "file" not in request.files or request.files["file"].filename == "":
+            return jsonify({"error": "No file uploaded"}), 400
+            
+        file = request.files["file"]
+        if not allowed_file(file.filename):
+            return jsonify({"error": "File type not allowed"}), 400
+            
+        filename = secure_filename(file.filename)
+        filepath = UPLOAD_FOLDER / filename
+        file.save(filepath)
+        
+        task_id = handle_session_upload_task(filepath, form_data)
+        return jsonify({"success": True, "task_id": task_id})
+    except Exception as e:
+        print(f"Error in upload for session {session_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sessions/<int:session_id>/status")
+def get_session_status(session_id):
+    try:
+        return jsonify(get_session_transcript_status(session_id))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/patients")
+def patients():
+    try:
+        patient_list = get_patients_list_with_stats()
+        return render_template("patients.html", patients=patient_list)
+    except Exception as e:
+        print(f"Error serving patients list: {e}")
+        return str(e), 500
+
+
+@app.route("/patients/<patient_id>")
+def patient_detail(patient_id):
+    try:
+        data = get_patient_evolution_data(patient_id)
+        if not data:
+            return "Patient not found", 404
+        return render_template(
+            "patient_detail.html",
+            patient=data["patient"],
+            sessions=data["sessions"],
+            timeline=data["timeline"],
+            kpis=data["kpis"],
+            heatmap_dims=data["heatmap_dims"],
+            chart_labels=data["chart_labels"],
+            chart_totals=data["chart_totals"],
+            chart_dimensions=data["chart_dimensions"],
+        )
+    except Exception as e:
+        print(f"Error serving patient detail: {e}")
+        return str(e), 500
+
+
+@app.route("/admin/compare_tdpm_analysis")
+def admin_compare_tdpm_analysis():
+    return render_template("admin_compare_tdpm_analysis.html")
 
 
 @app.route("/admin/transcripts")
