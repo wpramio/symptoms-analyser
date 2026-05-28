@@ -23,7 +23,7 @@ from symptoms_analyser.utils import (
     MODEL, LLM_BASE_URL, LLM_API_KEY,
     split_into_chunks, merge_chunks, Spinner
 )
-import symptoms_analyser.orm as orm
+import symptoms_analyser.db as orm
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[3] / "prompts"

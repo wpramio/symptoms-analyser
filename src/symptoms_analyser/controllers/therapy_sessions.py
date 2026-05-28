@@ -1,6 +1,6 @@
 from typing import Dict, Any, Optional
 
-import symptoms_analyser.orm as orm
+import symptoms_analyser.db as orm
 from symptoms_analyser.controllers.transcript_upload import (
     allowed_file,
     handle_transcript_upload,

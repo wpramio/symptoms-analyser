@@ -9,7 +9,7 @@ import json
 import sqlite3
 from typing import Any, Optional
 
-from symptoms_analyser.db import get_db
+from .connection import get_db
 
 
 def create_therapy_session(

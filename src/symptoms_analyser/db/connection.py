@@ -1,16 +1,7 @@
 """
-db.py
------
-Shared SQLite connection factory for short-lived, per-request connections in app.py.
-
-Usage:
-    from symptoms_analyser.db import get_db
-
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT ...")
-        rows = cursor.fetchall()
-        # connection is auto-closed on context exit
+connection.py
+-------------
+Shared SQLite connection factory for short-lived, per-request connections.
 """
 
 import sqlite3

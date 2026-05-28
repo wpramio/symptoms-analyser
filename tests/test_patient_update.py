@@ -67,7 +67,7 @@ def mock_get_db(test_db_path):
     return _get_db
 
 def test_update_patient_validation(mock_get_db):
-    with mock.patch("symptoms_analyser.orm.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
         res, code = update_patient("", "", "")
         assert code == 400
         assert "Dados inválidos" in res["error"]
@@ -77,19 +77,19 @@ def test_update_patient_validation(mock_get_db):
         assert "Pseudônimo deve seguir o formato" in res["error"]
 
 def test_update_patient_not_found(mock_get_db):
-    with mock.patch("symptoms_analyser.orm.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
         res, code = update_patient("Paciente999", "Paciente999", "No Name")
         assert code == 404
         assert "Paciente não encontrado" in res["error"]
 
 def test_update_patient_pseudonym_collision(mock_get_db):
-    with mock.patch("symptoms_analyser.orm.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
         res, code = update_patient("Paciente1", "Paciente2", "John Doe")
         assert code == 409
         assert "já está cadastrado para outro paciente" in res["error"]
 
 def test_update_patient_success_real_name_only(mock_get_db):
-    with mock.patch("symptoms_analyser.orm.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
         res, code = update_patient("Paciente1", "Paciente1", "John Smith")
         assert code == 200
         assert "Paciente atualizado com sucesso" in res["message"]
@@ -99,7 +99,7 @@ def test_update_patient_success_real_name_only(mock_get_db):
             assert row["real_name"] == "John Smith"
 
 def test_update_patient_success_full(mock_get_db):
-    with mock.patch("symptoms_analyser.orm.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
         res, code = update_patient("Paciente1", "Paciente8", "John Legend")
         assert code == 200
         assert "Paciente atualizado com sucesso" in res["message"]

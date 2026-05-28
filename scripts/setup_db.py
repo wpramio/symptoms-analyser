@@ -19,7 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from symptoms_analyser.utils import DB_PATH
 
-SCHEMA_PATH = PROJECT_ROOT / "src" / "symptoms_analyser" / "schema.sql"
+SCHEMA_PATH = PROJECT_ROOT / "src" / "symptoms_analyser" / "db" / "schema.sql"
 
 def setup_database(db_path: Path = DB_PATH) -> sqlite3.Connection:
     """Initializes the database schema using the centralized schema.sql file."""

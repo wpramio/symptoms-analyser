@@ -15,7 +15,7 @@ from typing import Dict, List, Optional, Tuple
 from docx import Document
 
 from symptoms_analyser.utils import TIMESTAMP_RE
-import symptoms_analyser.orm as orm
+import symptoms_analyser.db as orm
 
 
 # Header patterns: lines like "16 de mar. de 2026" or "Reunião em ... - Transcrição"

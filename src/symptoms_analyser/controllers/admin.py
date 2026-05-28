@@ -192,7 +192,7 @@ def update_patient(original_id: str | None, new_pseudonym: str | None, new_real_
     if not re.match(r"^Paciente\d+$", new_pseudonym):
         return {"error": "Pseudônimo deve seguir o formato 'PacienteX' (ex: Paciente8)"}, 400
 
-    from symptoms_analyser.orm import update_patient as orm_update_patient
+    from symptoms_analyser.db import update_patient as orm_update_patient
     try:
         orm_update_patient(original_id, new_pseudonym, new_real_name)
     except ValueError as e:

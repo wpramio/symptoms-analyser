@@ -14,7 +14,7 @@ from typing import Dict, Any
 from werkzeug.utils import secure_filename
 
 from symptoms_analyser.utils import DB_PATH
-import symptoms_analyser.orm as orm
+import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text_and_create_transcript, anonymize_transcript
 from symptoms_analyser.pipeline.sanitization import sanitize_text_with_llm
 from symptoms_analyser.pipeline.tdpm_analysis import tdpm_analysis_with_llm
