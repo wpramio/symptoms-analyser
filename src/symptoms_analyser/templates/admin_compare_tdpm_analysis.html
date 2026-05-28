@@ -11,28 +11,28 @@
             desregulação (TDPM-20).</p>
     </div>
 
-    <div class="compare-selectors">
-        <div class="file-selector">
-            <label for="compareSelect1">Análise A:</label>
-            <select id="compareSelect1">
-                <option value="" disabled {% if not selected_a %}selected{% endif %}>Selecione a análise A...</option>
-                {% for item in evaluations_list %}
-                <option value="{{ item.path }}" {% if selected_a==item.path %}selected{% endif %}>{{ item.name }}
-                </option>
-                {% endfor %}
-            </select>
+    <form method="GET" action="/admin/compare_tdpm_analysis">
+        <div class="compare-selectors">
+            <div class="file-selector">
+                <label for="compareSelect1">Análise A:</label>
+                <select id="compareSelect1" name="a" onchange="this.form.submit()">
+                    <option value="" disabled {% if not selected_a %}selected{% endif %}>Selecione a análise A...</option>
+                    {% for item in evaluations_list %}
+                    <option value="{{ item.path }}" {% if selected_a==item.path %}selected{% endif %}>{{ item.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="file-selector">
+                <label for="compareSelect2">Análise B:</label>
+                <select id="compareSelect2" name="b" onchange="this.form.submit()">
+                    <option value="" disabled {% if not selected_b %}selected{% endif %}>Selecione a análise B...</option>
+                    {% for item in evaluations_list %}
+                    <option value="{{ item.path }}" {% if selected_b==item.path %}selected{% endif %}>{{ item.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-        <div class="file-selector">
-            <label for="compareSelect2">Análise B:</label>
-            <select id="compareSelect2">
-                <option value="" disabled {% if not selected_b %}selected{% endif %}>Selecione a análise B...</option>
-                {% for item in evaluations_list %}
-                <option value="{{ item.path }}" {% if selected_b==item.path %}selected{% endif %}>{{ item.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
+    </form>
 
     {% if data_a or data_b %}
     <div id="compareDashboard" class="compare-dashboard">
