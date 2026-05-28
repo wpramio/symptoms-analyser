@@ -4,28 +4,38 @@
 {% block title %}Comparar análises - Symptoms Analyser{% endblock %}
 
 {% block content %}
-<div id="compareView" class="main-container compare-view">
+<div id="compareView" class="main-container">
     <div class="page-header">
         <h2>Comparar análises</h2>
-        <p>Selecione duas análises de sessões de terapia para comparar as avaliações clínicas e as métricas de desregulação (TDPM-20).</p>
+        <p>Selecione duas análises de sessões de terapia para comparar as avaliações clínicas e as métricas de
+            desregulação (TDPM-20).</p>
     </div>
 
-    <div class="compare-selectors" style="margin-bottom: 2rem;">
+    <div class="compare-selectors">
         <div class="file-selector">
             <label for="compareSelect1">Análise A:</label>
             <select id="compareSelect1">
-                <option value="" disabled selected>Selecione a análise A...</option>
+                <option value="" disabled {% if not selected_a %}selected{% endif %}>Selecione a análise A...</option>
+                {% for item in evaluations_list %}
+                <option value="{{ item.path }}" {% if selected_a==item.path %}selected{% endif %}>{{ item.name }}
+                </option>
+                {% endfor %}
             </select>
         </div>
         <div class="file-selector">
             <label for="compareSelect2">Análise B:</label>
             <select id="compareSelect2">
-                <option value="" disabled selected>Selecione a análise B...</option>
+                <option value="" disabled {% if not selected_b %}selected{% endif %}>Selecione a análise B...</option>
+                {% for item in evaluations_list %}
+                <option value="{{ item.path }}" {% if selected_b==item.path %}selected{% endif %}>{{ item.name }}
+                </option>
+                {% endfor %}
             </select>
         </div>
     </div>
 
-    <div id="compareDashboard" class="compare-dashboard" style="display: none;">
+    {% if data_a or data_b %}
+    <div id="compareDashboard" class="compare-dashboard">
         <!-- Print-Only Cover Title -->
         <div class="print-only-title">
             <h1>Relatório comparativo de sintomas (TDPM-20)</h1>
@@ -37,42 +47,65 @@
             <div class="compare-grid">
                 <!-- Meta Column A -->
                 <div>
-                    <div class="meta-card" id="compareMetaCard1" style="display: none;">
+                    {% if data_a %}
+                    <div class="meta-card" id="compareMetaCard1">
                         <div class="meta-label">Sessão</div>
-                        <div class="meta-value" id="compareMetaSession1">-</div>
+                        <div class="meta-value">{{ data_a.session or '-' }}</div>
                         <div class="meta-label">Modelo</div>
-                        <div class="meta-value" id="compareMetaModel1">-</div>
+                        <div class="meta-value">{{ data_a.model or '-' }}</div>
                         <div class="meta-label">Blocos</div>
-                        <div class="meta-value" id="compareMetaChunks1">-</div>
+                        <div class="meta-value">{{ data_a.chunks_analyzed or '-' }}</div>
                         <div class="meta-label">Tempo de execução</div>
-                        <div class="meta-value" id="compareMetaTime1">-</div>
+                        <div class="meta-value">{% if data_a.total_elapsed_seconds %}{{ data_a.total_elapsed_seconds
+                            }}s{% else %}-{% endif %}</div>
                         <div class="meta-label">Tokens (prompt/resposta)</div>
-                        <div class="meta-value" id="compareMetaTokens1">-</div>
+                        <div class="meta-value">
+                            {% if data_a.token_usage %}
+                            {{ data_a.token_usage.prompt_tokens }} / {{ data_a.token_usage.completion_tokens }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </div>
                     </div>
+                    {% else %}
                     <div id="compareMetaPlaceholder1" class="compare-meta-placeholder">Aguardando análise A...</div>
+                    {% endif %}
                 </div>
 
                 <!-- Meta Column B -->
                 <div>
-                    <div class="meta-card" id="compareMetaCard2" style="display: none;">
+                    {% if data_b %}
+                    <div class="meta-card" id="compareMetaCard2">
                         <div class="meta-label">Sessão</div>
-                        <div class="meta-value" id="compareMetaSession2">-</div>
+                        <div class="meta-value">{{ data_b.session or '-' }}</div>
                         <div class="meta-label">Modelo</div>
-                        <div class="meta-value" id="compareMetaModel2">-</div>
+                        <div class="meta-value">{{ data_b.model or '-' }}</div>
                         <div class="meta-label">Blocos</div>
-                        <div class="meta-value" id="compareMetaChunks2">-</div>
+                        <div class="meta-value">{{ data_b.chunks_analyzed or '-' }}</div>
                         <div class="meta-label">Tempo de execução</div>
-                        <div class="meta-value" id="compareMetaTime2">-</div>
+                        <div class="meta-value">{% if data_b.total_elapsed_seconds %}{{ data_b.total_elapsed_seconds
+                            }}s{% else %}-{% endif %}</div>
                         <div class="meta-label">Tokens (prompt/resposta)</div>
-                        <div class="meta-value" id="compareMetaTokens2">-</div>
+                        <div class="meta-value">
+                            {% if data_b.token_usage %}
+                            {{ data_b.token_usage.prompt_tokens }} / {{ data_b.token_usage.completion_tokens }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </div>
                     </div>
+                    {% else %}
                     <div id="compareMetaPlaceholder2" class="compare-meta-placeholder">Aguardando análise B...</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
+
         <div class="compare-section-card print-only-legend">
             <h3 class="legend-title">Guia de referência clínico & escala de severidade (TDPM-20)</h3>
-            <p class="legend-intro">O instrumento TDPM-20 (Transdiagnostic Dysregulation of the Predostatic Mind) avalia a frequência e intensidade de manifestação de sintomas através de 20 dimensões clínicas. As pontuações são classificadas de acordo com os níveis de severidade abaixo:</p>
+            <p class="legend-intro">O instrumento TDPM-20 (Transdiagnostic Dysregulation of the Predostatic Mind) avalia
+                a frequência e intensidade de manifestação de sintomas através de 20 dimensões clínicas. As pontuações
+                são classificadas de acordo com os níveis de severidade abaixo:</p>
 
             <!-- Horizontal Severity Scale -->
             <div class="legend-scale-row">
@@ -83,7 +116,8 @@
                     </div>
                     <div class="legend-scale-item">
                         <span class="score-badge" data-severity="2">2</span>
-                        <span><strong>Moderada (2):</strong> Manifestações perceptíveis, com impacto clínico moderado.</span>
+                        <span><strong>Moderada (2):</strong> Manifestações perceptíveis, com impacto clínico
+                            moderado.</span>
                     </div>
                     <div class="legend-scale-item">
                         <span class="score-badge" data-severity="3">3</span>
@@ -256,16 +290,92 @@
             </div>
         </div>
 
+        {% if data_a and data_b and aligned_data %}
         <!-- Toggle All Button -->
         <div class="compare-actions-row" id="compareActions">
             <button id="btnToggleAll" class="btn-toggle-all">Expandir tudo</button>
         </div>
+        {% endif %}
 
         <!-- Dynamic Patient Cards Container -->
-        <div id="comparePatientsContent" style="display: flex; flex-direction: column; gap: 2rem; width: 100%;">
-            <!-- Populated dynamically by JS -->
+        <div id="comparePatientsContent" class="compare-patients-content">
+            {% for patient in aligned_data %}
+            <div class="compare-section-card patient-compare-card">
+                <h3 class="patient-compare-title">Paciente: {{ patient.name }}</h3>
+                <div class="compare-dimensions-list">
+                    {% if patient.dimensions %}
+                    {% for dim in patient.dimensions %}
+                    <div class="dimension-item">
+                        <div class="dimension-header compare-header">
+                            <span class="dimension-name">{{ dim.key }}. {{ dim.name }}</span>
+                            <div class="compare-badge-pair">
+                                <span class="score-badge" data-severity="{{ dim.sev1 }}">
+                                    {% if dim.sev1 > 0 %}{{ dim.score1 }}/{{ dim.max_size }}{% else %}-{% endif %}
+                                </span>
+                                <span class="compare-trend-indicator {{ dim.change_class }}"
+                                    title="{{ dim.change_label }}">
+                                    {{ dim.change_symbol }}
+                                </span>
+                                <span class="score-badge" data-severity="{{ dim.sev2 }}">
+                                    {% if dim.sev2 > 0 %}{{ dim.score2 }}/{{ dim.max_size }}{% else %}-{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="dimension-body">
+                            <div class="compare-grid">
+                                <div>
+                                    <h5 class="column-title">Evidências (Sessão A)</h5>
+                                    {% if dim.items1 %}
+                                    {% for item in dim.items1 %}
+                                    <div class="compare-item-evidence-block">
+                                        <strong>{{ item.id }} - {{ item.name }} <span class="score-badge"
+                                                data-severity="{{ item.score }}">{{ item.score }}</span></strong>
+                                        <ul>
+                                            {% for ev in item.evidence %}
+                                            <li>"{{ ev }}"</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <p class="no-evidence">Nenhuma evidência clínica.</p>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <h5 class="column-title">Evidências (Sessão B)</h5>
+                                    {% if dim.items2 %}
+                                    {% for item in dim.items2 %}
+                                    <div class="compare-item-evidence-block">
+                                        <strong>{{ item.id }} - {{ item.name }} <span class="score-badge"
+                                                data-severity="{{ item.score }}">{{ item.score }}</span></strong>
+                                        <ul>
+                                            {% for ev in item.evidence %}
+                                            <li>"{{ ev }}"</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <p class="no-evidence">Nenhuma evidência clínica.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="no-symptoms-found">Nenhum sintoma detectado em nenhuma das sessões.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="compare-section-card">
+                <p class="no-symptoms-found">Nenhum sintoma detectado em nenhuma das sessões selecionadas.</p>
+            </div>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

@@ -18,7 +18,7 @@ from symptoms_analyser.controllers.admin import (
     get_patients_list_with_stats,
     get_patient_evolution_data,
 )
-from symptoms_analyser.controllers.pipeline import get_evaluation_payload, list_evaluation_ids
+from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.therapy_sessions import (
     handle_new_therapy_session,
     get_therapy_sessions,
@@ -153,7 +153,45 @@ def patient_detail(patient_id):
 
 @app.route("/admin/compare_tdpm_analysis")
 def admin_compare_tdpm_analysis():
-    return render_template("admin_compare_tdpm_analysis.html")
+    # 1. Fetch available evaluations list for the dropdown selectors
+    evaluations_list = list_evaluation_ids()
+    
+    # 2. Retrieve A and B parameters (path or ID)
+    a_param = request.args.get("a", "")
+    b_param = request.args.get("b", "")
+    
+    # Extract IDs if paths are passed
+    def extract_id(val):
+        if not val:
+            return ""
+        if val.startswith("/api/evaluations/"):
+            return val.split("/")[-1]
+        return val
+        
+    eval_id_a = extract_id(a_param)
+    eval_id_b = extract_id(b_param)
+    
+    data_a = None
+    data_b = None
+    aligned_data = []
+    
+    if eval_id_a:
+        data_a = get_evaluation_payload(eval_id_a)
+    if eval_id_b:
+        data_b = get_evaluation_payload(eval_id_b)
+        
+    if data_a or data_b:
+        aligned_data = align_evaluations(data_a, data_b)
+        
+    return render_template(
+        "admin_compare_tdpm_analysis.html",
+        evaluations_list=evaluations_list,
+        selected_a=a_param or (f"/api/evaluations/{eval_id_a}" if eval_id_a else ""),
+        selected_b=b_param or (f"/api/evaluations/{eval_id_b}" if eval_id_b else ""),
+        data_a=data_a,
+        data_b=data_b,
+        aligned_data=aligned_data
+    )
 
 
 @app.route("/admin/transcripts")

@@ -1088,6 +1088,7 @@ select:focus {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    margin-bottom: 2rem;
 }
 
 .compare-selectors .file-selector {
@@ -3249,6 +3250,13 @@ select:focus {
 }
 
 /* Hide the processing console initially on the upload view */
-#newSessionView ~ #processingView {
+#newSessionView~#processingView {
     display: none;
+}
+
+.compare-patients-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
 }
