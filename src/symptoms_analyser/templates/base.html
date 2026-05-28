@@ -57,36 +57,74 @@
     <div id="toastNotification" class="toast-notification"></div>
 
     <script>
-        window.showToast = function(message, type = 'success') {
+        window.showToast = function (message, type = 'success') {
             const toast = document.getElementById('toastNotification');
             if (!toast) return;
-            
+
             toast.textContent = message;
             toast.className = 'toast-notification'; // Reset classes
-            
+
             if (type === 'error') {
                 toast.classList.add('error');
             }
-            
+
             toast.classList.add('active');
-            
+
             if (toast.timeoutId) {
                 clearTimeout(toast.timeoutId);
             }
-            
+
             toast.timeoutId = setTimeout(() => {
                 toast.classList.remove('active');
             }, 4000);
         };
 
         // Render any server-side flashed messages automatically
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              window.showToast({{ message | tojson }}, {{ category | tojson }});
-            {% endfor %}
-          {% endif %}
+        {% with messages = get_flashed_messages(with_categories = true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        window.showToast({{ message | tojson }}, {{ category | tojson }});
+        {% endfor %}
+        {% endif %}
         {% endwith %}
+
+        // Generic Modal Opener and Closer Logic
+        document.addEventListener("DOMContentLoaded", function () {
+            // Open modal via data-open
+            document.querySelectorAll("[data-open]").forEach(trigger => {
+                trigger.addEventListener("click", function () {
+                    const modalId = this.getAttribute("data-open");
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.classList.add("active");
+
+                        // Dispatch a custom event so specific pages can populate content
+                        const event = new CustomEvent("modal:open", {
+                            detail: { trigger: this }
+                        });
+                        modal.dispatchEvent(event);
+                    }
+                });
+            });
+
+            // Close modal via data-close
+            document.querySelectorAll("[data-close]").forEach(trigger => {
+                trigger.addEventListener("click", function () {
+                    const modalId = this.getAttribute("data-close");
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.classList.remove("active");
+                    }
+                });
+            });
+
+            // Close modal when clicking on the backdrop
+            window.addEventListener("click", function (e) {
+                if (e.target.classList.contains("base-modal")) {
+                    e.target.classList.remove("active");
+                }
+            });
+        });
     </script>
 </body>
 

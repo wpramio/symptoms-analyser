@@ -1,0 +1,21 @@
+{% macro modal(id, title, form_id=None, action=None, method="POST", size="medium") %}
+<div id="{{ id }}" class="base-modal">
+    <div class="base-modal-content {{ size }}">
+        <div class="base-modal-header">
+            <h3 class="base-modal-title">{{ title }}</h3>
+            <button type="button" class="base-modal-close-btn" data-close="{{ id }}">&times;</button>
+        </div>
+        <div class="base-modal-body">
+            {% if form_id %}
+            <form id="{{ form_id }}" {% if action %}action="{{ action }}"{% endif %} method="{{ method }}">
+            {% endif %}
+            
+                {{ caller() }}
+                
+            {% if form_id %}
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
