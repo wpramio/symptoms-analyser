@@ -1,33 +1,69 @@
 {% extends 'base.html' %}
 {% set active_page = 'admin_transcripts' %}
 
-{% block title %}Monitor de Pipelines - Symptoms Analyser{% endblock %}
+{% block title %}Transcrições e análises - Symptoms Analyser{% endblock %}
 
 {% block content %}
 <div class="calculator-view">
     <div class="calc-header">
-        <h2>Pipelines e ingestão</h2>
+        <h2>Transcrições e análises</h2>
         <p>Monitoramento técnico e telemetria de processamento de transcrições.</p>
     </div>
 
     <!-- Section 1: Jobs Queue & Progress matching .calc-results table container -->
     <div class="calc-results margin-bottom-large">
-        <h3>Fila de ingestão e status de execução</h3>
+        <h3>Transcrições</h3>
         <div class="table-container">
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-25">ID da ingestão</th>
-                        <th class="col-width-25">Nome do arquivo</th>
+                        <th class="col-width-10">ID</th>
+                        <th class="col-width-40">Nome do arquivo</th>
                         <th class="col-width-15">Tamanho</th>
                         <th class="col-width-20">Status</th>
-                        <th class="col-width-15">Data de ingestão</th>
+                        <th class="col-width-15">Data de upload</th>
                     </tr>
                 </thead>
                 <tbody id="jobsTableBody">
+                    {% if jobs %}
+                    {% for job in jobs %}
                     <tr>
-                        <td colspan="5" class="table-empty-row">Carregando estado das pipelines...</td>
+                        <td><strong class="text-primary">{{ job.id }}</strong></td>
+                        <td>{{ job.filename }}</td>
+                        <td>{{ job.file_size_bytes | format_bytes }}</td>
+                        <td>
+                            <div class="status-badge {% if job.status == 'failed' %}cursor-pointer{% endif %}"
+                                data-status="{{ job.status }}" data-id="{{ job.id }}">
+                                {% if job.status == 'queued' %}Na Fila
+                                {% elif job.status == 'preprocessing' %}Pré-processando
+                                {% elif job.status == 'preprocessed' %}Pré-processado
+                                {% elif job.status == 'analyzing' %}Analisando
+                                {% elif job.status == 'completed' %}Concluído
+                                {% elif job.status == 'failed' %}Falha (Ver erro)
+                                {% else %}{{ job.status }}{% endif %}
+                            </div>
+                            {% if job.status == 'preprocessing' or job.status == 'analyzing' %}
+                            <div class="margin-top-small">
+                                <div class="text-muted font-bold text-small d-flex-between">
+                                    <span>{% if job.status == 'preprocessing' %}Pré-processando{% else %}Analisando{%
+                                        endif %}</span>
+                                    <span>{{ job.progress_percent | int }}%</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" style="width: {{ job.progress_percent }}%"></div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted text-medium">{{ job.created_at | format_datetime }}</td>
                     </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted padding-large">Nenhuma transcrição registrada no
+                            banco de dados.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -49,30 +85,55 @@
                     </tr>
                 </thead>
                 <tbody id="sessionsTableBody">
+                    {% if sessions %}
+                    {% for s in sessions %}
                     <tr>
-                        <td colspan="5" class="table-empty-row">Carregando sessões de terapia...</td>
+                        <td><strong class="text-primary">#{{ s.id }}</strong></td>
+                        <td><strong class="text-main text-medium">{{ s.name }}</strong></td>
+                        <td class="text-medium">
+                            <span>{{ s.clinician_name }}</span><br>
+                            <span class="text-muted text-small">ID: {{ s.clinician_id }}</span>
+                        </td>
+                        <td class="text-small text-muted">
+                            <strong>{{ s.start_at | format_datetime }}</strong><br>
+                            <span>Duração: {{ s.duration }} min</span>
+                        </td>
+                        <td>
+                            <span class="session-patients-badge">
+                                {{ s.patients }}
+                            </span>
+                        </td>
                     </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted padding-large">Nenhuma sessão de terapia
+                            cadastrada.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Compact statistics row right after Ingestions list -->
+    <!-- Compact statistics row right after Transcriptions list -->
     <div class="stats-compact-row margin-bottom-large margin-top-none">
         <div class="stats-compact-card">
-            <h4>Ingestões totais</h4>
-            <div class="stats-compact-value" id="statTranscripts">0</div>
-            <span class="stats-compact-desc">Transcrições enviadas</span>
+            <h4>Transcrições totais</h4>
+            <div class="stats-compact-value" id="statTranscripts">{{ stats.total_transcripts }}</div>
+            <span class="stats-compact-desc">Transcrições recebidas</span>
         </div>
         <div class="stats-compact-card">
             <h4>Taxa de sucesso</h4>
-            <div class="stats-compact-value" id="statSuccess">100%</div>
-            <span class="stats-compact-desc">Ingestões concluídas</span>
+            <div class="stats-compact-value" id="statSuccess">{{ stats.success_rate }}%</div>
+            <span class="stats-compact-desc">Transcrições processadas</span>
         </div>
         <div class="stats-compact-card">
             <h4>Tokens consumidos</h4>
-            <div class="stats-compact-value" id="statTokens">0</div>
-            <span class="stats-compact-desc" id="statTokensDesc">Prompt: 0 | Comp: 0</span>
+            <div class="stats-compact-value" id="statTokens">{{ (stats.total_prompt_tokens +
+                stats.total_completion_tokens) | number_format }}</div>
+            <span class="stats-compact-desc" id="statTokensDesc">Prompt: {{ stats.total_prompt_tokens | number_format }}
+                | Completion: {{ stats.total_completion_tokens | number_format }}</span>
         </div>
     </div>
 
@@ -91,9 +152,56 @@
                     </tr>
                 </thead>
                 <tbody id="telemetryTableBody">
+                    {% if telemetry %}
+                    {% for tele in telemetry %}
                     <tr>
-                        <td colspan="5" class="table-empty-row">Carregando telemetria...</td>
+                        <td><strong class="text-main">{{ tele.transcript_id }}</strong></td>
+                        <td class="text-small">
+                            <strong>Modelo:</strong> {{ tele.model }}<br>
+                            <span class="text-muted text-small">Estratégia: {{ tele.strategy }}</span><br>
+                            <span class="text-muted text-small">Blocos: {{ tele.chunks_completed or 0 }}</span><br>
+                            <span class="text-muted text-small">Tokens: {% if tele.prompt_tokens %}{{ tele.prompt_tokens
+                                | number_format }} / {{ tele.completion_tokens | number_format }}{% else %}0 / 0{% endif
+                                %}</span>
+                        </td>
+                        <td>
+                            {% if tele.corrections_map %}
+                            <div class="corrections-grid">
+                                {% for orig, corr in tele.corrections_map.items() %}
+                                <span class="correction-pill">
+                                    <span class="original-speech">{{ orig }}</span>
+                                    <span class="correction-arrow">→</span>
+                                    <strong class="text-primary">{{ corr }}</strong>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted text-medium">Nenhuma correção necessária</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if tele.anonymization_flags %}
+                            <div class="phi-leaks-grid">
+                                {% for flag in tele.anonymization_flags %}
+                                <span class="flag-warning-badge">PHI Leak: {{ flag }}</span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span class="flag-safe-badge">✓ Seguro (Sem vazamento)</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-medium">
+                            <strong>{{ tele.elapsed_seconds }}s</strong><br>
+                            <span class="text-muted text-small">Turns: {{ tele.turns_merged }}</span>
+                        </td>
                     </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted padding-large">Nenhum log de telemetria de
+                            sanitização encontrado.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>
@@ -106,17 +214,51 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-25">ID da avaliação</th>
-                        <th class="col-width-25">Configuração IA</th>
+                        <th class="col-width-10">ID</th>
+                        <th class="col-width-40">Configuração IA</th>
                         <th class="col-width-20">Tokens consumidos</th>
                         <th class="col-width-15">Status</th>
                         <th class="col-width-15">Tempo e data</th>
                     </tr>
                 </thead>
                 <tbody id="evalTelemetryTableBody">
+                    {% if eval_telemetry %}
+                    {% for tele in eval_telemetry %}
                     <tr>
-                        <td colspan="5" class="table-empty-row">Carregando telemetria de avaliação...</td>
+                        <td><strong class="text-primary">{{ tele.evaluation_id }}</strong></td>
+                        <td class="text-medium">
+                            <strong>Modelo:</strong> {{ tele.model }}<br>
+                            <span class="text-muted text-small">Chunks: {{ tele.chunks_analyzed or 0 }}</span><br>
+                            <span class="text-muted text-small">Blocos/Chamada: {{ tele.blocks_per_call or 0 }}</span>
+                        </td>
+                        <td class="text-medium">
+                            <strong>Total:</strong> {{ (tele.prompt_tokens + tele.completion_tokens) | number_format
+                            }}<br>
+                            <span class="text-muted text-small">Prompt: {{ tele.prompt_tokens | number_format
+                                }}</span><br>
+                            <span class="text-muted text-small">Comp: {{ tele.completion_tokens | number_format
+                                }}</span>
+                        </td>
+                        <td>
+                            <div class="status-badge {% if tele.status != 'success' %}cursor-pointer{% endif %}"
+                                data-status="{% if tele.status == 'success' %}completed{% else %}failed{% endif %}"
+                                data-id="{{ tele.evaluation_id }}">
+                                {% if tele.status == 'success' %}Sucesso{% else %}Falha (Ver erro){% endif %}
+                            </div>
+                        </td>
+                        <td class="text-medium">
+                            <strong>{% if tele.elapsed_seconds %}{{ tele.elapsed_seconds }}s{% else %}-{% endif
+                                %}</strong><br>
+                            <span class="text-muted text-small">{{ tele.created_at | format_datetime }}</span>
+                        </td>
                     </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted padding-large">Nenhum log de telemetria de
+                            avaliação encontrado.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </div>

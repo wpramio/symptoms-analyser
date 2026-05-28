@@ -3260,3 +3260,68 @@ select:focus {
     gap: 2rem;
     width: 100%;
 }
+
+/* Dashboard Utilities & Semantic Classes */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.text-main {
+    color: var(--text-main) !important;
+}
+
+.text-primary {
+    color: var(--primary) !important;
+}
+
+.text-small {
+    font-size: 0.75rem !important;
+}
+
+.text-medium {
+    font-size: 0.85rem !important;
+}
+
+.font-bold {
+    font-weight: 600 !important;
+}
+
+.original-speech {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+.corrected-speech {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.session-patients-badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.margin-top-small {
+    margin-top: 0.5rem;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.padding-large {
+    padding: 3rem;
+}
+
+.d-flex-between {
+    display: flex;
+    justify-content: space-between;
+}

@@ -13,7 +13,8 @@
 <body>
     <!-- SVG Sprite: reusable icon symbols referenced via <use href="#icon-..."> -->
     <svg xmlns="http://www.w3.org/2000/svg" style="display: none;" aria-hidden="true">
-        <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"></line>
             <polyline points="12 19 5 12 12 5"></polyline>
         </symbol>
@@ -26,14 +27,15 @@
             <div class="sidebar-nav">
                 <a href="/" class="sidebar-btn {% if active_page == 'index' %}active{% endif %}">Início</a>
                 <a href="/therapy_sessions"
-                    class="sidebar-btn {% if active_page == 'therapy_sessions' %}active{% endif %}">Sessões de terapia</a>
+                    class="sidebar-btn {% if active_page == 'therapy_sessions' %}active{% endif %}">Sessões de
+                    terapia</a>
                 <a href="/patients"
                     class="sidebar-btn {% if active_page == 'patients' %}active{% endif %}">Pacientes</a>
 
                 <div class="sidebar-nav-section">Administração</div>
                 <a href="/admin/transcripts"
-                    class="sidebar-btn {% if active_page == 'admin_transcripts' %}active{% endif %}">Pipelines e
-                    ingestão</a>
+                    class="sidebar-btn {% if active_page == 'admin_transcripts' %}active{% endif %}">Transcrições e
+                    análises</a>
                 <a href="/admin/patients"
                     class="sidebar-btn {% if active_page == 'admin_patients' %}active{% endif %}">Gestão de
                     pacientes</a>

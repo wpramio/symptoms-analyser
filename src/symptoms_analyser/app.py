@@ -41,6 +41,39 @@ UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
+def format_datetime_py(val):
+    if not val:
+        return "-"
+    clean_val = str(val).replace("T", " ").replace("Z", "").split(".")[0]
+    try:
+        dt = datetime.strptime(clean_val, "%Y-%m-%d %H:%M:%S")
+        return dt.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        try:
+            dt = datetime.strptime(clean_val, "%Y-%m-%d %H:%M")
+            return dt.strftime("%d/%m/%Y %H:%M")
+        except Exception:
+            return val
+
+def format_bytes_py(val):
+    if not val:
+        return "0 Bytes"
+    try:
+        val = int(val)
+    except Exception:
+        return val
+    if val == 0:
+        return "0 Bytes"
+    sizes = ["Bytes", "KB", "MB", "GB"]
+    import math
+    i = int(math.floor(math.log(val) / math.log(1024)))
+    return f"{round(val / (1024 ** i), 1)} {sizes[i]}"
+
+app.jinja_env.filters["format_datetime"] = format_datetime_py
+app.jinja_env.filters["format_bytes"] = format_bytes_py
+app.jinja_env.filters["number_format"] = lambda val: f"{val or 0:,}".replace(",", ".")
+
+
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
@@ -196,7 +229,56 @@ def admin_compare_tdpm_analysis():
 
 @app.route("/admin/transcripts")
 def admin_transcripts():
-    return render_template("admin_transcripts.html")
+    try:
+        # 1. Fetch KPI stats
+        stats = get_stats()
+        
+        # 2. Fetch jobs (transcripts)
+        jobs = get_transcripts()
+        
+        # 3. Fetch therapy sessions
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
+                       u.name as clinician_name,
+                       (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
+                FROM therapy_sessions s
+                LEFT JOIN users u ON s.clinician_id = u.id
+                ORDER BY s.created_at DESC
+            """)
+            sessions = [
+                {
+                    "id": r["id"],
+                    "name": r["name"],
+                    "clinician_id": r["clinician_id"],
+                    "clinician_name": r["clinician_name"] or "Sem clínico",
+                    "start_at": r["start_at"],
+                    "duration": r["duration"],
+                    "created_at": r["created_at"],
+                    "patients": r["patients"] or "Nenhum"
+                }
+                for r in cursor.fetchall()
+            ]
+            
+        # 4. Fetch sanitization telemetry
+        telemetry = get_sanitization_telemetry()
+        
+        # 5. Fetch evaluation telemetry
+        eval_telemetry = get_evaluation_telemetry()
+        
+        return render_template(
+            "admin_transcripts.html",
+            stats=stats,
+            jobs=jobs,
+            sessions=sessions,
+            telemetry=telemetry,
+            eval_telemetry=eval_telemetry
+        )
+    except Exception as e:
+        print(f"Error serving admin transcripts: {e}")
+        return str(e), 500
 
 
 @app.route("/admin/patients")
