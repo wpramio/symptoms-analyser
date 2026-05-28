@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% set active_page = 'patients' %}
 
-{% block title %}Evolução clínica de {{ patient.id }} - Symptoms Analyser{% endblock %}
+{% block title %}Evolução clínica de {{ patient.pseudonym }} - Symptoms Analyser{% endblock %}
 
 {% block content %}
 <div class="main-container">
@@ -17,7 +17,7 @@
     <div class="analysis-selector-card">
         <div>
             <div class="patient-title-group">
-                <h2 class="patient-id-title">{{ patient.id }}</h2>
+                <h2 class="patient-id-title">{{ patient.pseudonym }}</h2>
                 <span class="hipaa-pill">🔒 HIPAA</span>
             </div>
             <p class="patient-meta-desc">

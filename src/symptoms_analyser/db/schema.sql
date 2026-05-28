@@ -10,7 +10,8 @@
 
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('patient', 'clinician', 'admin')),
@@ -18,13 +19,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 
 -- 2. Patients Table
 CREATE TABLE IF NOT EXISTS patients (
-    id TEXT PRIMARY KEY,               -- e.g. "Paciente1"
-    user_id TEXT UNIQUE,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE,
     real_name TEXT NOT NULL,           -- PHI
-    pseudonym TEXT UNIQUE NOT NULL,
+    pseudonym TEXT UNIQUE NOT NULL,    -- e.g. "Paciente1"
     metadata TEXT,                     -- JSON metadata
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
@@ -35,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym);
 CREATE TABLE IF NOT EXISTS therapy_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,                -- e.g. "Sessão 28/05/2026"
-    clinician_id TEXT NOT NULL,
+    clinician_id INTEGER NOT NULL,
     start_at DATETIME,
     duration INTEGER,                  -- in seconds
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -47,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_clinician ON therapy_sessions (clinician
 CREATE TABLE IF NOT EXISTS therapy_session_patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     therapy_session_id INTEGER NOT NULL,
-    patient_id TEXT NOT NULL,
+    patient_id INTEGER NOT NULL,
     FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE,
     FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
     UNIQUE(therapy_session_id, patient_id)
@@ -78,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts (status);
 CREATE TABLE IF NOT EXISTS tdpm_evaluations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     transcript_id INTEGER NOT NULL,
-    evaluator_id TEXT,
+    evaluator_id INTEGER,
     parent_evaluation_id INTEGER,      -- Self-reference for clinician overrides/revisions
     evaluation_type TEXT NOT NULL DEFAULT 'automated'
         CHECK (evaluation_type IN ('automated', 'manual', 'revised')),
@@ -115,7 +117,7 @@ CREATE TABLE IF NOT EXISTS evaluation_telemetry (
 CREATE TABLE IF NOT EXISTS patient_item_scores (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     evaluation_id INTEGER NOT NULL,
-    patient_id TEXT NOT NULL,
+    patient_id INTEGER NOT NULL,
     dimension_code TEXT NOT NULL,
     item_code TEXT NOT NULL,
     score INTEGER NOT NULL,

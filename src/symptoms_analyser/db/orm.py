@@ -27,35 +27,29 @@ def create_therapy_session(
         INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
         VALUES (?, ?, ?, ?)
     """
-    params = (name, clinician_id, start_at, duration)
+
+    def _get_or_create_user(cursor: sqlite3.Cursor) -> int:
+        cursor.execute("SELECT id FROM users WHERE username = ?", (clinician_id,))
+        row = cursor.fetchone()
+        if row is None:
+            cursor.execute("""
+                INSERT INTO users (username, email, name, role, password_hash)
+                VALUES (?, ?, ?, 'clinician', 'dummy_hash')
+            """, (clinician_id, f"{clinician_id}@symptomsanalyser.org", f"Dr. {clinician_id}"))
+            return cursor.lastrowid
+        return row["id"]
 
     if db_conn:
         cursor = db_conn.cursor()
-        
-        # Self-healing users:
-        cursor.execute("SELECT id FROM users WHERE id = ?", (clinician_id,))
-        if cursor.fetchone() is None:
-            cursor.execute("""
-                INSERT INTO users (id, email, name, role, password_hash)
-                VALUES (?, ?, ?, 'clinician', 'dummy_hash')
-            """, (clinician_id, f"{clinician_id}@symptomsanalyser.org", f"Dr. {clinician_id}"))
-            
-        cursor.execute(sql, params)
+        user_db_id = _get_or_create_user(cursor)
+        cursor.execute(sql, (name, user_db_id, start_at, duration))
         db_conn.commit()
         return cursor.lastrowid
     else:
         with get_db() as conn:
             cursor = conn.cursor()
-            
-            # Self-healing users:
-            cursor.execute("SELECT id FROM users WHERE id = ?", (clinician_id,))
-            if cursor.fetchone() is None:
-                cursor.execute("""
-                    INSERT INTO users (id, email, name, role, password_hash)
-                    VALUES (?, ?, ?, 'clinician', 'dummy_hash')
-                """, (clinician_id, f"{clinician_id}@symptomsanalyser.org", f"Dr. {clinician_id}"))
-                
-            cursor.execute(sql, params)
+            user_db_id = _get_or_create_user(cursor)
+            cursor.execute(sql, (name, user_db_id, start_at, duration))
             conn.commit()
             return cursor.lastrowid
 
@@ -88,21 +82,21 @@ def find_or_create_patient(
     patient_id: str,
     real_name: Optional[str] = None,
     db_conn: Optional[sqlite3.Connection] = None
-) -> str:
+) -> int:
     """
-    Find an existing patient by pseudonym / ID, or create one if not found.
-    Returns the pseudonym / ID.
+    Find an existing patient by pseudonym, or create one if not found.
+    Returns the patient's integer ID.
     """
     patient_id = patient_id.strip()
     if not real_name:
         real_name = f"Nome Real de {patient_id}"
 
-    select_sql = "SELECT id FROM patients WHERE id = ?"
+    select_sql = "SELECT id FROM patients WHERE pseudonym = ?"
     insert_sql = """
-        INSERT INTO patients (id, real_name, pseudonym, metadata)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO patients (real_name, pseudonym, metadata)
+        VALUES (?, ?, ?)
     """
-    insert_params = (patient_id, real_name, patient_id, json.dumps({"notes": "Auto-cadastro ORM"}))
+    insert_params = (real_name, patient_id, json.dumps({"notes": "Auto-cadastro ORM"}))
 
     if db_conn:
         cursor = db_conn.cursor()
@@ -113,7 +107,7 @@ def find_or_create_patient(
         
         cursor.execute(insert_sql, insert_params)
         db_conn.commit()
-        return patient_id
+        return cursor.lastrowid
     else:
         with get_db() as conn:
             cursor = conn.cursor()
@@ -124,12 +118,12 @@ def find_or_create_patient(
             
             cursor.execute(insert_sql, insert_params)
             conn.commit()
-            return patient_id
+            return cursor.lastrowid
 
 
 def link_patient_to_session(
     session_id: int,
-    patient_id: str,
+    patient_id: int | str,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
     """Establish a many-to-many relationship mapping between a session and patient."""
@@ -137,15 +131,29 @@ def link_patient_to_session(
         INSERT OR IGNORE INTO therapy_session_patients (therapy_session_id, patient_id)
         VALUES (?, ?)
     """
-    params = (session_id, patient_id)
+
+    def _execute(conn: sqlite3.Connection):
+        cursor = conn.cursor()
+        if isinstance(patient_id, str):
+            cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (patient_id,))
+            row = cursor.fetchone()
+            if row:
+                p_id = row["id"]
+            else:
+                cursor.execute("INSERT INTO patients (real_name, pseudonym, metadata) VALUES (?, ?, ?)",
+                               (f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-cadastro ORM"})))
+                p_id = cursor.lastrowid
+        else:
+            p_id = patient_id
+
+        cursor.execute(sql, (session_id, p_id))
+        conn.commit()
 
     if db_conn:
-        db_conn.execute(sql, params)
-        db_conn.commit()
+        _execute(db_conn)
     else:
         with get_db() as conn:
-            conn.execute(sql, params)
-            conn.commit()
+            _execute(conn)
 
 
 def create_transcript(
@@ -253,7 +261,7 @@ def create_sanitization_telemetry(
 
 def create_tdpm_evaluation(
     transcript_id: int,
-    evaluator_id: str,
+    evaluator_id: int | str,
     evaluation_type: str,
     therapy_session_id: int,
     created_at: str,
@@ -265,17 +273,31 @@ def create_tdpm_evaluation(
         (transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, therapy_session_id, created_at)
         VALUES (?, ?, NULL, ?, ?, ?)
     """
-    params = (transcript_id, evaluator_id, evaluation_type, therapy_session_id, created_at)
+
+    def _get_evaluator_id(cursor: sqlite3.Cursor) -> int:
+        if isinstance(evaluator_id, str):
+            cursor.execute("SELECT id FROM users WHERE username = ?", (evaluator_id,))
+            row = cursor.fetchone()
+            if row is None:
+                cursor.execute("""
+                    INSERT INTO users (username, email, name, role, password_hash)
+                    VALUES (?, ?, ?, 'clinician', 'dummy_hash')
+                """, (evaluator_id, f"{evaluator_id}@symptomsanalyser.org", f"Dr. {evaluator_id}"))
+                return cursor.lastrowid
+            return row["id"]
+        return evaluator_id
 
     if db_conn:
         cursor = db_conn.cursor()
-        cursor.execute(sql, params)
+        u_id = _get_evaluator_id(cursor)
+        cursor.execute(sql, (transcript_id, u_id, evaluation_type, therapy_session_id, created_at))
         db_conn.commit()
         return cursor.lastrowid
     else:
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute(sql, params)
+            u_id = _get_evaluator_id(cursor)
+            cursor.execute(sql, (transcript_id, u_id, evaluation_type, therapy_session_id, created_at))
             conn.commit()
             return cursor.lastrowid
 
@@ -319,7 +341,7 @@ def create_evaluation_telemetry(
 
 def create_patient_item_score(
     evaluation_id: int,
-    patient_id: str,
+    patient_id: int | str,
     dimension_code: str,
     item_code: str,
     score: int,
@@ -333,15 +355,29 @@ def create_patient_item_score(
         (evaluation_id, patient_id, dimension_code, item_code, score, justification, evidence)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """
-    params = (evaluation_id, patient_id, dimension_code, item_code, score, justification, evidence)
+
+    def _execute(conn: sqlite3.Connection):
+        cursor = conn.cursor()
+        if isinstance(patient_id, str):
+            cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (patient_id,))
+            row = cursor.fetchone()
+            if row:
+                p_id = row["id"]
+            else:
+                cursor.execute("INSERT INTO patients (real_name, pseudonym, metadata) VALUES (?, ?, ?)",
+                               (f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-cadastro ORM"})))
+                p_id = cursor.lastrowid
+        else:
+            p_id = patient_id
+
+        cursor.execute(sql, (evaluation_id, p_id, dimension_code, item_code, score, justification, evidence))
+        conn.commit()
 
     if db_conn:
-        db_conn.execute(sql, params)
-        db_conn.commit()
+        _execute(db_conn)
     else:
         with get_db() as conn:
-            conn.execute(sql, params)
-            conn.commit()
+            _execute(conn)
 
 
 def update_patient(
@@ -362,39 +398,26 @@ def update_patient(
         cursor = conn.cursor()
         
         # Check if the patient exists
-        cursor.execute("SELECT id FROM patients WHERE id = ?", (original_id,))
+        cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (original_id,))
         if not cursor.fetchone():
             raise ValueError("Paciente não encontrado")
 
         # Check if new pseudonym already exists for another patient
-        cursor.execute("SELECT id FROM patients WHERE pseudonym = ? AND id != ?", (new_pseudonym, original_id))
+        cursor.execute("SELECT id FROM patients WHERE pseudonym = ? AND pseudonym != ?", (new_pseudonym, original_id))
         if cursor.fetchone():
             raise ValueError(f"O pseudônimo '{new_pseudonym}' já está cadastrado para outro paciente")
 
-        cursor.execute("PRAGMA foreign_keys = OFF")
         try:
-            # Update patients table
+            # Update patients table pseudonym and real_name directly.
+            # No cascades to join tables needed anymore due to INTEGER AUTOINCREMENT primary keys!
             cursor.execute(
-                "UPDATE patients SET id = ?, pseudonym = ?, real_name = ? WHERE id = ?",
-                (new_pseudonym, new_pseudonym, new_real_name, original_id),
+                "UPDATE patients SET pseudonym = ?, real_name = ? WHERE pseudonym = ?",
+                (new_pseudonym, new_real_name, original_id),
             )
-
-            # Update join tables if pseudonym/id changed
-            if new_pseudonym != original_id:
-                cursor.execute(
-                    "UPDATE therapy_session_patients SET patient_id = ? WHERE patient_id = ?",
-                    (new_pseudonym, original_id),
-                )
-                cursor.execute(
-                    "UPDATE patient_item_scores SET patient_id = ? WHERE patient_id = ?",
-                    (new_pseudonym, original_id),
-                )
             conn.commit()
         except Exception as e:
             conn.rollback()
             raise e
-        finally:
-            cursor.execute("PRAGMA foreign_keys = ON")
 
     if db_conn:
         _execute(db_conn)

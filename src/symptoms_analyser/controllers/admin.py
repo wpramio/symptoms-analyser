@@ -131,10 +131,11 @@ def get_evaluation_telemetry() -> list[dict]:
 def get_patients() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT pseudonym, real_name, created_at FROM patients ORDER BY id ASC")
+        cursor.execute("SELECT id, pseudonym, real_name, created_at FROM patients ORDER BY id ASC")
         return [
             {
-                "id": r["pseudonym"],
+                "id": r["id"],
+                "pseudonym": r["pseudonym"],
                 "real_name": r["real_name"],
                 "created_at": r["created_at"],
             }
@@ -166,8 +167,8 @@ def create_patient(pseudonym: str | None, real_name: str | None) -> tuple[dict, 
             return {"error": f"O pseudônimo '{pseudonym}' já está cadastrado"}, 409
 
         cursor.execute(
-            "INSERT INTO patients (id, pseudonym, real_name) VALUES (?, ?, ?)",
-            (pseudonym, pseudonym, real_name),
+            "INSERT INTO patients (pseudonym, real_name) VALUES (?, ?)",
+            (pseudonym, real_name),
         )
         conn.commit()
 
@@ -233,11 +234,12 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
     """Retrieve pseudonym details and the chronological therapy session log for a single patient."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, pseudonym, real_name, created_at FROM patients WHERE id = ?", (patient_id,))
+        cursor.execute("SELECT id, pseudonym, real_name, created_at FROM patients WHERE pseudonym = ?", (patient_id,))
         patient_row = cursor.fetchone()
         if not patient_row:
             return None
             
+        patient_db_id = patient_row["id"]
         patient_data = {
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
@@ -252,7 +254,7 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
             WHERE sp.patient_id = ?
             ORDER BY s.start_at DESC
-        """, (patient_id,))
+        """, (patient_db_id,))
         sessions = [
             {
                 "id": r["id"],
@@ -312,13 +314,14 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
 
         # --- Patient record ---
         cursor.execute(
-            "SELECT id, pseudonym, real_name, created_at FROM patients WHERE id = ?",
+            "SELECT id, pseudonym, real_name, created_at FROM patients WHERE pseudonym = ?",
             (patient_id,),
         )
         patient_row = cursor.fetchone()
         if not patient_row:
             return None
 
+        patient_db_id = patient_row["id"]
         patient_data = {
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
@@ -335,7 +338,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             WHERE sp.patient_id = ?
             ORDER BY s.start_at DESC
             """,
-            (patient_id,),
+            (patient_db_id,),
         )
         sessions = [
             {"id": r["id"], "name": r["name"], "start_at": r["start_at"]}
@@ -354,7 +357,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             WHERE sp.patient_id = ?
             ORDER BY s.start_at ASC
             """,
-            (patient_id,),
+            (patient_db_id,),
         )
         eval_rows = cursor.fetchall()
 

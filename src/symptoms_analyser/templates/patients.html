@@ -22,13 +22,13 @@
         <div class="patients-grid">
             {% if patients %}
             {% for patient in patients %}
-            <div onclick="window.location.href='/patients/{{ patient.id }}'" class="patient-card patient-card-hover">
+            <div onclick="window.location.href='/patients/{{ patient.pseudonym }}'" class="patient-card patient-card-hover">
                 <!-- Top Accent line -->
                 <div class="patient-card-accent"></div>
 
                 <div>
                     <div class="patient-card-header">
-                        <span class="patient-card-id">{{ patient.id }}</span>
+                        <span class="patient-card-id">{{ patient.pseudonym }}</span>
                     </div>
                     <!-- Secure Real Name indicator -->
                     <div class="patient-secure-tag">

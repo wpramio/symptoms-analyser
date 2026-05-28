@@ -240,7 +240,7 @@ def admin_transcripts():
             cursor.execute("""
                 SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
                        u.name as clinician_name,
-                       (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
+                       (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients
                 FROM therapy_sessions s
                 LEFT JOIN users u ON s.clinician_id = u.id
                 ORDER BY s.created_at DESC

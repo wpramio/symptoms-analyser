@@ -79,10 +79,13 @@ def get_or_create_session(conn, session_name, raw_text):
         
     duration = estimate_duration_from_text(raw_text)
     
+    cursor.execute("SELECT id FROM users WHERE username = ?", ("clinician_1",))
+    clinician_db_id = cursor.fetchone()[0]
+
     cursor.execute("""
         INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
-        VALUES (?, 'clinician_1', ?, ?)
-    """, (public_name, start_at_str, duration))
+        VALUES (?, ?, ?, ?)
+    """, (public_name, clinician_db_id, start_at_str, duration))
     
     session_id = cursor.lastrowid
     sessions_map[session_name] = session_id
@@ -101,20 +104,20 @@ def seed_users_and_patients(conn):
     
     # Clinician & Admin
     cursor.execute("""
-        INSERT OR REPLACE INTO users (id, email, name, role, password_hash)
-        VALUES ('clinician_1', 'clinician@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'dummy_hash')
+        INSERT OR REPLACE INTO users (id, username, email, name, role, password_hash)
+        VALUES (1, 'clinician_1', 'clinician@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'dummy_hash')
     """)
     cursor.execute("""
-        INSERT OR REPLACE INTO users (id, email, name, role, password_hash)
-        VALUES ('admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
+        INSERT OR REPLACE INTO users (id, username, email, name, role, password_hash)
+        VALUES (2, 'admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
     """)
     
     # Patient Pseudonym Map Registry
-    for pseudonym, real_name in PATIENT_REGISTRY.items():
+    for idx, (pseudonym, real_name) in enumerate(PATIENT_REGISTRY.items(), start=1):
         cursor.execute("""
             INSERT OR REPLACE INTO patients (id, real_name, pseudonym, metadata)
             VALUES (?, ?, ?, ?)
-        """, (pseudonym, real_name, pseudonym, json.dumps({"notes": "Migração histórica de paciente"})))
+        """, (idx, real_name, pseudonym, json.dumps({"notes": "Migração histórica de paciente"})))
         
     conn.commit()
 
@@ -351,6 +354,9 @@ def ingest_clinical_evaluations(conn):
         transcript_db_id = transcripts_map[clean_transcript_id]
         therapy_session_id = get_or_create_session(conn, clean_transcript_id, "")
         
+        cursor.execute("SELECT id FROM users WHERE username = ?", ("clinician_1",))
+        clinician_db_id = cursor.fetchone()[0]
+
         # 1. Insert into tdpm_evaluations
         cursor.execute("""
             INSERT INTO tdpm_evaluations 
@@ -358,7 +364,7 @@ def ingest_clinical_evaluations(conn):
             VALUES (?, ?, NULL, 'automated', ?, ?)
         """, (
             transcript_db_id,
-            "clinician_1",
+            clinician_db_id,
             therapy_session_id,
             created_at.strftime("%Y-%m-%d %H:%M:%S")
         ))
@@ -392,18 +398,22 @@ def ingest_clinical_evaluations(conn):
         patients_dict = det_data.get("aggregated", {}).get("patients", {})
         for patient_id, pat_payload in patients_dict.items():
             
-            cursor.execute("SELECT id FROM patients WHERE id = ?", (patient_id,))
-            if cursor.fetchone() is None:
+            cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (patient_id,))
+            row = cursor.fetchone()
+            if row is None:
                 cursor.execute("""
-                    INSERT INTO patients (id, real_name, pseudonym, metadata)
-                    VALUES (?, ?, ?, ?)
-                """, (patient_id, f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-ingestão dinâmica"})))
+                    INSERT INTO patients (real_name, pseudonym, metadata)
+                    VALUES (?, ?, ?)
+                """, (f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-ingestão dinâmica"})))
+                patient_db_id = cursor.lastrowid
+            else:
+                patient_db_id = row[0]
                 
             # Self-healing: establish patient relationship in join table
             cursor.execute("""
                 INSERT OR IGNORE INTO therapy_session_patients (therapy_session_id, patient_id)
                 VALUES (?, ?)
-            """, (therapy_session_id, patient_id))
+            """, (therapy_session_id, patient_db_id))
             
             items_dict = pat_payload.get("items", {})
             for item_code, it in items_dict.items():
@@ -432,7 +442,7 @@ def ingest_clinical_evaluations(conn):
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     eval_id,
-                    patient_id,
+                    patient_db_id,
                     dimension_code,
                     item_code,
                     score,

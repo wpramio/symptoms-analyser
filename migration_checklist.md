@@ -41,6 +41,15 @@ Use this checklist to track the implementation of the Symptoms Analyser database
 - [x] Boot up development server and monitor active routes on port `8000`.
 - [x] Launch browser subagent to visually interact with `/viewer/evolution`, confirming dropdown list queries patients from `sqlite.db` and renders beautiful KPIs, charts, heatmaps, and evidence timelines without runtime exceptions.
 
+### 🟢 Phase 7: Database Primary Keys Refactoring
+- [x] Transition `users.id` and `patients.id` to `INTEGER PRIMARY KEY AUTOINCREMENT` in `schema.sql` to decouple internal keys from text-based identifiers.
+- [x] Retain `username` and `pseudonym` as the unique user-facing text identifiers.
+- [x] Update all foreign keys in dependent tables (`therapy_sessions`, `therapy_session_patients`, `tdpm_evaluations`, `patient_item_scores`) to `INTEGER` types.
+- [x] Update database ORM helpers in `src/symptoms_analyser/db/orm.py` to dynamically resolve text identifiers to their integer primary keys, keeping the logic transparently backward-compatible.
+- [x] Simplify `update_patient` to directly update `pseudonym` and `real_name` inside `patients` table without cascading primary key modifications.
+- [x] Adapt `/api/admin` controller methods in `src/symptoms_analyser/controllers/admin.py` to perform lookups using pseudonyms and return them as `id` to the frontend, preventing template breakages.
+- [x] Adjust unit tests in `tests/test_patient_update.py` to validate updates and constraints on the modernized schema, achieving 100% test success.
+
 ---
 
 ## ── FUTURE ROADMAP ──

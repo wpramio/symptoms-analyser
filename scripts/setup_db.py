@@ -56,13 +56,13 @@ def seed_default_users(conn: sqlite3.Connection) -> None:
     try:
         # Seed clinician
         cursor.execute("""
-            INSERT OR REPLACE INTO users (id, email, name, role, password_hash)
-            VALUES ('clinician_1', 'clinician@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'dummy_hash')
+            INSERT OR REPLACE INTO users (id, username, email, name, role, password_hash)
+            VALUES (1, 'clinician_1', 'clinician@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'dummy_hash')
         """)
         # Seed admin
         cursor.execute("""
-            INSERT OR REPLACE INTO users (id, email, name, role, password_hash)
-            VALUES ('admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
+            INSERT OR REPLACE INTO users (id, username, email, name, role, password_hash)
+            VALUES (2, 'admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
         """)
         conn.commit()
         print("[✔] Usuários default criados")

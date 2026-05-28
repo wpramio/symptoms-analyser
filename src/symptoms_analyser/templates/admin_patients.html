@@ -28,7 +28,7 @@
                         {% if patients %}
                             {% for pat in patients %}
                             <tr>
-                                <td><strong class="text-primary text-medium">{{ pat.id }}</strong></td>
+                                <td><strong class="text-primary text-medium">{{ pat.pseudonym }}</strong></td>
                                 <td>
                                     <strong class="text-medium font-bold">{{ pat.real_name }}</strong><br>
                                     <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime }}</span>
@@ -36,7 +36,7 @@
                                 <td class="text-center">
                                     <button class="btn btn-secondary edit-patient-btn" 
                                             data-open="editPatientModal"
-                                            data-id="{{ pat.id }}" 
+                                            data-id="{{ pat.pseudonym }}" 
                                             data-realname="{{ pat.real_name }}">
                                         Editar
                                     </button>

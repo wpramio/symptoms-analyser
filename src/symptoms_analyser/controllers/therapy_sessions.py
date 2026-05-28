@@ -81,7 +81,7 @@ def get_therapy_sessions() -> list[dict]:
         cursor.execute("""
             SELECT s.id, s.name, s.start_at, s.duration,
                    u.name as clinician_name,
-                   (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients,
+                   (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients,
                    (SELECT status FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_status,
                    (SELECT progress_percent FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_progress,
                    (SELECT id FROM tdpm_evaluations WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as evaluation_id
@@ -130,9 +130,9 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
         
         # Query participating patients pseudonyms
         cursor.execute("""
-            SELECT patient_id FROM therapy_session_patients WHERE therapy_session_id = ?
+            SELECT p.pseudonym FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = ?
         """, (session_id,))
-        patients_list = [r["patient_id"] for r in cursor.fetchall()]
+        patients_list = [r["pseudonym"] for r in cursor.fetchall()]
         
         # Query latest transcript if exists
         cursor.execute("""
