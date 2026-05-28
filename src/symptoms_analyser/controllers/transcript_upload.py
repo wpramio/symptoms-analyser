@@ -80,7 +80,7 @@ def process_transcript_pipeline(
 
         # STEP 4: LLM Sanitization
         if skip_sanitization:
-            add_log("Pulo de higienização por IA (LLM) ativado. Utilizando transcrição direta...")
+            add_log("Pulando etapa de sanitização por IA (LLM). Utilizando transcrição direta...")
             # If skipping, ensure state is set to preprocessed
             orm.update_transcript(
                 transcript_id=transcript_id,
@@ -89,7 +89,7 @@ def process_transcript_pipeline(
                 db_conn=db_conn
             )
         else:
-            add_log("Iniciando higienização de diálogo por IA (LLM)...")
+            add_log("Iniciando sanitização da transcrição com IA (LLM)...")
             sanitize_text_with_llm(
                 transcript_id=transcript_id,
                 blocks_per_call=100,

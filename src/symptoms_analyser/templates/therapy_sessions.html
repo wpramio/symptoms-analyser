@@ -50,7 +50,8 @@
                             <span class="status-badge" data-status="completed">
                                 Disponível
                             </span>
-                            {% elif session.transcript_status == 'preprocessing' or session.transcript_status == 'analyzing' %}
+                            {% elif session.transcript_status == 'preprocessing' or
+                            session.transcript_status == 'analyzing' %}
                             <span class="status-badge" data-status="preprocessing">
                                 Processando ({{ session.transcript_progress }}%)
                             </span>
