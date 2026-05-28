@@ -11,10 +11,6 @@ dependencies = [
     "werkzeug>=3.0.0",
 ]
 
-[project.scripts]
-preprocess = "symptoms_analyser.preprocess:main"
-tdpm_analysis = "symptoms_analyser.tdpm_analysis:main"
-
 
 [build-system]
 requires = ["setuptools"]

@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const response = await fetch('/api/upload_transcript', {
+            const response = await fetch('/api/therapy_sessions', {
                 method: 'POST',
                 body: formData
             });

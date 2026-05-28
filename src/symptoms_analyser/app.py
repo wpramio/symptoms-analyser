@@ -20,15 +20,12 @@ from symptoms_analyser.controllers.admin import (
 )
 from symptoms_analyser.controllers.pipeline import get_evaluation_payload, list_evaluation_ids
 from symptoms_analyser.controllers.therapy_sessions import (
-    allowed_file,
-    create_session_from_parameters,
-    handle_session_upload_task,
-    tasks,
+    handle_new_therapy_session,
     get_therapy_sessions,
     get_therapy_session_detail,
     get_session_transcript_status,
 )
-from symptoms_analyser.utils import DB_PATH
+from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
 
 app = Flask(__name__)
 
@@ -90,23 +87,18 @@ def therapy_session_detail(session_id):
 def therapy_session_upload_transcript(session_id):
     try:
         skip_sanitization = request.form.get("skip_sanitization") == "true"
-        form_data = {
-            "skip_sanitization": skip_sanitization,
-            "therapy_session_id": str(session_id)
-        }
-        
         if "file" not in request.files or request.files["file"].filename == "":
-            return jsonify({"error": "No file uploaded"}), 400
+            return jsonify({"error": "Nenhum arquivo enviado"}), 400
             
         file = request.files["file"]
-        if not allowed_file(file.filename):
-            return jsonify({"error": "File type not allowed"}), 400
-            
-        filename = secure_filename(file.filename)
-        filepath = UPLOAD_FOLDER / filename
-        file.save(filepath)
-        
-        task_id = handle_session_upload_task(filepath, form_data)
+        task_id = handle_transcript_upload(
+            file_stream=file,
+            filename=file.filename,
+            therapy_session_id=session_id,
+            extract_metadata=False,
+            skip_extension_check=False,
+            skip_sanitization=skip_sanitization
+        )
         return jsonify({"success": True, "task_id": task_id})
     except Exception as e:
         print(f"Error in upload for session {session_id}: {e}")
@@ -202,58 +194,27 @@ def serve_evaluation(eval_id):
 # Upload & pipeline
 # ---------------------------------------------------------------------------
 
-@app.route("/api/upload_transcript", methods=["POST"])
-def handle_upload_transcript():
-    # Form data checklist
-    skip_sanitization = request.form.get("skip_sanitization") == "true"
-    
-    form_data = {
-        "skip_sanitization": skip_sanitization,
-        "therapy_session_id": request.form.get("therapy_session_id"),
-        "auto_fill": request.form.get("auto_fill"),
-        "session_name": request.form.get("session_name"),
-        "clinician_id": request.form.get("clinician_id"),
-        "start_at": request.form.get("start_at"),
-        "duration": request.form.get("duration"),
-        "patient_ids": request.form.get("patient_ids")
-    }
-
-    # If transcript file is uploaded, secure and save it, then delegate to async runner
-    if "file" in request.files and request.files["file"].filename != "":
-        file = request.files["file"]
-        if not allowed_file(file.filename):
-            return jsonify({"error": "File type not allowed"}), 400
-
-        filename = secure_filename(file.filename)
-        filepath = UPLOAD_FOLDER / filename
-        file.save(filepath)
-
-        task_id = handle_session_upload_task(filepath, form_data)
-        return jsonify({"task_id": task_id})
-
-    # Otherwise: This is a manual session creation without immediate transcript processing
+@app.route("/api/therapy_sessions", methods=["POST"])
+def handle_new_session_api():
     try:
-        session_name = form_data.get("session_name")
-        if not session_name:
-            return jsonify({"error": "Session name is required for manual creation"}), 400
-
-        clinician_id = form_data.get("clinician_id") or "clinician_1"
-        start_at = form_data.get("start_at")
-        if not start_at:
-            start_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        form_data = {
+            "session_name": request.form.get("session_name"),
+            "start_at": request.form.get("start_at"),
+            "duration": request.form.get("duration"),
+            "clinician_id": request.form.get("clinician_id"),
+            "patient_ids": request.form.get("patient_ids"),
+            "auto_fill": request.form.get("auto_fill"),
+            "skip_sanitization": request.form.get("skip_sanitization")
+        }
         
-        try:
-            duration = int(form_data.get("duration") or 60)
-        except ValueError:
-            duration = 60
-
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("PRAGMA foreign_keys = ON")
-        session_id = create_session_from_parameters(conn, session_name, clinician_id, start_at, duration, form_data.get("patient_ids"))
-        conn.close()
-
-        return jsonify({"message": "Sessão criada com sucesso!", "session_id": session_id})
+        file = None
+        if "file" in request.files and request.files["file"].filename != "":
+            file = request.files["file"]
+            
+        result = handle_new_therapy_session(form_data, file)
+        return jsonify(result), 201
     except Exception as e:
+        print(f"Error creating therapy session: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -329,28 +290,15 @@ def api_admin_sessions():
     if request.method == "POST":
         try:
             data = request.get_json() or {}
-            name = data.get("name")
-            if not name:
-                return jsonify({"error": "Session name is required"}), 400
-                
-            clinician_id = data.get("clinician_id", "clinician_1")
-            start_at = data.get("start_at")
-            if not start_at:
-                start_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                
-            try:
-                duration = int(data.get("duration", 3600))
-            except ValueError:
-                duration = 3600
-                
-            patient_ids_str = data.get("patient_ids", "")
-            
-            conn = sqlite3.connect(DB_PATH)
-            conn.execute("PRAGMA foreign_keys = ON")
-            session_id = create_session_from_parameters(conn, name, clinician_id, start_at, duration, patient_ids_str)
-            conn.close()
-            
-            return jsonify({"message": "Sessão criada com sucesso!", "session_id": session_id}), 201
+            form_data = {
+                "session_name": data.get("name"),
+                "start_at": data.get("start_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                "duration": data.get("duration"),
+                "clinician_id": data.get("clinician_id"),
+                "patient_ids": data.get("patient_ids")
+            }
+            result = handle_new_therapy_session(form_data)
+            return jsonify({"message": "Sessão criada com sucesso!", "session_id": result["session_id"]}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 500
             
