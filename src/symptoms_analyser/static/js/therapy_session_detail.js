@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function handleFileSelection(file) {
             const ext = file.name.split('.').pop().toLowerCase();
             if (ext !== 'docx' && ext !== 'txt') {
-                alert('Apenas arquivos de transcrição .docx e .txt são suportados.');
+                showToast('Apenas arquivos de transcrição .docx e .txt são suportados.', 'error');
                 return;
             }
             selectedFile = file;
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initiate upload and start async task
         startBtn.addEventListener('click', async () => {
             if (!selectedFile) {
-                alert('Por favor, selecione um arquivo de transcrição para fazer o upload.');
+                showToast('Por favor, selecione um arquivo de transcrição para fazer o upload.', 'error');
                 return;
             }
 

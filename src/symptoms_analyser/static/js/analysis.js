@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(err => {
                 console.error("Failed to load JSON:", err);
-                alert("Falha ao carregar o arquivo selecionado.");
+                showToast("Falha ao carregar o arquivo selecionado.", "error");
             });
     });
 

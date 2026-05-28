@@ -13,6 +13,7 @@
     --score-2: #facc15;
     --score-3: #f97316;
     --score-4: #ef4444;
+    --error: #ef4444;
 }
 
 * {
@@ -782,7 +783,7 @@ select:focus {
 .toast-notification {
     display: none;
     position: fixed;
-    bottom: 2rem;
+    top: 2rem;
     right: 2rem;
     background: #10b981;
     color: white;
@@ -790,7 +791,7 @@ select:focus {
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     z-index: 1000;
-    animation: slideUp 0.3s ease-out;
+    animation: slideDown 0.3s ease-out;
     font-weight: 600;
 }
 
@@ -987,6 +988,18 @@ select:focus {
 @keyframes slideUp {
     from {
         transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
         opacity: 0;
     }
 

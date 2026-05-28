@@ -64,23 +64,6 @@
         </div>
     </div>
 </div>
-
-<!-- Toast notification element rendered server-side via flash -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div id="toastNotification" class="toast-notification active {{ 'error' if category == 'error' else '' }}">
-        {{ message }}
-      </div>
-    {% endfor %}
-    <script>
-        setTimeout(() => {
-            const toast = document.getElementById('toastNotification');
-            if (toast) toast.classList.remove('active');
-        }, 3000);
-    </script>
-  {% endif %}
-{% endwith %}
 {% endblock %}
 
 {% block scripts %}

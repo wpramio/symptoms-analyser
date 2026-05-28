@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFileSelection(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (ext !== 'docx' && ext !== 'txt') {
-            alert('Apenas arquivos .docx e .txt são suportados.');
+            showToast('Apenas arquivos .docx e .txt são suportados.', 'error');
             return;
         }
         selectedFile = file;
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Basic validation
         if (!nameVal && (!enableImportOpt.checked || !selectedFile)) {
-            alert('Por favor, defina um nome público para a sessão de terapia.');
+            showToast('Por favor, defina um nome público para a sessão de terapia.', 'error');
             return;
         }
 
@@ -152,9 +152,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     pollStatus();
                 } else {
                     // Successful manual creation without file
-                    alert('Sessão registrada com sucesso no banco de dados!');
+                    showToast('Sessão registrada com sucesso no banco de dados!', 'success');
                     // Redirect to sessions list
-                    window.location.href = '/therapy_sessions';
+                    setTimeout(() => {
+                        window.location.href = '/therapy_sessions';
+                    }, 1500);
                 }
             } else {
                 handleError(data.error || 'Erro no registro da sessão.');

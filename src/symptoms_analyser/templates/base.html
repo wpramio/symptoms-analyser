@@ -53,6 +53,41 @@
     </div>
 
     {% block scripts %}{% endblock %}
+
+    <div id="toastNotification" class="toast-notification"></div>
+
+    <script>
+        window.showToast = function(message, type = 'success') {
+            const toast = document.getElementById('toastNotification');
+            if (!toast) return;
+            
+            toast.textContent = message;
+            toast.className = 'toast-notification'; // Reset classes
+            
+            if (type === 'error') {
+                toast.classList.add('error');
+            }
+            
+            toast.classList.add('active');
+            
+            if (toast.timeoutId) {
+                clearTimeout(toast.timeoutId);
+            }
+            
+            toast.timeoutId = setTimeout(() => {
+                toast.classList.remove('active');
+            }, 4000);
+        };
+
+        // Render any server-side flashed messages automatically
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              window.showToast({{ message | tojson }}, {{ category | tojson }});
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </script>
 </body>
 
 </html>
