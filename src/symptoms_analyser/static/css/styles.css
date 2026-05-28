@@ -1506,16 +1506,18 @@ select:focus {
 
 .processing-card .log-console {
     text-align: left;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 6px;
-    padding: 1rem;
+    background-color: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: var(--radius);
+    padding: 1.25rem;
     height: 180px;
     overflow-y: auto;
-    font-family: monospace;
+    font-family: 'Fira Code', 'Courier New', monospace;
     font-size: 0.85rem;
-    color: #a1a1aa;
+    color: #cbd5e1;
     margin-bottom: 1.5rem;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    line-height: 1.6;
 }
 
 .processing-card .view-results-btn {
