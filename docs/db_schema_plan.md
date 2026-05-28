@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS therapy_sessions (
     name TEXT NOT NULL,                -- Public display name of the session (e.g. "Sessão 16/03/2026")
     clinician_id TEXT NOT NULL,        -- FK to users.id
     start_at DATETIME,                 -- Scheduled date and time
-    duration INTEGER,                  -- Scheduled/actual duration in seconds
+    duration INTEGER,                  -- Scheduled/actual duration in minutes
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
 );

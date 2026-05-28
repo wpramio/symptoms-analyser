@@ -153,14 +153,6 @@ def write_log(
     except Exception:
         created_at = datetime.now(timezone.utc)
 
-    # Self-healing users record mapping
-    cursor.execute("SELECT id FROM users WHERE id = ?", (evaluator_id,))
-    if cursor.fetchone() is None:
-        cursor.execute("""
-            INSERT INTO users (id, email, name, role, password_hash)
-            VALUES (?, ?, ?, 'clinician', 'dummy_hash')
-        """, (evaluator_id, f"{evaluator_id}@symptomsanalyser.org", f"Dr. {evaluator_id}"))
-
     # 1. Insert into tdpm_evaluations
     cursor.execute("""
         INSERT INTO tdpm_evaluations 
