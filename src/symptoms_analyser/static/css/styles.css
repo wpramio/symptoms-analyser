@@ -3325,3 +3325,29 @@ select:focus {
     display: flex;
     justify-content: space-between;
 }
+
+/* Rework #4: Upload States & Interactive Console Classes */
+.upload-card-styled.dragover {
+    border-color: var(--primary) !important;
+    background-color: #f1f5f9 !important;
+}
+
+.system-text {
+    color: #3b82f6;
+}
+
+.transcript-card.open .transcript-body-scroll {
+    display: block;
+}
+
+.processing-card.has-error .processing-title {
+    color: var(--error);
+}
+
+.processing-card.has-error .spinner {
+    display: none;
+}
+
+.processing-card.active {
+    display: block !important;
+}

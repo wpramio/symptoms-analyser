@@ -142,7 +142,7 @@
                                     </div>
                                 {% endfor %}
                             {% else %}
-                                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>
+                                <p class="text-muted text-medium">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>
                             {% endif %}
                         </div>
 
@@ -160,7 +160,7 @@
                                     
                                     <div class="dimension-item">
                                         <div class="dimension-header">
-                                            <div class="dimension-title-group" style="display: flex; align-items: center; gap: 1rem;">
+                                            <div class="dimension-title-group flex-align-center-gap">
                                                 <span class="dimension-name">{{ dim_key }}. {{ dim.name }}</span>
                                             </div>
                                             <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.dimension_sum }}/{{ max_size }}</div>
@@ -185,7 +185,7 @@
                                     </div>
                                 {% endfor %}
                             {% else %}
-                                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>
+                                <p class="text-muted text-medium">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>
                             {% endif %}
                         </div>
                     </div>
@@ -206,7 +206,7 @@
                 </div>
                 <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
             </div>
-            <div class="transcript-body-scroll" id="transcriptBodyContainer" style="display: none;">
+            <div class="transcript-body-scroll" id="transcriptBodyContainer">
                 <div class="transcript-tab-row">
                     <button type="button" class="btn btn-secondary btn-transcript-tab active"
                         id="btnShowSanitized">Transcrição higienizada (PHI clean)</button>
@@ -214,7 +214,9 @@
                         original</button>
                 </div>
                 <pre id="transcriptTextContent"
-                    class="transcript-content-pre">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
+                    class="transcript-content-pre"
+                    data-sanitized="{{ transcript.sanitized_text or '' }}"
+                    data-raw="{{ transcript.raw_text or '' }}">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
             </div>
         </div>
     </div>

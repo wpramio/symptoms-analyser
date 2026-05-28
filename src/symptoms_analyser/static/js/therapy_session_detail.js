@@ -5,6 +5,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const evaluationPath = _page.evaluationPath;
     const initialTranscriptStatus = _page.transcriptStatus;
 
+    // Shared UI Elements
+    const logConsole = document.getElementById('logConsole');
+    const processingView = document.getElementById('processingView');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusDesc = document.getElementById('statusDesc');
+
+    // =========================================================================
+    // SHARED UTILITY FUNCTIONS
+    // =========================================================================
+    function addLog(msg, type = 'normal') {
+        if (!logConsole) return;
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        if (type === 'success') entry.classList.add('success-text');
+        else if (type === 'error') entry.classList.add('error-text');
+        else if (type === 'system') entry.classList.add('system-text');
+        
+        const time = new Date().toLocaleTimeString();
+        entry.textContent = `[${time}] ${msg}`;
+        logConsole.appendChild(entry);
+        logConsole.scrollTop = logConsole.scrollHeight;
+    }
+
+    function showElement(el, displayClass = '') {
+        if (!el) return;
+        el.classList.remove('display-none');
+        if (displayClass) el.classList.add(displayClass);
+    }
+
+    function hideElement(el, displayClass = '') {
+        if (!el) return;
+        el.classList.add('display-none');
+        if (displayClass) el.classList.remove(displayClass);
+    }
+
     // =========================================================================
     // STATE 1: CLINICAL DASHBOARD LOGIC (When analyzed)
     // =========================================================================
@@ -63,14 +99,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Collapsible Transcript Handler
         const toggleTranscriptHeader = document.getElementById('toggleTranscriptHeader');
-        const transcriptBodyContainer = document.getElementById('transcriptBodyContainer');
+        const transcriptCard = document.querySelector('.transcript-card');
         const transcriptToggleIndicator = document.getElementById('transcriptToggleIndicator');
 
-        if (toggleTranscriptHeader && transcriptBodyContainer) {
+        if (toggleTranscriptHeader && transcriptCard) {
             toggleTranscriptHeader.addEventListener('click', () => {
-                const isOpen = transcriptBodyContainer.style.display === 'block';
-                transcriptBodyContainer.style.display = isOpen ? 'none' : 'block';
-                transcriptToggleIndicator.textContent = isOpen ? 'Expandir ▼' : 'Recolher ▲';
+                const isOpen = transcriptCard.classList.toggle('open');
+                transcriptToggleIndicator.textContent = isOpen ? 'Recolher ▲' : 'Expandir ▼';
+            });
+        }
+
+        // Transcript Tab Switcher (Sanitized vs Raw)
+        const btnShowSanitized = document.getElementById('btnShowSanitized');
+        const btnShowRaw = document.getElementById('btnShowRaw');
+        const transcriptTextContent = document.getElementById('transcriptTextContent');
+
+        if (btnShowSanitized && btnShowRaw && transcriptTextContent) {
+            btnShowSanitized.addEventListener('click', () => {
+                btnShowSanitized.classList.add('active');
+                btnShowRaw.classList.remove('active');
+                transcriptTextContent.textContent = transcriptTextContent.dataset.sanitized || '';
+            });
+
+            btnShowRaw.addEventListener('click', () => {
+                btnShowRaw.classList.add('active');
+                btnShowSanitized.classList.remove('active');
+                transcriptTextContent.textContent = transcriptTextContent.dataset.raw || '';
             });
         }
     }
@@ -79,23 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // STATE 2: PIPELINE POLLING LOGIC (When actively running)
     // =========================================================================
     if (initialTranscriptStatus && ['preprocessing', 'analyzing', 'queued'].includes(initialTranscriptStatus)) {
-        const logConsole = document.getElementById('logConsole');
-        
-        function addLog(msg, type = 'normal') {
-            if (!logConsole) return;
-            const entry = document.createElement('div');
-            entry.className = `log-entry`;
-            entry.style.marginBottom = '0.25rem';
-            if (type === 'success') entry.style.color = '#10b981';
-            else if (type === 'error') entry.style.color = '#ef4444';
-            else if (type === 'system') entry.style.color = '#3b82f6';
-            
-            const time = new Date().toLocaleTimeString();
-            entry.textContent = `[${time}] ${msg}`;
-            logConsole.appendChild(entry);
-            logConsole.scrollTop = logConsole.scrollHeight;
-        }
-
         addLog(`Iniciando monitoramento de execução da sessão ${sessionId}...`, 'system');
 
         async function pollDatabaseStatus() {
@@ -159,30 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const removeFileBtn = document.getElementById('removeFileBtn');
         const skipSanitizationOpt = document.getElementById('skipSanitizationOpt');
         const startBtn = document.getElementById('startBtn');
-
         const newSessionView = document.getElementById('newSessionView');
-        const processingView = document.getElementById('processingView');
-        const statusTitle = document.getElementById('statusTitle');
-        const statusDesc = document.getElementById('statusDesc');
-        const logConsole = document.getElementById('logConsole');
 
         let selectedFile = null;
         let activePolling = false;
-
-        function addLog(msg, type = 'normal') {
-            if (!logConsole) return;
-            const entry = document.createElement('div');
-            entry.className = `log-entry`;
-            entry.style.marginBottom = '0.25rem';
-            if (type === 'success') entry.style.color = '#10b981';
-            else if (type === 'error') entry.style.color = '#ef4444';
-            else if (type === 'system') entry.style.color = '#3b82f6';
-            
-            const time = new Date().toLocaleTimeString();
-            entry.textContent = `[${time}] ${msg}`;
-            logConsole.appendChild(entry);
-            logConsole.scrollTop = logConsole.scrollHeight;
-        }
 
         // Click selection triggers
         browseBtn.addEventListener('click', (e) => {
@@ -201,17 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Drag & Drop
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = 'var(--primary)';
-            dropZone.style.background = '#f1f5f9';
+            dropZone.classList.add('dragover');
         });
         dropZone.addEventListener('dragleave', () => {
-            dropZone.style.borderColor = 'var(--border)';
-            dropZone.style.background = '#fafafa';
+            dropZone.classList.remove('dragover');
         });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = 'var(--border)';
-            dropZone.style.background = '#fafafa';
+            dropZone.classList.remove('dragover');
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                 handleFileSelection(e.dataTransfer.files[0]);
             }
@@ -225,8 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             selectedFile = file;
             fileName.textContent = file.name;
-            dropZone.style.display = 'none';
-            selectedFilePanel.style.display = 'flex';
+            hideElement(dropZone);
+            showElement(selectedFilePanel, 'selected-file-panel-styled');
         }
 
         // Remove selected file
@@ -234,8 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             selectedFile = null;
             fileInput.value = '';
-            selectedFilePanel.style.display = 'none';
-            dropZone.style.display = 'block';
+            hideElement(selectedFilePanel, 'selected-file-panel-styled');
+            showElement(dropZone);
         });
 
         // Initiate upload and start async task
@@ -251,8 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('therapy_session_id', sessionId.toString());
 
             // Switch view state to Processing Console
-            newSessionView.style.display = 'none';
-            processingView.style.display = 'block';
+            hideElement(newSessionView);
+            showElement(processingView, 'active');
             statusTitle.textContent = 'Enviando Arquivo...';
             addLog(`Iniciando upload de ${selectedFile.name}...`, 'system');
 
@@ -281,10 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function handleUploadError(msg) {
             statusTitle.textContent = 'Erro na Transcrição';
-            statusTitle.style.color = 'var(--error)';
             statusDesc.textContent = 'A ingestão falhou antes de disparar o pipeline.';
-            const spinner = document.querySelector('.spinner');
-            if (spinner) spinner.style.display = 'none';
+            if (processingView) {
+                processingView.classList.add('has-error');
+            }
             addLog(msg, 'error');
         }
 
