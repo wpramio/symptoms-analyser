@@ -12,6 +12,7 @@ from symptoms_analyser.controllers.admin import (
     get_transcripts,
     get_patients_list_with_stats,
     get_patient_evolution_data,
+    update_patient,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.therapy_sessions import (
@@ -277,26 +278,50 @@ def admin_transcripts():
         return str(e), 500
 
 
-@app.route("/admin/patients", methods=["GET", "POST"])
+@app.route("/admin/patients", methods=["GET", "POST", "PATCH"])
 def admin_patients():
     try:
         from flask import flash, redirect, url_for
         import re
         
+        if request.method == "PATCH":
+            data = request.get_json() or {}
+            original_id = data.get("original_id") or request.form.get("original_id")
+            pseudonym = data.get("pseudonym") or request.form.get("pseudonym")
+            real_name = data.get("real_name") or request.form.get("real_name")
+            
+            result, status = update_patient(original_id, pseudonym, real_name)
+            return jsonify(result), status
+
         if request.method == "POST":
+            original_id = request.form.get("original_id", "").strip()
             pseudonym = request.form.get("pseudonym", "").strip()
             real_name = request.form.get("real_name", "").strip()
-            
-            if not pseudonym or not real_name:
-                flash("Erro: Todos os campos são obrigatórios.", "error")
-            elif not re.match(r"^Paciente\d+$", pseudonym):
-                flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
-            else:
-                result, status = create_patient(pseudonym, real_name)
-                if status in (200, 201):
-                    flash("✓ Paciente criado com sucesso!", "success")
+
+            if original_id:
+                # Update existing patient (HTML form edit)
+                if not pseudonym or not real_name:
+                    flash("Erro: Todos os campos são obrigatórios.", "error")
+                elif not re.match(r"^Paciente\d+$", pseudonym):
+                    flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
                 else:
-                    flash(f"Erro ao salvar paciente: {result.get('error', 'Erro desconhecido')}", "error")
+                    result, status = update_patient(original_id, pseudonym, real_name)
+                    if status == 200:
+                        flash("✓ Paciente atualizado com sucesso!", "success")
+                    else:
+                        flash(f"Erro ao salvar paciente: {result.get('error', 'Erro desconhecido')}", "error")
+            else:
+                # Create new patient
+                if not pseudonym or not real_name:
+                    flash("Erro: Todos os campos são obrigatórios.", "error")
+                elif not re.match(r"^Paciente\d+$", pseudonym):
+                    flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
+                else:
+                    result, status = create_patient(pseudonym, real_name)
+                    if status in (200, 201):
+                        flash("✓ Paciente criado com sucesso!", "success")
+                    else:
+                        flash(f"Erro ao salvar paciente: {result.get('error', 'Erro desconhecido')}", "error")
             
             return redirect(url_for("admin_patients"))
 

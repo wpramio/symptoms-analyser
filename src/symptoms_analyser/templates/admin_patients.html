@@ -19,8 +19,9 @@
                 <table class="cost-table">
                     <thead>
                         <tr>
-                            <th class="col-width-40">Pseudônimo</th>
-                            <th class="col-width-60">Nome real do paciente (restrito)</th>
+                            <th class="col-width-30">Pseudônimo</th>
+                            <th class="col-width-50">Nome real do paciente (restrito)</th>
+                            <th class="col-width-20 text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="registryTableBody">
@@ -32,11 +33,19 @@
                                     <strong class="text-medium font-bold">{{ pat.real_name }}</strong><br>
                                     <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime }}</span>
                                 </td>
+                                <td class="text-center">
+                                    <button class="btn btn-secondary edit-patient-btn" 
+                                            data-open="editPatientModal"
+                                            data-id="{{ pat.id }}" 
+                                            data-realname="{{ pat.real_name }}">
+                                        Editar
+                                    </button>
+                                </td>
                             </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="2" class="text-center text-muted padding-large">
+                                <td colspan="3" class="text-center text-muted padding-large">
                                     Nenhum registro de paciente encontrado.
                                 </td>
                             </tr>
@@ -64,6 +73,8 @@
         </div>
     </div>
 </div>
+
+{% include '_edit_patient_modal.html' %}
 {% endblock %}
 
 {% block scripts %}

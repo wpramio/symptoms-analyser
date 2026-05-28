@@ -342,3 +342,62 @@ def create_patient_item_score(
         with get_db() as conn:
             conn.execute(sql, params)
             conn.commit()
+
+
+def update_patient(
+    original_id: str,
+    new_pseudonym: str,
+    new_real_name: str,
+    db_conn: Optional[sqlite3.Connection] = None
+) -> None:
+    """
+    Update an existing patient's details and cascade the pseudonym change.
+    Raises ValueError or sqlite3.Error if database operations fail.
+    """
+    original_id = original_id.strip()
+    new_pseudonym = new_pseudonym.strip()
+    new_real_name = new_real_name.strip()
+
+    def _execute(conn: sqlite3.Connection):
+        cursor = conn.cursor()
+        
+        # Check if the patient exists
+        cursor.execute("SELECT id FROM patients WHERE id = ?", (original_id,))
+        if not cursor.fetchone():
+            raise ValueError("Paciente não encontrado")
+
+        # Check if new pseudonym already exists for another patient
+        cursor.execute("SELECT id FROM patients WHERE pseudonym = ? AND id != ?", (new_pseudonym, original_id))
+        if cursor.fetchone():
+            raise ValueError(f"O pseudônimo '{new_pseudonym}' já está cadastrado para outro paciente")
+
+        cursor.execute("PRAGMA foreign_keys = OFF")
+        try:
+            # Update patients table
+            cursor.execute(
+                "UPDATE patients SET id = ?, pseudonym = ?, real_name = ? WHERE id = ?",
+                (new_pseudonym, new_pseudonym, new_real_name, original_id),
+            )
+
+            # Update join tables if pseudonym/id changed
+            if new_pseudonym != original_id:
+                cursor.execute(
+                    "UPDATE therapy_session_patients SET patient_id = ? WHERE patient_id = ?",
+                    (new_pseudonym, original_id),
+                )
+                cursor.execute(
+                    "UPDATE patient_item_scores SET patient_id = ? WHERE patient_id = ?",
+                    (new_pseudonym, original_id),
+                )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            cursor.execute("PRAGMA foreign_keys = ON")
+
+    if db_conn:
+        _execute(db_conn)
+    else:
+        with get_db() as conn:
+            _execute(conn)

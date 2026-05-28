@@ -1,0 +1,58 @@
+{% from 'macros.html' import modal %}
+
+{% call modal(id='editPatientModal', title='Editar paciente', form_id='editPatientForm', action='/admin/patients',
+size='medium') %}
+<input type="hidden" id="editOriginalId" name="original_id">
+
+<div class="input-group">
+    <label for="editPatientPseudonym">Pseudônimo:</label>
+    <input type="text" id="editPatientPseudonym" name="pseudonym" placeholder="Ex: Paciente8" required>
+    <span class="form-helper-text">Use o formato "PacienteX" (ex: Paciente8).</span>
+</div>
+
+<div class="input-group">
+    <label for="editPatientRealName">Nome real:</label>
+    <input type="text" id="editPatientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva" required>
+</div>
+
+<div class="modal-actions">
+    <button type="button" class="btn btn-secondary" data-close="editPatientModal">Cancelar</button>
+    <button type="submit" class="btn">Salvar</button>
+</div>
+{% endcall %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const editModal = document.getElementById("editPatientModal");
+        if (!editModal) return;
+
+        const editForm = document.getElementById("editPatientForm");
+        const editOriginalId = document.getElementById("editOriginalId");
+        const editPatientPseudonym = document.getElementById("editPatientPseudonym");
+        const editPatientRealName = document.getElementById("editPatientRealName");
+
+        // Listen to custom modal open event to populate the fields dynamically
+        editModal.addEventListener("modal:open", function (e) {
+            const trigger = e.detail.trigger;
+            const id = trigger.getAttribute("data-id");
+            const realName = trigger.getAttribute("data-realname");
+
+            if (editOriginalId) editOriginalId.value = id;
+            if (editPatientPseudonym) editPatientPseudonym.value = id;
+            if (editPatientRealName) editPatientRealName.value = realName;
+        });
+
+        // Submit form frontend validation
+        if (editForm) {
+            editForm.addEventListener("submit", function (e) {
+                if (editPatientPseudonym) {
+                    const pseudonym = editPatientPseudonym.value.trim();
+                    if (!/^Paciente\d+$/.test(pseudonym)) {
+                        e.preventDefault();
+                        window.showToast("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error");
+                    }
+                }
+            });
+        }
+    });
+</script>

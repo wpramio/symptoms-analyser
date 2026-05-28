@@ -174,6 +174,39 @@ def create_patient(pseudonym: str | None, real_name: str | None) -> tuple[dict, 
     return {"message": "Paciente registrado com sucesso"}, 201
 
 
+def update_patient(original_id: str | None, new_pseudonym: str | None, new_real_name: str | None) -> tuple[dict, int]:
+    """
+    Validate and update an existing patient's details via ORM layer.
+    Returns (response_dict, http_status_code).
+    """
+    if not original_id or not new_pseudonym or not new_real_name:
+        return {"error": "Dados inválidos ou incompletos"}, 400
+
+    original_id = original_id.strip()
+    new_pseudonym = new_pseudonym.strip()
+    new_real_name = new_real_name.strip()
+
+    if not original_id or not new_pseudonym or not new_real_name:
+        return {"error": "Dados não podem estar vazios"}, 400
+
+    if not re.match(r"^Paciente\d+$", new_pseudonym):
+        return {"error": "Pseudônimo deve seguir o formato 'PacienteX' (ex: Paciente8)"}, 400
+
+    from symptoms_analyser.orm import update_patient as orm_update_patient
+    try:
+        orm_update_patient(original_id, new_pseudonym, new_real_name)
+    except ValueError as e:
+        err_msg = str(e)
+        if "não encontrado" in err_msg:
+            return {"error": err_msg}, 404
+        return {"error": err_msg}, 409
+    except Exception as e:
+        return {"error": f"Erro de banco de dados: {str(e)}"}, 500
+
+    return {"message": "Paciente atualizado com sucesso"}, 200
+
+
+
 def get_patients_list_with_stats() -> list[dict]:
     """Retrieve all patients with aggregated clinical session participation counts."""
     with get_db() as conn:
