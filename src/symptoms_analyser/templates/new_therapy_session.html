@@ -7,15 +7,15 @@
 <div class="main-container">
     <!-- Back to sessions link -->
     <a href="/therapy_sessions" class="back-link">
-        <svg width="16" height="16" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+        <svg width="16" height="16" aria-hidden="true">
+            <use href="#icon-arrow-left"></use>
+        </svg>
         Voltar para sessões
     </a>
 
     <!-- Page Header conforms to Design System -->
     <div class="page-header">
         <h2>Nova sessão de terapia</h2>
-        <p>Cadastre os dados de agendamento de uma sessão de terapia. Você pode importar um arquivo de transcrição para
-            analisar os sintomas imediatamente ou apenas registrar a sessão no banco de dados.</p>
     </div>
 
     <!-- Main Workspace in a two-column or grid style, capped for readable form-width -->
@@ -53,7 +53,7 @@
                     <div class="checkbox-info">
                         <span class="checkbox-title-spaced">Importar arquivo de transcrição (opcional)</span>
                         <span class="checkbox-desc-spaced">Marque esta opção para fazer o upload do diálogo da sessão
-                            (TXT ou DOCX) e disparar a análise automatizada de sintomas.</span>
+                            (TXT ou DOCX) e disparar a análise automatizada de sintomas (TDPM-20).</span>
                     </div>
                 </label>
 
@@ -88,11 +88,11 @@
                         </div>
 
                         <div class="checkbox-container">
-                            <input type="checkbox" id="skipSanitizationOpt">
+                            <input type="checkbox" id="skipSanitizationOpt" checked>
                             <div class="checkbox-info">
-                                <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
-                                <span class="checkbox-desc-styled">Útil para transcrições já previamente higienizadas de
-                                    dados pessoais (PHI).</span>
+                                <span class="checkbox-title-styled">Pular sanitização por IA (LLM)</span>
+                                <span class="checkbox-desc-styled">Útil para transcrições já previamente
+                                    tratadas.</span>
                             </div>
                         </div>
                     </div>
