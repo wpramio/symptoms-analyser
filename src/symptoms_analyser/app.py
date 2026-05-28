@@ -293,8 +293,8 @@ def admin_patients():
                 flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
             else:
                 result, status = create_patient(pseudonym, real_name)
-                if status == 200:
-                    flash("✓ Vínculo salvo com sucesso!", "success")
+                if status in (200, 201):
+                    flash("✓ Paciente criado com sucesso!", "success")
                 else:
                     flash(f"Erro ao salvar paciente: {result.get('error', 'Erro desconhecido')}", "error")
             
