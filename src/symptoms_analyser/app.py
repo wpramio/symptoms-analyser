@@ -243,9 +243,9 @@ def handle_upload_transcript():
             start_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         
         try:
-            duration = int(form_data.get("duration") or 3600)
+            duration = int(form_data.get("duration") or 60)
         except ValueError:
-            duration = 3600
+            duration = 60
 
         conn = sqlite3.connect(DB_PATH)
         conn.execute("PRAGMA foreign_keys = ON")
