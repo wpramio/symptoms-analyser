@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 statTranscripts.textContent = data.total_transcripts;
                 statSuccess.textContent = data.success_rate + '%';
-                
+
                 const totalTokens = data.total_prompt_tokens + data.total_completion_tokens;
                 statTokens.textContent = totalTokens.toLocaleString();
                 statTokensDesc.textContent = `Prompt: ${data.total_prompt_tokens.toLocaleString()} | Comp: ${data.total_completion_tokens.toLocaleString()}`;
@@ -279,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </td>
                             <td style="font-size: 0.85rem; color: var(--text-muted);">
                                 <strong>${formatDate(s.start_at)}</strong><br>
-                                <span>Duração: ${Math.round(s.duration / 60)} min</span>
+                                <span>Duração: ${s.duration} min</span>
                             </td>
                             <td>
                                 <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main); background: rgba(255,255,255,0.05); padding: 0.25rem 0.5rem; border-radius: 4px;">

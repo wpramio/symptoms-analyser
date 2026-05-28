@@ -36,7 +36,7 @@
                     <tr onclick="window.location.href='/therapy_sessions/{{ session.id }}'" class="clickable-row">
                         <td>
                             <div class="font-semibold">{{ session.name }}</div>
-                            <div class="text-xs-muted">Duração: {{ (session.duration / 60)|int }} min</div>
+                            <div class="text-xs-muted">Duração: {{ session.duration }} min</div>
                         </td>
                         <td>{{ session.clinician_name }}</td>
                         <td>{{ session.start_at }}</td>
