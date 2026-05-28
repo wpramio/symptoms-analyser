@@ -3,8 +3,6 @@
 
 {% block title %}Gestão de Pacientes - Symptoms Analyser{% endblock %}
 
-
-
 {% block content %}
 <div class="calculator-view">
     <!-- Header matching calc-header style -->
@@ -26,10 +24,23 @@
                         </tr>
                     </thead>
                     <tbody id="registryTableBody">
-                        <tr>
-                            <td colspan="2" class="table-empty-row">
-                                Carregando registros de pacientes...</td>
-                        </tr>
+                        {% if patients %}
+                            {% for pat in patients %}
+                            <tr>
+                                <td><strong class="text-primary text-medium">{{ pat.id }}</strong></td>
+                                <td>
+                                    <strong class="text-medium font-bold">{{ pat.real_name }}</strong><br>
+                                    <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="2" class="text-center text-muted padding-large">
+                                    Nenhum registro de paciente encontrado.
+                                </td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -38,15 +49,15 @@
         <!-- Ingress/Inclusion Form matching calc-card style -->
         <div class="calc-card">
             <h3>Cadastrar novo paciente</h3>
-            <form id="createPatientForm" onsubmit="event.preventDefault(); submitPatient();">
+            <form id="createPatientForm" action="/admin/patients" method="POST">
                 <div class="input-group">
                     <label for="patientPseudonym">Pseudônimo:</label>
-                    <input type="text" id="patientPseudonym" placeholder="Ex: Paciente8" required>
+                    <input type="text" id="patientPseudonym" name="pseudonym" placeholder="Ex: Paciente8" required>
                     <span class="form-helper-text">Use o formato "PacienteX" (ex: Paciente8).</span>
                 </div>
                 <div class="input-group">
                     <label for="patientRealName">Nome real:</label>
-                    <input type="text" id="patientRealName" placeholder="Ex: Roberto Carlos da Silva" required>
+                    <input type="text" id="patientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva" required>
                 </div>
                 <button type="submit" class="btn btn-full-width margin-top-medium">Salvar</button>
             </form>
@@ -54,10 +65,23 @@
     </div>
 </div>
 
-<!-- Toast notification element -->
-<div id="toastNotification" class="toast-notification">✓ Vínculo salvo com sucesso!</div>
+<!-- Toast notification element rendered server-side via flash -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div id="toastNotification" class="toast-notification active {{ 'error' if category == 'error' else '' }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+    <script>
+        setTimeout(() => {
+            const toast = document.getElementById('toastNotification');
+            if (toast) toast.classList.remove('active');
+        }, 3000);
+    </script>
+  {% endif %}
+{% endwith %}
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/admin_patients.js"></script>
 {% endblock %}

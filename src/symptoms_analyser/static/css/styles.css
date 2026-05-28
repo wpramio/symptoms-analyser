@@ -3351,3 +3351,11 @@ select:focus {
 .processing-card.active {
     display: block !important;
 }
+
+.toast-notification.active {
+    display: block !important;
+}
+
+.toast-notification.error {
+    background: var(--error) !important;
+}

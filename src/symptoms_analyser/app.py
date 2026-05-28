@@ -28,6 +28,7 @@ from symptoms_analyser.controllers.therapy_sessions import (
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
 
 app = Flask(__name__)
+app.secret_key = "symptoms-analyser-secure-key"
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -281,9 +282,34 @@ def admin_transcripts():
         return str(e), 500
 
 
-@app.route("/admin/patients")
+@app.route("/admin/patients", methods=["GET", "POST"])
 def admin_patients():
-    return render_template("admin_patients.html")
+    try:
+        from flask import flash, redirect, url_for
+        import re
+        
+        if request.method == "POST":
+            pseudonym = request.form.get("pseudonym", "").strip()
+            real_name = request.form.get("real_name", "").strip()
+            
+            if not pseudonym or not real_name:
+                flash("Erro: Todos os campos são obrigatórios.", "error")
+            elif not re.match(r"^Paciente\d+$", pseudonym):
+                flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
+            else:
+                result, status = create_patient(pseudonym, real_name)
+                if status == 200:
+                    flash("✓ Vínculo salvo com sucesso!", "success")
+                else:
+                    flash(f"Erro ao salvar paciente: {result.get('error', 'Erro desconhecido')}", "error")
+            
+            return redirect(url_for("admin_patients"))
+
+        patients = get_patients()
+        return render_template("admin_patients.html", patients=patients)
+    except Exception as e:
+        print(f"Error serving admin patients: {e}")
+        return str(e), 500
 
 
 @app.route("/admin/calculator")
