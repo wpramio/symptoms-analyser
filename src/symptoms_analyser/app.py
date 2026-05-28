@@ -1,12 +1,7 @@
-import os
-import sqlite3
-import uuid
-import json
 from pathlib import Path
 from datetime import datetime, timezone
 
 from flask import Flask, jsonify, render_template, request, redirect, url_for
-from werkzeug.utils import secure_filename
 
 from symptoms_analyser.controllers.admin import (
     create_patient,

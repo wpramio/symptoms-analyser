@@ -6,9 +6,8 @@ Encapsulates all database creations, updates, and relations.
 """
 
 import json
-from datetime import datetime, timezone
 import sqlite3
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from symptoms_analyser.db import get_db
 

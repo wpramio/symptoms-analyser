@@ -5,13 +5,11 @@ STEP 2: Handle transcript uploads (standalone or session-based) and orchestrate
 the asynchronous processing pipeline.
 """
 
-from datetime import datetime, timezone
-import json
 from pathlib import Path
 import sqlite3
 import threading
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from werkzeug.utils import secure_filename
 
