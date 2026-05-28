@@ -7,7 +7,9 @@
 <div class="main-container">
     <!-- Back to patients link -->
     <a href="/patients" class="back-link">
-        <svg width="16" height="16" aria-hidden="true"><use href="#icon-arrow-left"></use></svg>
+        <svg width="16" height="16" aria-hidden="true">
+            <use href="#icon-arrow-left"></use>
+        </svg>
         Voltar para pacientes
     </a>
 
@@ -16,24 +18,25 @@
         <div>
             <div class="patient-title-group">
                 <h2 class="patient-id-title">{{ patient.id }}</h2>
-                <span class="hipaa-pill">🔒 HIPAA protegido</span>
+                <span class="hipaa-pill">🔒 HIPAA</span>
             </div>
             <p class="patient-meta-desc">
-                Nome real: <strong>{{ patient.real_name }}</strong> | Cadastro: <strong>{{ patient.created_at[:10] }}</strong>
+                Nome real: <strong>{{ patient.real_name }}</strong> | Cadastro: <strong>{{ patient.created_at[:10]
+                    }}</strong>
             </p>
         </div>
 
         <div class="patient-sessions-row">
-            <span class="patient-sessions-label">Sessões agendadas:</span>
+            <span class="patient-sessions-label">Sessões vinculadas:</span>
             <div class="flex-gap-xs">
                 {% if sessions %}
-                    {% for sess in sessions %}
-                        <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link" title="Data: {{ sess.start_at }}">
-                            {{ sess.name }}
-                        </a>
-                    {% endfor %}
+                {% for sess in sessions %}
+                <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link" title="Data: {{ sess.start_at }}">
+                    {{ sess.name }}
+                </a>
+                {% endfor %}
                 {% else %}
-                    <span class="patient-no-sessions">Nenhuma sessão vinculada</span>
+                <span class="patient-no-sessions">Nenhuma sessão vinculada</span>
                 {% endif %}
             </div>
         </div>
@@ -43,8 +46,8 @@
     <!-- No clinical data state -->
     <div class="welcome-message">
         <span style="font-size: 2.5rem;">📁</span>
-        <h3>Sem Dados Clínicos</h3>
-        <p>Este paciente ({{ patient.id }}) ainda não possui avaliações clínicas com sintomas quantificados.</p>
+        <h3>Sem dados clínicos</h3>
+        <p>Este paciente ainda não possui avaliações clínicas com sintomas quantificados.</p>
     </div>
 
     {% else %}
@@ -82,7 +85,8 @@
             <div class="card-header-flex">
                 <div>
                     <h3 class="card-title">Trajetória temporal de sintomas</h3>
-                    <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões específicas do TDPM-20.</p>
+                    <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões específicas do
+                        TDPM-20.</p>
                 </div>
                 <div class="chart-controls">
                     <label for="chartMetricSelect">Visualizar:</label>
@@ -107,7 +111,8 @@
             <div class="card-header-flex">
                 <div>
                     <h3 class="card-title">Matriz de monitoramento (TDPM-20)</h3>
-                    <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão realizada.</p>
+                    <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão
+                        realizada.</p>
                 </div>
                 <div class="heatmap-header-controls">
                     <button type="button" id="btnToggleEmptyDimensions" class="btn btn-secondary btn-heatmap-toggle">
@@ -129,13 +134,13 @@
                         <tr>
                             <th>Dimensão clínica</th>
                             {% for entry in timeline %}
-                                <th style="text-align: center;">{{ entry.date }}</th>
+                            <th style="text-align: center;">{{ entry.date }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
                         {% for dim in heatmap_dims %}
-                        <tr>
+                        <tr class="heatmap-row {% if not dim.is_active %}inactive-row display-none{% endif %}">
                             <td><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
                             {% for cell in dim.cells %}
                             <td class="heatmap-cell" data-severity="{{ cell.severity }}"
@@ -155,20 +160,22 @@
             <div class="card-header-flex">
                 <div>
                     <h3 class="card-title">Linha do tempo de evidências clínicas</h3>
-                    <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas diagnósticas de sintomas.</p>
+                    <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas diagnósticas de
+                        sintomas.</p>
                 </div>
                 <div class="timeline-filters">
                     <select id="timelineDimensionFilter" class="selector-dropdown compact-select">
                         <option value="all">Todas as dimensões</option>
                         {% set active_dims = namespace(seen=[]) %}
                         {% for entry in timeline %}
-                            {% for item_id, item in entry.clinical_items.items() %}
-                                {% set dim_key = item_id.split('.')[0] %}
-                                {% if dim_key not in active_dims.seen %}
-                                    {% set active_dims.seen = active_dims.seen + [dim_key] %}
-                                    <option value="{{ dim_key }}">{{ dim_key }}. {{ item.name.split(' - ')[0] if ' - ' in item.name else item.name }}</option>
-                                {% endif %}
-                            {% endfor %}
+                        {% for item_id, item in entry.clinical_items.items() %}
+                        {% set dim_key = item_id.split('.')[0] %}
+                        {% if dim_key not in active_dims.seen %}
+                        {% set active_dims.seen = active_dims.seen + [dim_key] %}
+                        <option value="{{ dim_key }}">{{ dim_key }}. {{ item.name.split(' - ')[0] if ' - ' in item.name
+                            else item.name }}</option>
+                        {% endif %}
+                        {% endfor %}
                         {% endfor %}
                     </select>
                 </div>
@@ -176,38 +183,39 @@
 
             <div class="vertical-timeline" id="evidenceTimeline">
                 {% for entry in timeline %}
-                    {% set session_has_evidence = namespace(found=false) %}
-                    {% for item_id, item in entry.clinical_items.items() %}
-                        {% if item.evidence and item.evidence | length > 0 %}
-                            {% set session_has_evidence.found = true %}
-                        {% endif %}
-                    {% endfor %}
+                {% set session_has_evidence = namespace(found=false) %}
+                {% for item_id, item in entry.clinical_items.items() %}
+                {% if item.evidence and item.evidence | length > 0 %}
+                {% set session_has_evidence.found = true %}
+                {% endif %}
+                {% endfor %}
 
-                    {% if session_has_evidence.found %}
-                    <div class="timeline-entry" data-date="{{ entry.date }}">
-                        <div class="timeline-badge"></div>
-                        <div class="timeline-header">
-                            <span class="timeline-date">{{ entry.date }}</span>
-                        </div>
-                        <div class="timeline-cards-container">
-                            {% for item_id, item in entry.clinical_items.items() %}
-                                {% if item.evidence and item.evidence | length > 0 %}
-                                <div class="timeline-card" data-dim="{{ item_id.split('.')[0] }}">
-                                    <div class="timeline-card-header">
-                                        <span class="timeline-card-title">{{ item_id }} - {{ item.name }}</span>
-                                        <span class="score-badge" data-severity="{{ item.score }}">Score: {{ item.score }}</span>
-                                    </div>
-                                    <ul class="timeline-card-quotes">
-                                        {% for ev in item.evidence %}
-                                        <li class="timeline-quote-item">"{{ ev }}"</li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
+                {% if session_has_evidence.found %}
+                <div class="timeline-entry" data-date="{{ entry.date }}">
+                    <div class="timeline-badge"></div>
+                    <div class="timeline-header">
+                        <span class="timeline-date">{{ entry.date }}</span>
                     </div>
-                    {% endif %}
+                    <div class="timeline-cards-container">
+                        {% for item_id, item in entry.clinical_items.items() %}
+                        {% if item.evidence and item.evidence | length > 0 %}
+                        <div class="timeline-card" data-dim="{{ item_id.split('.')[0] }}">
+                            <div class="timeline-card-header">
+                                <span class="timeline-card-title">{{ item_id }} - {{ item.name }}</span>
+                                <span class="score-badge" data-severity="{{ item.score }}">Score: {{ item.score
+                                    }}</span>
+                            </div>
+                            <ul class="timeline-card-quotes">
+                                {% for ev in item.evidence %}
+                                <li class="timeline-quote-item">"{{ ev }}"</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 {% endfor %}
 
                 {% if not timeline %}

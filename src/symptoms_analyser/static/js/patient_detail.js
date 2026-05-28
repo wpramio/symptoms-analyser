@@ -214,15 +214,18 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     const btnToggle = document.getElementById('btnToggleEmptyDimensions');
     if (btnToggle) {
-        // All visible rows in the heatmap are active (server only renders active dims).
-        // The button reveals/hides a special class of zero-only rows that the server
-        // might have included. Since the server only sends active dims, this button
-        // is a no-op for now but wired for future use.
         btnToggle.addEventListener('click', () => {
-            btnToggle.textContent = btnToggle.textContent.includes('Mostrar')
-                ? 'Ocultar dimensões sem sintomas'
-                : 'Mostrar dimensões sem sintomas';
-            btnToggle.classList.toggle('btn-secondary');
+            const isShowingEmpty = btnToggle.textContent.includes('Ocultar');
+            
+            const inactiveRows = document.querySelectorAll('.inactive-row');
+            inactiveRows.forEach(row => {
+                row.classList.toggle('display-none', isShowingEmpty);
+            });
+            
+            btnToggle.textContent = isShowingEmpty
+                ? 'Mostrar dimensões sem sintomas'
+                : 'Ocultar dimensões sem sintomas';
+            btnToggle.classList.toggle('btn-secondary', isShowingEmpty);
         });
     }
 });

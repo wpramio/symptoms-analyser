@@ -410,23 +410,25 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         "top_dim_max": top_dim_max,
     }
 
-    # --- Heatmap: active dimensions ordered 1-20 ---
+    # --- Heatmap: all 20 dimensions built with active flag ---
     active_keys = {k for entry in timeline for k, v in entry["dimensions"].items() if v > 0}
     heatmap_dims = []
     for i in range(1, 21):
         dim_key = str(i)
-        if dim_key not in active_keys:
-            continue
         max_size = (3 if dim_key == "16" else 2) * 4
         cells = []
+        has_score = False
         for entry in timeline:
             score = entry["dimensions"].get(dim_key, 0)
+            if score > 0:
+                has_score = True
             severity = min(4, round((score / max_size) * 4)) if score > 0 else 0
             cells.append({"score": score, "max": max_size, "severity": severity, "date": entry["date"]})
         heatmap_dims.append({
             "key": dim_key,
             "name": ONTOLOGY_DIMENSIONS.get(dim_key, dim_key),
             "cells": cells,
+            "is_active": has_score
         })
 
     # --- Chart data (JSON-serialisable for embedding in data island) ---
