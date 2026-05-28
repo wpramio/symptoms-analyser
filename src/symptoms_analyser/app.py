@@ -71,12 +71,18 @@ def therapy_session_detail(session_id):
         data = get_therapy_session_detail(session_id)
         if not data:
             return "Session not found", 404
+            
+        evaluation_payload = None
+        if data["evaluation_id"]:
+            evaluation_payload = get_evaluation_payload(data["evaluation_id"])
+            
         return render_template(
             "therapy_session_detail.html",
             session=data["session"],
             patients_list=data["patients_list"],
             transcript=data["transcript"],
-            evaluation_id=data["evaluation_id"]
+            evaluation_id=data["evaluation_id"],
+            evaluation=evaluation_payload
         )
     except Exception as e:
         print(f"Error serving session detail for {session_id}: {e}")

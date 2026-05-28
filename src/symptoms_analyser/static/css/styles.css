@@ -3153,3 +3153,102 @@ select:focus {
     margin-bottom: 0.75rem;
     color: var(--text-main);
 }
+
+/* ==========================================================================
+   Therapy Session Detail Page Styles
+   ========================================================================== */
+
+.patient-navigation .patient-tabs {
+    display: flex;
+    gap: 1.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.patient-navigation .patient-tab {
+    padding: 0.75rem 0;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.patient-navigation .patient-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.patient-view-section {
+    display: none;
+}
+
+.patient-view-section.active {
+    display: block;
+}
+
+.dimensions-list .dimension-header {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.dimensions-list .dimension-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.dimensions-list .dimension-body {
+    display: none;
+    padding: 0 1.5rem 1.5rem;
+    border-top: 1px solid var(--border);
+    background-color: #fafafa;
+}
+
+.dimensions-list .dimension-item.open .dimension-body {
+    display: block;
+}
+
+.dimensions-list .item-row {
+    margin-top: 1.25rem;
+}
+
+.dimensions-list .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.dimensions-list .item-name {
+    font-weight: 500;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.dimensions-list .item-evidence {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.dimensions-list .evidence-quote {
+    background-color: white;
+    padding: 0.75rem 1rem;
+    border-left: 4px solid var(--primary);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+/* Hide the processing console initially on the upload view */
+#newSessionView ~ #processingView {
+    display: none;
+}

@@ -8,19 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // STATE 1: CLINICAL DASHBOARD LOGIC (When analyzed)
     // =========================================================================
-    if (evaluationId && evaluationPath) {
+    if (evaluationId) {
         const btnShowSessionMeta = document.getElementById('btnShowSessionMeta');
         const metaPopover = document.getElementById('metaPopover');
-        const metaModel = document.getElementById('metaModel');
-        const metaChunks = document.getElementById('metaChunks');
-        const metaTime = document.getElementById('metaTime');
-        const metaTokens = document.getElementById('metaTokens');
-
-        const patientTabs = document.getElementById('patientTabs');
-        const patientContent = document.getElementById('patientContent');
-        const patientTemplate = document.getElementById('patientTemplate');
-
-        let currentData = null;
 
         // Toggle popover visibility
         if (btnShowSessionMeta && metaPopover) {
@@ -38,159 +28,38 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Fetch evaluation payload
-        fetch(evaluationPath)
-            .then(res => res.json())
-            .then(data => {
-                currentData = data;
-                renderDashboard();
-            })
-            .catch(err => {
-                console.error("Failed to load JSON payload:", err);
-                alert("Falha ao carregar os dados detalhados da análise.");
+        // Lightweight patient tab toggler
+        const patientTabs = document.getElementById('patientTabs');
+        if (patientTabs) {
+            patientTabs.addEventListener('click', (e) => {
+                const tab = e.target.closest('.patient-tab');
+                if (!tab) return;
+                const targetPatient = tab.dataset.patient;
+
+                // Hide all patient views, show active one using active class
+                document.querySelectorAll('.patient-view-section').forEach(view => {
+                    view.classList.toggle('active', view.id === `patient-view-${targetPatient}`);
+                });
+
+                // Update tab styles using active class
+                document.querySelectorAll('.patient-tab').forEach(t => {
+                    t.classList.toggle('active', t === tab);
+                });
             });
-
-        function renderDashboard() {
-            if (!currentData) return;
-
-            // Render Tech Meta inside popover
-            if (metaModel) metaModel.textContent = currentData.model || '-';
-            if (metaChunks) metaChunks.textContent = currentData.chunks_analyzed || '-';
-            const formattedTime = currentData.total_elapsed_seconds ? currentData.total_elapsed_seconds + 's' : '-';
-            if (metaTime) metaTime.textContent = formattedTime;
-
-            if (currentData.token_usage && metaTokens) {
-                metaTokens.textContent = `${currentData.token_usage.prompt_tokens} / ${currentData.token_usage.completion_tokens}`;
-            } else if (metaTokens) {
-                metaTokens.textContent = '-';
-            }
-
-            // Render Patient Tabs
-            patientTabs.innerHTML = '';
-            const patients = currentData.aggregated?.patients || {};
-            const patientNames = Object.keys(patients).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-            if (patientNames.length === 0) {
-                patientContent.innerHTML = '<p>Nenhum dado de paciente encontrado nesta sessão.</p>';
-                return;
-            }
-
-            patientNames.forEach((name, index) => {
-                const li = document.createElement('li');
-                li.className = `patient-tab ${index === 0 ? 'active' : ''}`;
-                li.textContent = name;
-                li.dataset.patient = name;
-                li.style.padding = '0.75rem 0';
-                li.style.cursor = 'pointer';
-                li.style.color = 'var(--text-muted)';
-                li.style.fontWeight = '500';
-                li.style.borderBottom = '2px solid transparent';
-                li.style.transition = 'color 0.2s, border-color 0.2s';
-                
-                li.addEventListener('click', () => selectPatient(name, li));
-                patientTabs.appendChild(li);
-            });
-
-            // Auto-select first patient
-            selectPatient(patientNames[0], patientTabs.children[0]);
         }
 
-        function selectPatient(name, tabElement) {
-            if (!tabElement) return;
+        // Accordion expand/collapse toggle for clinical dimensions (delegated click listener)
+        document.addEventListener('click', (e) => {
+            const header = e.target.closest('.dimension-header');
+            if (!header) return;
+            // Skip transcript accordion, which is handled separately
+            if (header.id === 'toggleTranscriptHeader') return;
 
-            // Update active tab UI
-            document.querySelectorAll('.patient-tab').forEach(tab => {
-                tab.classList.remove('active');
-                tab.style.color = 'var(--text-muted)';
-                tab.style.borderBottomColor = 'transparent';
-            });
-            tabElement.classList.add('active');
-            tabElement.style.color = 'var(--primary)';
-            tabElement.style.borderBottomColor = 'var(--primary)';
+            const dimensionItem = header.closest('.dimension-item');
+            if (!dimensionItem) return;
 
-            const patientData = currentData.aggregated.patients[name];
-
-            // Clone template
-            patientContent.innerHTML = '';
-            const clone = patientTemplate.content.cloneNode(true);
-            const tplTop3 = clone.querySelector('#tplTop3');
-            const tplDimensions = clone.querySelector('#tplDimensions');
-
-            // Render Top 3 Dimensions
-            if (patientData.top3 && patientData.top3.length > 0) {
-                patientData.top3.forEach((dim, index) => {
-                    const maxSize = (dim.dim === "16" ? 3 : 2) * 4;
-                    const severity = Math.ceil((dim.sum / maxSize) * 4) || 1;
-                    const card = document.createElement('div');
-                    card.className = 'top3-card';
-                    card.innerHTML = `
-                        <div class="top3-rank">Prioridade #${index + 1}</div>
-                        <div class="top3-title">${dim.name}</div>
-                        <div class="score-badge" data-severity="${severity}">Pontuação: ${dim.sum}/${maxSize}</div>
-                    `;
-                    tplTop3.appendChild(card);
-                });
-            } else {
-                tplTop3.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>';
-            }
-
-            // Render Dimensions List
-            if (patientData.dimensions && Object.keys(patientData.dimensions).length > 0) {
-                const dims = Object.values(patientData.dimensions).sort((a, b) => b.dimension_sum - a.dimension_sum);
-
-                dims.forEach(dim => {
-                    const dimEl = document.createElement('div');
-                    dimEl.className = 'dimension-item';
-
-                    const dimKey = Object.keys(patientData.dimensions).find(k => patientData.dimensions[k].name === dim.name);
-                    const relevantItems = Object.entries(patientData.items).filter(([itemId]) => itemId.startsWith(dimKey + '.'));
-
-                    let itemsHtml = '';
-                    relevantItems.forEach(([itemId, item]) => {
-                        const evidenceHtml = item.evidence.map(ev => `<li class="evidence-quote" style="background-color: white; padding: 0.75rem 1rem; border-left: 4px solid var(--primary); border-radius: 0 4px 4px 0; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem;">"${ev}"</li>`).join('');
-                        itemsHtml += `
-                            <div class="item-row" style="margin-top: 1.25rem;">
-                                <div class="item-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; margin-bottom: 0.5rem;">
-                                    <span class="item-name" style="font-weight: 500; color: var(--text-main); font-size: 0.95rem;">${itemId} - ${item.name}</span>
-                                    <span class="score-badge" data-severity="${item.score}">Pontuação: ${item.score}</span>
-                                </div>
-                                <ul class="item-evidence" style="list-style: none; padding: 0; margin: 0;">
-                                    ${evidenceHtml}
-                                </ul>
-                            </div>
-                        `;
-                    });
-
-                    const maxSize = (dimKey === "16" ? 3 : 2) * 4;
-                    const severity = Math.ceil((dim.dimension_sum / maxSize) * 4) || 1;
-                    dimEl.innerHTML = `
-                        <div class="dimension-header" style="padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;">
-                            <div class="dimension-title-group" style="display: flex; align-items: center; gap: 1rem;">
-                                <span class="dimension-name" style="font-weight: 600; font-size: 1.05rem;">${dimKey}. ${dim.name}</span>
-                            </div>
-                            <div class="score-badge" data-severity="${severity}">Pontuação: ${dim.dimension_sum}/${maxSize}</div>
-                        </div>
-                        <div class="dimension-body" style="display: none; padding: 0 1.5rem 1.5rem; border-top: 1px solid var(--border); background-color: #fafafa;">
-                            ${itemsHtml}
-                        </div>
-                    `;
-
-                    // Toggle accordion
-                    const header = dimEl.querySelector('.dimension-header');
-                    header.addEventListener('click', () => {
-                        dimEl.classList.toggle('open');
-                        const body = dimEl.querySelector('.dimension-body');
-                        body.style.display = dimEl.classList.contains('open') ? 'block' : 'none';
-                    });
-
-                    tplDimensions.appendChild(dimEl);
-                });
-            } else {
-                tplDimensions.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>';
-            }
-
-            patientContent.appendChild(clone);
-        }
+            dimensionItem.classList.toggle('open');
+        });
 
         // Collapsible Transcript Handler
         const toggleTranscriptHeader = document.getElementById('toggleTranscriptHeader');

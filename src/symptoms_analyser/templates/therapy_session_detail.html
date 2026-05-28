@@ -68,26 +68,32 @@
                     Detalhes técnicos
                 </button>
 
-                <!-- Floating Popover -->
+                <!-- Floating Popover (Server-side pre-rendered) -->
                 <div class="meta-popover" id="metaPopover">
                     <div class="popover-arrow"></div>
                     <h4 class="popover-title">Telemetria de IA</h4>
                     <div class="popover-grid">
                         <div class="popover-item">
                             <span class="popover-label">Modelo LLM</span>
-                            <span class="popover-value" id="metaModel">-</span>
+                            <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-' }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Blocos de análise</span>
-                            <span class="popover-value" id="metaChunks">-</span>
+                            <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation else '-' }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Tempo de execução</span>
-                            <span class="popover-value" id="metaTime">-</span>
+                            <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Tokens (prompt/resp.)</span>
-                            <span class="popover-value" id="metaTokens">-</span>
+                            <span class="popover-value" id="metaTokens">
+                                {% if evaluation and evaluation.token_usage %}
+                                    {{ evaluation.token_usage.prompt_tokens }} / {{ evaluation.token_usage.completion_tokens }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -105,12 +111,86 @@
         <div id="dashboard" class="dashboard">
             <section class="patient-navigation">
                 <ul id="patientTabs" class="patient-tabs">
-                    <!-- Tabs will be generated here -->
+                    {% if evaluation and evaluation.aggregated and evaluation.aggregated.patients %}
+                        {% for p_name in evaluation.aggregated.patients.keys() | sort %}
+                        <li class="patient-tab {% if loop.first %}active{% endif %}" data-patient="{{ p_name }}">
+                            {{ p_name }}
+                        </li>
+                        {% endfor %}
+                    {% endif %}
                 </ul>
             </section>
 
             <section id="patientContent" class="patient-content">
-                <!-- Patient specific content will be injected here -->
+                {% if evaluation and evaluation.aggregated and evaluation.aggregated.patients %}
+                    {% for p_name, p_data in evaluation.aggregated.patients.items() %}
+                    <div class="patient-view-section {% if loop.first %}active{% endif %}" id="patient-view-{{ p_name }}">
+                        <div class="section-header section-header-top">
+                            <h3>Top 3 dimensões prioritárias</h3>
+                            <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
+                        </div>
+                        <div class="top3-grid">
+                            {% if p_data.top3 %}
+                                {% for dim in p_data.top3 %}
+                                    {% set max_size = 12 if dim.dim == "16" else 8 %}
+                                    {% set severity = ((dim.sum / max_size) * 4) | round(method='ceil') | int %}
+                                    {% if severity < 1 %}{% set severity = 1 %}{% endif %}
+                                    <div class="top3-card">
+                                        <div class="top3-rank">Prioridade #{{ loop.index }}</div>
+                                        <div class="top3-title">{{ dim.name }}</div>
+                                        <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.sum }}/{{ max_size }}</div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>
+                            {% endif %}
+                        </div>
+
+                        <div class="section-header section-header-major">
+                            <h3>Detalhamento das dimensões clínicas</h3>
+                            <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
+                        </div>
+                        <div class="dimensions-list">
+                            {% if p_data.dimensions %}
+                                {% set sorted_dims = p_data.dimensions.items() | sort(attribute='1.dimension_sum', reverse=True) %}
+                                {% for dim_key, dim in sorted_dims %}
+                                    {% set max_size = 12 if dim_key == "16" else 8 %}
+                                    {% set severity = ((dim.dimension_sum / max_size) * 4) | round(method='ceil') | int %}
+                                    {% if severity < 1 %}{% set severity = 1 %}{% endif %}
+                                    
+                                    <div class="dimension-item">
+                                        <div class="dimension-header">
+                                            <div class="dimension-title-group" style="display: flex; align-items: center; gap: 1rem;">
+                                                <span class="dimension-name">{{ dim_key }}. {{ dim.name }}</span>
+                                            </div>
+                                            <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.dimension_sum }}/{{ max_size }}</div>
+                                        </div>
+                                        <div class="dimension-body">
+                                            {% for item_id, item in p_data['items'].items() %}
+                                                {% if item_id.startswith(dim_key ~ '.') %}
+                                                    <div class="item-row">
+                                                        <div class="item-header">
+                                                            <span class="item-name">{{ item_id }} - {{ item.name }}</span>
+                                                            <span class="score-badge" data-severity="{{ item.score }}">Pontuação: {{ item.score }}</span>
+                                                        </div>
+                                                        <ul class="item-evidence">
+                                                            {% for ev in item.evidence %}
+                                                                <li class="evidence-quote">"{{ ev }}"</li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
             </section>
         </div>
     </div>
@@ -126,7 +206,7 @@
                 </div>
                 <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
             </div>
-            <div class="transcript-body-scroll" id="transcriptBodyContainer">
+            <div class="transcript-body-scroll" id="transcriptBodyContainer" style="display: none;">
                 <div class="transcript-tab-row">
                     <button type="button" class="btn btn-secondary btn-transcript-tab active"
                         id="btnShowSanitized">Transcrição higienizada (PHI clean)</button>
@@ -139,27 +219,6 @@
         </div>
     </div>
     {% endif %}
-
-    <!-- Template for Patient Content (matching analysis.js expectations) -->
-    <template id="patientTemplate">
-        <div class="patient-view">
-            <div class="section-header section-header-top">
-                <h3>Top 3 dimensões prioritárias</h3>
-                <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
-            </div>
-            <div class="top3-grid" id="tplTop3">
-                <!-- Top 3 cards go here -->
-            </div>
-
-            <div class="section-header section-header-major">
-                <h3>Detalhamento das dimensões clínicas</h3>
-                <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
-            </div>
-            <div class="dimensions-list" id="tplDimensions">
-                <!-- Dimension items go here -->
-            </div>
-        </div>
-    </template>
 
     {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
     <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
