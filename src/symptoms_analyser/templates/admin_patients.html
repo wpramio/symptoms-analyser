@@ -14,7 +14,6 @@
     <div class="patients-split-grid">
         <!-- Directory table wrapped in table-container + cost-table -->
         <div class="results-container margin-bottom-none">
-            <h3>Diretório de mapeamento de pseudônimos</h3>
             <div class="table-container">
                 <table class="cost-table">
                     <thead>
@@ -26,29 +25,28 @@
                     </thead>
                     <tbody id="registryTableBody">
                         {% if patients %}
-                            {% for pat in patients %}
-                            <tr>
-                                <td><strong class="text-primary text-medium">{{ pat.pseudonym }}</strong></td>
-                                <td>
-                                    <strong class="text-medium font-bold">{{ pat.real_name }}</strong><br>
-                                    <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime }}</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-secondary edit-patient-btn" 
-                                            data-open="editPatientModal"
-                                            data-id="{{ pat.pseudonym }}" 
-                                            data-realname="{{ pat.real_name }}">
-                                        Editar
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                        {% for pat in patients %}
+                        <tr>
+                            <td><strong class="text-primary text-medium">{{ pat.pseudonym }}</strong></td>
+                            <td>
+                                <strong class="text-medium font-bold">{{ pat.real_name }}</strong><br>
+                                <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime
+                                    }}</span>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-secondary edit-patient-btn" data-open="editPatientModal"
+                                    data-id="{{ pat.pseudonym }}" data-realname="{{ pat.real_name }}">
+                                    Editar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
                         {% else %}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted padding-large">
-                                    Nenhum registro de paciente encontrado.
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="3" class="text-center text-muted padding-large">
+                                Nenhum registro de paciente encontrado.
+                            </td>
+                        </tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -66,7 +64,8 @@
                 </div>
                 <div class="input-group">
                     <label for="patientRealName">Nome real:</label>
-                    <input type="text" id="patientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva" required>
+                    <input type="text" id="patientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva"
+                        required>
                 </div>
                 <button type="submit" class="btn btn-full-width margin-top-medium">Salvar</button>
             </form>
