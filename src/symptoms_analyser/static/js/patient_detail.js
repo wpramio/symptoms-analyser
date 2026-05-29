@@ -78,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: d.data,
                     borderColor: color,
                     borderWidth: 2.5,
-                    backgroundColor: 'transparent',
+                    backgroundColor: color,
+                    fill: false,
                     tension: 0.2,
                     pointBackgroundColor: color,
                     pointBorderColor: 'white',
@@ -103,7 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 legend: {
                     display: true,
                     position: 'top',
-                    labels: { font: { family: "'Inter', sans-serif", weight: '600', size: legendSize } },
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        font: { family: "'Inter', sans-serif", weight: '600', size: legendSize }
+                    },
                 },
                 tooltip: {
                     padding: 12,
@@ -166,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.value = dim.key;
-            cb.checked = i < 3;
+            cb.checked = true;
             cb.addEventListener('change', updateDimensionChart);
 
             label.appendChild(cb);
