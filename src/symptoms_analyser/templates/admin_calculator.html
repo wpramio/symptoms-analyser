@@ -7,31 +7,30 @@
 <div id="calculatorView" class="calculator-view">
     <div class="calc-header">
         <h2>Calculadora de Custos de Pipeline</h2>
-        <p>Estime os custos de API baseando-se nos tokens consumidos nas etapas de pré-processamento e análise.
-        </p>
+        <p>Estime os custos de API baseando-se nos tokens consumidos nas etapas de sanitização e análise.</p>
     </div>
 
     <div class="calc-grid">
         <div class="calc-card">
-            <h3>Parâmetros de Pré-processamento</h3>
+            <h3>Parâmetros de sanitização</h3>
             <div class="input-group">
-                <label for="calcPrepPrompt">Tokens de Prompt (Média):</label>
+                <label for="calcPrepPrompt">Tokens de prompt (média):</label>
                 <input type="number" id="calcPrepPrompt" value="21000" step="1000">
             </div>
             <div class="input-group">
-                <label for="calcPrepComp">Tokens de Resposta (Média):</label>
+                <label for="calcPrepComp">Tokens de resposta (média):</label>
                 <input type="number" id="calcPrepComp" value="16000" step="1000">
             </div>
         </div>
 
         <div class="calc-card">
-            <h3>Parâmetros de Análise</h3>
+            <h3>Parâmetros de análise</h3>
             <div class="input-group">
-                <label for="calcAnaPrompt">Tokens de Prompt (Média):</label>
+                <label for="calcAnaPrompt">Tokens de prompt (média):</label>
                 <input type="number" id="calcAnaPrompt" value="20000" step="1000">
             </div>
             <div class="input-group">
-                <label for="calcAnaComp">Tokens de Resposta (Média):</label>
+                <label for="calcAnaComp">Tokens de resposta (média):</label>
                 <input type="number" id="calcAnaComp" value="600" step="100">
             </div>
         </div>
@@ -46,16 +45,16 @@
     </div>
 
     <div class="calc-hybrid">
-        <h3>Custo Híbrido Personalizado</h3>
+        <h3>Custo híbrido personalizado</h3>
         <div class="calc-hybrid-grid">
             <div class="input-group">
-                <label for="hybridPrepSelect">Modelo para Pré-processamento:</label>
+                <label for="hybridPrepSelect">Modelo para sanitização:</label>
                 <select id="hybridPrepSelect">
                     <!-- Populated by JS -->
                 </select>
             </div>
             <div class="input-group">
-                <label for="hybridAnaSelect">Modelo para Análise:</label>
+                <label for="hybridAnaSelect">Modelo para análise:</label>
                 <select id="hybridAnaSelect">
                     <!-- Populated by JS -->
                 </select>
@@ -63,28 +62,28 @@
         </div>
         <div class="calc-hybrid-totals">
             <div>
-                <span>Custo 1 Sessão (Híbrida)</span>
+                <span>Custo de 1 sessão (híbrida)</span>
                 <strong id="hybridSessionCost">$-</strong>
             </div>
             <div>
-                <span>Custo Total (Híbrido)</span>
+                <span>Custo total (híbrido)</span>
                 <strong id="hybridTotalCost">$-</strong>
             </div>
         </div>
     </div>
 
     <div class="calc-results">
-        <h3>Estimativa de Custos por Provedor (em dólares)</h3>
+        <h3>Estimativa de custos por provedor (em dólares)</h3>
         <div class="table-container">
             <table class="cost-table" id="costTable">
                 <thead>
                     <tr>
                         <th>Provedor</th>
                         <th>Modelo</th>
-                        <th>Custo Input (1M)</th>
-                        <th>Custo Output (1M)</th>
-                        <th>Custo 1 Sessão</th>
-                        <th>Custo Total</th>
+                        <th>Custo por 1M de tokens (input)</th>
+                        <th>Custo por 1M de tokens (output)</th>
+                        <th>Custo por sessão</th>
+                        <th>Custo total</th>
                     </tr>
                 </thead>
                 <tbody>
