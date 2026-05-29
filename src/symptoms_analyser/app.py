@@ -281,7 +281,7 @@ def admin_transcripts():
                        (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients
                 FROM therapy_sessions s
                 LEFT JOIN users u ON s.clinician_id = u.id
-                ORDER BY s.created_at DESC
+                ORDER BY s.start_at DESC, s.created_at DESC
             """)
             sessions = [
                 {
@@ -523,7 +523,7 @@ def api_admin_sessions():
                        (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
                 FROM therapy_sessions s
                 LEFT JOIN users u ON s.clinician_id = u.id
-                ORDER BY s.created_at DESC
+                ORDER BY s.start_at DESC, s.created_at DESC
             """)
             sessions = [
                 {

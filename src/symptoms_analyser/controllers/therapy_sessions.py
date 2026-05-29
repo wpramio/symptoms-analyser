@@ -87,7 +87,7 @@ def get_therapy_sessions() -> list[dict]:
                    (SELECT id FROM tdpm_evaluations WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as evaluation_id
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
-            ORDER BY s.created_at DESC
+            ORDER BY s.start_at DESC, s.created_at DESC
         """)
         return [
             {

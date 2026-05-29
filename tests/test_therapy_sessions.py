@@ -90,18 +90,29 @@ def test_get_therapy_sessions(mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
          
-        # Create session 1
+        # Create session 1 (earlier start_at)
         handle_new_therapy_session({
             "session_name": "Sessão A",
             "start_at": "2026-05-29 10:00:00",
             "patient_ids": "PacienteA"
         })
         
+        # Create session 2 (later start_at, i.e. newer)
+        handle_new_therapy_session({
+            "session_name": "Sessão B",
+            "start_at": "2026-05-29 14:00:00",
+            "patient_ids": "PacienteB"
+        })
+        
         sessions = get_therapy_sessions()
-        assert len(sessions) == 1
-        assert sessions[0]["name"] == "Sessão A"
-        assert sessions[0]["patients"] == "PacienteA"
+        assert len(sessions) == 2
+        # Sessão B (14:00:00) should be first (newest), Sessão A (10:00:00) should be second
+        assert sessions[0]["name"] == "Sessão B"
+        assert sessions[0]["patients"] == "PacienteB"
         assert sessions[0]["clinician_name"] == "Dr. Clinician"
+        
+        assert sessions[1]["name"] == "Sessão A"
+        assert sessions[1]["patients"] == "PacienteA"
 
 def test_get_therapy_session_detail_not_found(mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db):
