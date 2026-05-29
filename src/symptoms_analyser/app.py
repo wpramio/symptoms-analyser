@@ -71,6 +71,44 @@ app.jinja_env.filters["format_bytes"] = format_bytes_py
 app.jinja_env.filters["number_format"] = lambda val: f"{val or 0:,}".replace(",", ".")
 
 
+@app.context_processor
+def inject_current_user():
+    # TODO: Once authentication/login features are implemented, update this function
+    # to fetch the user dynamic from the active session/cookie (e.g., session.get("user_id"))
+    # instead of hardcoding user ID 2.
+    try:
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, role, email FROM users WHERE id = 2")
+            user = cursor.fetchone()
+            if user:
+                # Role formatting
+                role_display = "Administrador" if user["role"] == "admin" else ("Clínico" if user["role"] == "clinician" else "Paciente")
+                # Generate initials (e.g. "Admin" -> "AD", "Dr. Félix" -> "DF")
+                name = user["name"]
+                initials = "".join([p[0] for p in name.split() if p]).upper()
+                if len(initials) > 2:
+                    initials = initials[:2]
+                elif not initials:
+                    initials = "US"
+                return {"current_user": {
+                    "name": name,
+                    "role": role_display,
+                    "email": user["email"],
+                    "initials": initials
+                }}
+    except Exception as e:
+        print(f"Error injecting current user: {e}")
+    # Fallback
+    return {"current_user": {
+        "name": "Admin",
+        "role": "Administrador",
+        "email": "admin@symptomsanalyser.org",
+        "initials": "AD"
+    }}
+
+
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
