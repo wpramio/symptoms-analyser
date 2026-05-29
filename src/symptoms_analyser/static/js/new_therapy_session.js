@@ -38,7 +38,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const localISO = new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
     sessionStart.value = localISO;
 
-    // 2. Toggle Transcript Import Container
+    // Helper to toggle form fields disabled state when auto-extracting metadata
+    function updateFormDisabledState() {
+        const isAutoExtract = enableImportOpt.checked && autoExtractInfoOpt.checked;
+        
+        sessionName.disabled = isAutoExtract;
+        sessionStart.disabled = isAutoExtract;
+        sessionDuration.disabled = isAutoExtract;
+        sessionPatients.disabled = isAutoExtract;
+        
+        if (isAutoExtract) {
+            if (!sessionName.value.trim() || sessionName.value.startsWith('Sessão:')) {
+                sessionName.value = 'Auto-detectado pela transcrição';
+            }
+            if (!sessionPatients.value.trim()) {
+                sessionPatients.value = 'Auto-detectado';
+            }
+        } else {
+            if (sessionName.value === 'Auto-detectado pela transcrição') {
+                sessionName.value = '';
+            }
+            if (sessionPatients.value === 'Auto-detectado') {
+                sessionPatients.value = '';
+            }
+        }
+    }
+
+    // 2. Toggle Transcript Import Container & form field states
     enableImportOpt.addEventListener('change', () => {
         if (enableImportOpt.checked) {
             importContainer.style.display = 'block';
@@ -46,8 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             importContainer.style.display = 'none';
             startBtn.textContent = 'Registrar sessão';
+            autoExtractInfoOpt.checked = false;
         }
+        updateFormDisabledState();
     });
+
+    autoExtractInfoOpt.addEventListener('change', updateFormDisabledState);
 
     // 3. File upload click handlers
     browseBtn.addEventListener('click', (e) => {
@@ -88,8 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone.style.display = 'none';
         selectedFilePanel.style.display = 'flex';
 
-        // Auto-generate session name if currently empty
-        if (!sessionName.value.trim()) {
+        // Auto-generate session name if currently empty and not auto-extracting
+        const isAutoExtract = enableImportOpt.checked && autoExtractInfoOpt.checked;
+        if (!isAutoExtract && (!sessionName.value.trim() || sessionName.value === 'Auto-detectado pela transcrição')) {
             sessionName.value = `Sessão: ${file.name.split('.')[0]}`;
         }
     }
@@ -102,6 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedFilePanel.style.display = 'none';
         dropZone.style.display = 'block';
     });
+
+    // Initialize disabled states on load
+    updateFormDisabledState();
 
     // 7. Submit therapy session registration
     startBtn.addEventListener('click', async () => {

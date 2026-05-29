@@ -5,25 +5,23 @@
 
 {% block content %}
 <div class="main-container">
-    <!-- Back to sessions link -->
-    <a href="/therapy_sessions" class="back-link">
-        <svg width="16" height="16" aria-hidden="true">
-            <use href="#icon-arrow-left"></use>
-        </svg>
-        Voltar para sessões
-    </a>
-
-    <!-- Page Header conforms to Design System -->
-    <div class="page-header">
-        <h2>Nova sessão de terapia</h2>
-    </div>
-
     <!-- Main Workspace in a two-column or grid style, capped for readable form-width -->
     <div class="form-container-limited">
         <div id="newSessionView" class="dashboard-card">
-            <h3 class="session-section-title">
-                <span>📝</span> Identificação da sessão
-            </h3>
+            <!-- Header inside the card to maximize space utilization -->
+            <div class="session-card-header page-header-flex-start"
+                style="padding-bottom: 1.25rem; margin-bottom: 1.75rem;">
+                <h2
+                    style="margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.6rem;">
+                    <span>📝</span> Nova sessão de terapia
+                </h2>
+                <a href="/therapy_sessions" class="back-link" style="margin-bottom: 0;">
+                    <svg width="16" height="16" aria-hidden="true">
+                        <use href="#icon-arrow-left"></use>
+                    </svg>
+                    Voltar para a lista de sessões
+                </a>
+            </div>
 
             <div class="input-group">
                 <label for="sessionName">Nome público da sessão *</label>
@@ -63,9 +61,8 @@
                         <div class="checkbox-container checkbox-container-spaced">
                             <input type="checkbox" id="autoExtractInfoOpt">
                             <div class="checkbox-info">
-                                <span class="checkbox-title-styled">Auto-detectar metadados da sessão</span>
-                                <span class="checkbox-desc-styled">O sistema extrai automaticamente o nome, data e
-                                    duração da sessão a partir do conteúdo da transcrição.</span>
+                                <span class="checkbox-title-styled">Extrair nome, data e
+                                    duração da sessão a partir do conteúdo da transcrição</span>
                             </div>
                         </div>
 
@@ -73,8 +70,6 @@
                             <input type="checkbox" id="skipSanitizationOpt" checked>
                             <div class="checkbox-info">
                                 <span class="checkbox-title-styled">Pular sanitização por IA (LLM)</span>
-                                <span class="checkbox-desc-styled">Útil para transcrições já previamente
-                                    tratadas.</span>
                             </div>
                         </div>
                     </div>
