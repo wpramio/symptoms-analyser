@@ -157,7 +157,7 @@ def handle_transcript_upload(
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
         "status": "processing",
-        "logs": ["Upload concluído. Inicializando ambiente de análise"],
+        "logs": ["Upload concluído"],
         "error": ""
     }
 

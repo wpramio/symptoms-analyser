@@ -280,7 +280,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok && data.success) {
                     statusTitle.textContent = 'Processando Transcrição...';
                     statusDesc.textContent = 'O pipeline assíncrono de IA está ativado no banco de dados. Acompanhe os logs de telemetria abaixo.';
-                    addLog('Upload de arquivo concluído com sucesso. Iniciando pré-processamento', 'success');
                     
                     // Start polling database status
                     activePolling = true;

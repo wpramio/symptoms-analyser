@@ -182,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 if (data.task_id) {
                     taskId = data.task_id;
-                    addLog('Upload concluído. Iniciando processamento relacional da sessão');
                     pollStatus();
                 } else {
                     // Successful manual creation without file
