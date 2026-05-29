@@ -288,7 +288,7 @@ def test_new_session_actions(client, mock_get_db):
             "duration": "90",
             "patient_ids": "Paciente1",
             "auto_fill": "false",
-            "skip_sanitization": "true"
+            "apply_sanitization": "false"
         })
         assert resp.status_code == 201
         assert resp.json["success"] is True
@@ -334,7 +334,7 @@ def test_therapy_session_upload_transcript(mock_upload, client):
     # POST transcript file stream
     data = {
         "file": (io.BytesIO(b"Raw text contents"), "session.txt"),
-        "skip_sanitization": "false"
+        "apply_sanitization": "true"
     }
     resp = client.post("/therapy_sessions/1/upload_transcript", data=data, content_type="multipart/form-data")
     assert resp.status_code == 200

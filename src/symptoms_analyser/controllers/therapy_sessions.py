@@ -54,7 +54,7 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
     task_id = None
     if file_obj and file_obj.filename != "":
         extract_metadata = form_data.get("auto_fill") == "true"
-        skip_sanitization = form_data.get("skip_sanitization") == "true"
+        apply_sanitization = form_data.get("apply_sanitization") == "true"
         
         task_id = handle_transcript_upload(
             file_stream=file_obj,
@@ -62,7 +62,7 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
             therapy_session_id=session_id,
             extract_metadata=extract_metadata,
             skip_extension_check=True,
-            skip_sanitization=skip_sanitization
+            apply_sanitization=apply_sanitization
         )
 
     return {

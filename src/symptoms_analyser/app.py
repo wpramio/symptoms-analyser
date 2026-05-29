@@ -160,7 +160,7 @@ def therapy_session_detail(session_id):
 @app.route("/therapy_sessions/<int:session_id>/upload_transcript", methods=["POST"])
 def therapy_session_upload_transcript(session_id):
     try:
-        skip_sanitization = request.form.get("skip_sanitization") == "true"
+        apply_sanitization = request.form.get("apply_sanitization") == "true"
         if "file" not in request.files or request.files["file"].filename == "":
             return jsonify({"error": "Nenhum arquivo enviado"}), 400
             
@@ -171,7 +171,7 @@ def therapy_session_upload_transcript(session_id):
             therapy_session_id=session_id,
             extract_metadata=False,
             skip_extension_check=False,
-            skip_sanitization=skip_sanitization
+            apply_sanitization=apply_sanitization
         )
         return jsonify({"success": True, "task_id": task_id})
     except Exception as e:
@@ -414,7 +414,7 @@ def handle_new_session_api():
             "clinician_id": request.form.get("clinician_id"),
             "patient_ids": request.form.get("patient_ids"),
             "auto_fill": request.form.get("auto_fill"),
-            "skip_sanitization": request.form.get("skip_sanitization")
+            "apply_sanitization": request.form.get("apply_sanitization")
         }
         
         file = None

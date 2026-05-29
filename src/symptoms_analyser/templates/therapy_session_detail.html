@@ -270,10 +270,10 @@
             <h4 class="parameters-box-title">Configurações de processamento</h4>
 
             <label class="checkbox-container-flex">
-                <input type="checkbox" id="skipSanitizationOpt" checked>
+                <input type="checkbox" id="applySanitizationOpt">
                 <div class="checkbox-info">
                     <span class="checkbox-title-styled">
-                        Pular sanitização por IA (LLM)
+                        Aplicar sanitização por IA (LLM)
                         <span class="info-tooltip-container" onclick="event.preventDefault();">
                             <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -281,8 +281,7 @@
                                 <line x1="12" y1="16" x2="12" y2="12"></line>
                                 <line x1="12" y1="8" x2="12.01" y2="8"></line>
                             </svg>
-                            <span class="info-tooltip-text">Desative apenas se precisar corrigir imperfeições da
-                                transcrição.</span>
+                            <span class="info-tooltip-text">Ative para que a IA corrija imperfeições e padronize a transcrição antes da análise clínica.</span>
                         </span>
                     </span>
                 </div>

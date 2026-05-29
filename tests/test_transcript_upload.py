@@ -66,7 +66,7 @@ def test_process_transcript_pipeline_success(
             filepath=Path("fake_path.txt"),
             therapy_session_id=1,
             extract_metadata=True,
-            skip_sanitization=False
+            apply_sanitization=True
         )
         
     # Verify task state changes
@@ -101,7 +101,7 @@ def test_process_transcript_pipeline_failure(mock_extract, test_db_path):
             filepath=Path("fake_path.txt"),
             therapy_session_id=1,
             extract_metadata=True,
-            skip_sanitization=False
+            apply_sanitization=True
         )
         
     assert tasks[task_id]["status"] == "error"

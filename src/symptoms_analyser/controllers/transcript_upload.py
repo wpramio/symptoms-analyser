@@ -36,7 +36,7 @@ def process_transcript_pipeline(
     filepath: Path,
     therapy_session_id: int,
     extract_metadata: bool,
-    skip_sanitization: bool
+    apply_sanitization: bool
 ) -> None:
     """Background thread function that orchestrates the transcript processing steps sequentially."""
     task = tasks[task_id]
@@ -77,7 +77,7 @@ def process_transcript_pipeline(
             orm.link_patient_to_session(therapy_session_id, pseudonym, db_conn)
 
         # STEP 4: LLM Sanitization
-        if skip_sanitization:
+        if not apply_sanitization:
             add_log("Pulando etapa de sanitização por IA (LLM). Utilizando transcrição direta")
             # If skipping, ensure state is set to preprocessed
             orm.update_transcript(
@@ -133,7 +133,7 @@ def handle_transcript_upload(
     therapy_session_id: int,
     extract_metadata: bool = False,
     skip_extension_check: bool = False,
-    skip_sanitization: bool = False
+    apply_sanitization: bool = False
 ) -> str:
     """
     Step 2 Handler function.
@@ -163,7 +163,7 @@ def handle_transcript_upload(
 
     thread = threading.Thread(
         target=process_transcript_pipeline,
-        args=(task_id, filepath, therapy_session_id, extract_metadata, skip_sanitization)
+        args=(task_id, filepath, therapy_session_id, extract_metadata, apply_sanitization)
     )
     thread.start()
 

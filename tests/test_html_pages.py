@@ -117,7 +117,7 @@ def test_new_therapy_session_page_dom(client):
     # Check checkbox config inputs
     assert soup.find("input", {"id": "enableImportOpt"}) is not None
     assert soup.find("input", {"id": "autoExtractInfoOpt"}) is not None
-    assert soup.find("input", {"id": "skipSanitizationOpt"}) is not None
+    assert soup.find("input", {"id": "applySanitizationOpt"}) is not None
 
 def test_patients_list_page_dom(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \

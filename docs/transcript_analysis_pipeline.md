@@ -34,7 +34,7 @@ sequenceDiagram
     end
 
     alt Transcript file is provided
-        TS_Ctrl->>TU_Ctrl: handle_transcript_upload(file, session_id, skip_sanitization, auto_fill)
+        TS_Ctrl->>TU_Ctrl: handle_transcript_upload(file, session_id, apply_sanitization, auto_fill)
         activate TU_Ctrl
         TU_Ctrl-->>TS_Ctrl: return task_id (Async processing triggered)
         TS_Ctrl-->>UI: Response with task_id & success (Redirect/Poll)
@@ -61,7 +61,7 @@ sequenceDiagram
         Prep-->>TU_Ctrl: transcript_id & anonymized_text
         deactivate Prep
 
-        alt skip_sanitization == False
+        alt apply_sanitization == True
             TU_Ctrl->>Sanit: sanitize_text_with_llm(transcript_id)
             activate Sanit
             Sanit->>DB: Update transcript status to 'preprocessing' / progress

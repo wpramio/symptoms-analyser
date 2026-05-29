@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileName = document.getElementById('fileName');
     const removeFileBtn = document.getElementById('removeFileBtn');
     const autoExtractInfoOpt = document.getElementById('autoExtractInfoOpt');
-    const skipSanitizationOpt = document.getElementById('skipSanitizationOpt');
+    const applySanitizationOpt = document.getElementById('applySanitizationOpt');
 
     // Submit Button & Views
     const startBtn = document.getElementById('startBtn');
@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasImport = enableImportOpt.checked && selectedFile;
         if (hasImport) {
             formData.append('file', selectedFile);
-            formData.append('skip_sanitization', skipSanitizationOpt.checked ? 'true' : 'false');
+            formData.append('apply_sanitization', applySanitizationOpt.checked ? 'true' : 'false');
             formData.append('auto_fill', autoExtractInfoOpt.checked ? 'true' : 'false');
 
             newSessionView.style.display = 'none';
