@@ -82,7 +82,7 @@ def extract_text_from_docx(docx_path: Path) -> Tuple[Dict[str, str], str]:
 
 
 def estimate_duration_from_text(text: str) -> int:
-    """Helper to dynamically estimate session duration in seconds based on highest timestamp match."""
+    """Helper to dynamically estimate session duration in minutes based on highest timestamp match."""
     # Find all timestamps like HH:MM:SS
     matches_hms = re.findall(r"(\d{1,2}):(\d{2}):(\d{2})", text)
     if matches_hms:
@@ -90,7 +90,10 @@ def estimate_duration_from_text(text: str) -> int:
         for m in matches_hms:
             secs = int(m[0]) * 3600 + int(m[1]) * 60 + int(m[2])
             max_secs = max(max_secs, secs)
-        return max_secs if max_secs > 0 else 3600
+        if max_secs > 0:
+            val = round(max_secs / 60)
+            return val if val > 0 else 1
+        return 60
         
     # Find all timestamps like MM:SS
     matches_ms = re.findall(r"(\d{1,2}):(\d{2})", text)
@@ -99,9 +102,12 @@ def estimate_duration_from_text(text: str) -> int:
         for m in matches_ms:
             secs = int(m[0]) * 60 + int(m[1])
             max_secs = max(max_secs, secs)
-        return max_secs if max_secs > 0 else 3600
+        if max_secs > 0:
+            val = round(max_secs / 60)
+            return val if val > 0 else 1
+        return 60
         
-    return 3600  # Default to 1 hour (3600 seconds)
+    return 60  # Default to 1 hour (60 minutes)
 
 
 def parse_estimated_start_time(metadata: Dict[str, str], session_name: str) -> str:

@@ -40,11 +40,11 @@ def test_db_path(tmp_path, schema_sql):
 
 def test_estimate_duration_from_text_hms():
     text = "Transcript with timestamp 01:10:05 and some other info."
-    assert estimate_duration_from_text(text) == 4205
+    assert estimate_duration_from_text(text) == 70
 
 def test_estimate_duration_from_text_ms():
     text = "Transcript with timestamp 45:30."
-    assert estimate_duration_from_text(text) == 2730
+    assert estimate_duration_from_text(text) == 46
 
 def test_estimate_duration_from_text_multiple():
     text = """
@@ -52,10 +52,10 @@ def test_estimate_duration_from_text_multiple():
     01:05:00 - Second mark
     00:45:00 - Third mark
     """
-    assert estimate_duration_from_text(text) == 3900
+    assert estimate_duration_from_text(text) == 65
 
 def test_estimate_duration_from_text_no_timestamp():
-    assert estimate_duration_from_text("Hello there.") == 3600
+    assert estimate_duration_from_text("Hello there.") == 60
 
 def test_parse_estimated_start_time_from_name():
     start = parse_estimated_start_time({}, "session_2026_06_15")
@@ -121,7 +121,7 @@ def test_extract_text_and_create_transcript_txt(tmp_path, test_db_path):
     
     session_row = conn.execute("SELECT * FROM therapy_sessions WHERE id = 1").fetchone()
     assert session_row["name"] == "Sessão 29/05/2026"
-    assert session_row["duration"] == 300
+    assert session_row["duration"] == 5
     assert session_row["start_at"] == "2026-05-29 14:00:00"
     conn.close()
 

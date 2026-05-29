@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS therapy_sessions (
     name TEXT NOT NULL,                -- e.g. "Sessão 28/05/2026"
     clinician_id INTEGER NOT NULL,
     start_at DATETIME,
-    duration INTEGER,                  -- in seconds
+    duration INTEGER,                  -- in minutes
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
 );
