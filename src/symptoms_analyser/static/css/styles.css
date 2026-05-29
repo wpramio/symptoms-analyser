@@ -725,7 +725,8 @@ select:focus {
     opacity: 0.7;
 }
 
-.calc-results h3 {
+.calc-results h3,
+.results-container h3 {
     font-size: 1.25rem;
     margin-bottom: 1rem;
 }
@@ -3346,7 +3347,8 @@ select:focus {
 }
 
 /* Max-width centered results container */
-.calc-results-centered {
+.calc-results-centered,
+.centered-container-narrow {
     max-width: 800px;
     margin-left: auto;
     margin-right: auto;

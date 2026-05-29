@@ -4,16 +4,16 @@
 {% block title %}Gestão de Pacientes - Symptoms Analyser{% endblock %}
 
 {% block content %}
-<div class="calculator-view">
-    <!-- Header matching calc-header style -->
-    <div class="calc-header">
+<div class="main-container">
+    <!-- Header matching page-header style -->
+    <div class="page-header">
         <h2>Gestão de Pacientes</h2>
         <p>Isolamento de dados clínicos (HIPAA/LGPD) e controle de identificações pseudônimas.</p>
     </div>
 
     <div class="patients-split-grid">
         <!-- Directory table wrapped in table-container + cost-table -->
-        <div class="calc-results margin-bottom-none">
+        <div class="results-container margin-bottom-none">
             <h3>Diretório de mapeamento de pseudônimos</h3>
             <div class="table-container">
                 <table class="cost-table">
@@ -55,8 +55,8 @@
             </div>
         </div>
 
-        <!-- Ingress/Inclusion Form matching calc-card style -->
-        <div class="calc-card">
+        <!-- Ingress/Inclusion Form matching dashboard-card style -->
+        <div class="dashboard-card">
             <h3>Cadastrar novo paciente</h3>
             <form id="createPatientForm" action="/admin/patients" method="POST">
                 <div class="input-group">

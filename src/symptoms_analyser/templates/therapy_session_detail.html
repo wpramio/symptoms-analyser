@@ -10,38 +10,40 @@
 
 {% block content %}
 <div class="main-container">
-    <!-- Back to sessions link -->
-    <a href="/therapy_sessions" class="back-link">
-        <svg width="16" height="16" aria-hidden="true">
-            <use href="#icon-arrow-left"></use>
-        </svg>
-        Voltar para sessões
-    </a>
+    <div class="{% if not evaluation_id %}centered-container-narrow{% endif %}">
+        <!-- Back to sessions link -->
+        <a href="/therapy_sessions" class="back-link">
+            <svg width="16" height="16" aria-hidden="true">
+                <use href="#icon-arrow-left"></use>
+            </svg>
+            Voltar para sessões
+        </a>
 
-    <!-- CARD 1: Session Details + Patients -->
-    <div class="dashboard-card session-detail-card">
-        <div class="page-header page-header-flex-start">
-            <div>
-                <div class="session-title-row">
-                    <h2 class="mb-1">{{ session.name }}</h2>
+        <!-- CARD 1: Session Details + Patients -->
+        <div class="dashboard-card session-detail-card">
+            <div class="page-header page-header-flex-start">
+                <div>
+                    <div class="session-title-row">
+                        <h2 class="mb-1">{{ session.name }}</h2>
+                    </div>
+                    <p class="session-meta-line">
+                        Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
+                            session.start_at }}</strong> | Duração: <strong>{{ session.duration }}
+                            minutos</strong>
+                    </p>
                 </div>
-                <p class="session-meta-line">
-                    Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
-                        session.start_at }}</strong> | Duração: <strong>{{ session.duration }}
-                        minutos</strong>
-                </p>
             </div>
-        </div>
 
-        <!-- Participating Patients -->
-        <div class="session-participants-panel session-participants-panel--incard">
-            <span class="session-participants-label">Pacientes na sessão:</span>
-            <div class="flex-wrap-gap-sm">
-                {% for pat in patients_list %}
-                <a href="/patients/{{ pat }}" class="patient-pill-link">
-                    {{ pat }}
-                </a>
-                {% endfor %}
+            <!-- Participating Patients -->
+            <div class="session-participants-panel session-participants-panel--incard">
+                <span class="session-participants-label">Pacientes na sessão:</span>
+                <div class="flex-wrap-gap-sm">
+                    {% for pat in patients_list %}
+                    <a href="/patients/{{ pat }}" class="patient-pill-link">
+                        {{ pat }}
+                    </a>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
@@ -228,7 +230,7 @@
 
 {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
 <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
-<div class="calc-results calc-results-centered">
+<div class="results-container centered-container-narrow">
     <div class="processing-card dashboard-card processing-centered" id="processingView">
         <div class="processing-header">
             <div class="spinner spinner-lg"></div>
@@ -250,7 +252,7 @@
 
 {% else %}
 <!-- STATE 3: NO TRANSCRIPT UPLOADED / UPLOAD FAILED -->
-<div class="calc-results calc-results-centered">
+<div class="results-container centered-container-narrow">
     <div class="dashboard-card" id="newSessionView">
         <div class="upload-state-header">
             <h3 class="upload-state-title">Registrar transcrição &amp; analisar sintomas</h3>
