@@ -89,10 +89,10 @@ def parse_sanitization_log_block(sanitized_text: str) -> Tuple[int, List[str], D
                 parts = line_clean.split(":")
                 corrections[parts[0].strip()] = parts[1].strip()
                 
-    anon_match = re.search(r"Anonymization flags raised:\s*(.*)", log_content, re.IGNORECASE)
+    anon_match = re.search(r"Anonymization flags raised:[ \t]*(.*)", log_content, re.IGNORECASE)
     if anon_match:
         val = anon_match.group(1).strip()
-        if "none" not in val.lower() and "0" not in val:
+        if val and "none" not in val.lower() and "0" not in val:
             flags = re.findall(r"\[NOME_NÃO_ANONIMIZADO:\s*([^\]]+)\]", val)
             if flags:
                 anonymization_flags.extend(flags)
