@@ -2718,13 +2718,33 @@ select:focus {
     color: var(--text-muted);
 }
 
-.participant-badge {
-    font-size: 0.9rem;
-    font-weight: 500;
+.participant-badge-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 20px;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.participant-badge-count[data-count="0"] {
     background: #f1f5f9;
-    padding: 0.2rem 0.5rem;
-    border-radius: 4px;
     color: var(--text-muted);
+    border: 1px solid #e2e8f0;
+}
+
+.participant-badge-count:not([data-count="0"]) {
+    background: rgba(59, 130, 246, 0.06);
+    color: var(--primary);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.participant-badge-count:not([data-count="0"]):hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.25);
 }
 
 .table-empty-row {
