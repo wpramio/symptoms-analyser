@@ -59,6 +59,26 @@
 
                 <!-- Hidden file dropzone, revealed upon toggle -->
                 <div id="importContainer" class="import-container-spaced">
+                    <div class="option-box-styled">
+                        <div class="checkbox-container checkbox-container-spaced">
+                            <input type="checkbox" id="autoExtractInfoOpt">
+                            <div class="checkbox-info">
+                                <span class="checkbox-title-styled">Auto-detectar metadados da sessão</span>
+                                <span class="checkbox-desc-styled">O sistema extrai automaticamente o nome, data e
+                                    duração da sessão a partir do conteúdo da transcrição.</span>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="skipSanitizationOpt" checked>
+                            <div class="checkbox-info">
+                                <span class="checkbox-title-styled">Pular sanitização por IA (LLM)</span>
+                                <span class="checkbox-desc-styled">Útil para transcrições já previamente
+                                    tratadas.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="upload-card-styled" id="dropZone">
                         <div class="upload-icon-large">📄</div>
                         <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
@@ -75,26 +95,6 @@
                         </div>
                         <button type="button" class="btn btn-secondary btn-remove-styled"
                             id="removeFileBtn">Remover</button>
-                    </div>
-
-                    <div class="option-box-styled">
-                        <div class="checkbox-container checkbox-container-spaced">
-                            <input type="checkbox" id="autoExtractInfoOpt" checked>
-                            <div class="checkbox-info">
-                                <span class="checkbox-title-styled">Auto-detectar metadados da sessão</span>
-                                <span class="checkbox-desc-styled">Sobrescrever os metadados manuais e estimar
-                                    duração/data com base na análise do texto da transcrição.</span>
-                            </div>
-                        </div>
-
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="skipSanitizationOpt" checked>
-                            <div class="checkbox-info">
-                                <span class="checkbox-title-styled">Pular sanitização por IA (LLM)</span>
-                                <span class="checkbox-desc-styled">Útil para transcrições já previamente
-                                    tratadas.</span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

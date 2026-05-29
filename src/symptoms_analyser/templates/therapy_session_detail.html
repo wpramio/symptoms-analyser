@@ -258,6 +258,22 @@
             </div>
             {% endif %}
 
+            <!-- Parameters Box -->
+            <div class="parameters-box">
+                <h4 class="parameters-box-title">Configurações de processamento</h4>
+
+                <label class="checkbox-container-flex">
+                    <input type="checkbox" id="skipSanitizationOpt" class="checkbox-margin-top">
+                    <div class="checkbox-info">
+                        <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
+                        <span class="checkbox-desc-styled">
+                            Ative apenas se os dados pessoais (PHI) e nomes reais já tiverem sido removidos manualmente
+                            da transcrição.
+                        </span>
+                    </div>
+                </label>
+            </div>
+
             <!-- File dropzone -->
             <div class="upload-card-styled" id="dropZone">
                 <div class="upload-icon-large">📤</div>
@@ -275,22 +291,6 @@
                     <span id="fileName" class="file-name-styled"></span>
                 </div>
                 <button type="button" class="btn btn-secondary btn-remove-file" id="removeFileBtn">Remover</button>
-            </div>
-
-            <!-- Parameters Box -->
-            <div class="parameters-box">
-                <h4 class="parameters-box-title">Configurações de processamento</h4>
-
-                <label class="checkbox-container-flex">
-                    <input type="checkbox" id="skipSanitizationOpt" class="checkbox-margin-top">
-                    <div class="checkbox-info">
-                        <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
-                        <span class="checkbox-desc-styled">
-                            Ative apenas se os dados pessoais (PHI) e nomes reais já tiverem sido removidos manualmente
-                            da transcrição.
-                        </span>
-                    </div>
-                </label>
             </div>
 
             <div class="btn-submit-row">
