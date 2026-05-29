@@ -7,7 +7,20 @@ Each function is independently testable without Flask or HTTP.
 
 import json
 import re
+from datetime import datetime
 from symptoms_analyser.db import get_db
+
+
+def format_date_dmyy(raw_date: str | None) -> str:
+    if not raw_date:
+        return ""
+    # Extract date part
+    date_part = str(raw_date).replace("T", " ").replace("Z", "").split(".")[0].split()[0]
+    try:
+        dt = datetime.strptime(date_part, "%Y-%m-%d")
+        return dt.strftime("%d/%m/%y")
+    except Exception:
+        return date_part
 
 
 def get_stats() -> dict:
@@ -326,7 +339,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
             "real_name": patient_row["real_name"],
-            "created_at": patient_row["created_at"],
+            "created_at": format_date_dmyy(patient_row["created_at"]),
         }
 
         # --- Sessions this patient is linked to ---
@@ -341,7 +354,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             (patient_db_id,),
         )
         sessions = [
-            {"id": r["id"], "name": r["name"], "start_at": r["start_at"]}
+            {"id": r["id"], "name": r["name"], "start_at": format_date_dmyy(r["start_at"])}
             for r in cursor.fetchall()
         ]
 
@@ -379,7 +392,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         for dim_key, dim_val in dimensions_raw.items():
             dims[dim_key] = dim_val.get("dimension_sum", 0)
 
-        date_str = (row["start_at"] or "")[:10]
+        date_str = format_date_dmyy(row["start_at"])
         timeline.append({
             "date": date_str,
             "session_name": row["session_name"],

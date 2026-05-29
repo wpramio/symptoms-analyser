@@ -28,7 +28,7 @@
                     </div>
                     <p class="session-meta-line">
                         Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
-                            session.start_at }}</strong> | Duração: <strong>{{ session.duration }}
+                            session.start_at | format_datetime_dmyy }}</strong> | Duração: <strong>{{ session.duration }}
                             minutos</strong>
                     </p>
                 </div>

@@ -52,6 +52,24 @@ def format_datetime_py(val):
         except Exception:
             return val
 
+def format_datetime_dmyy_py(val):
+    if not val:
+        return "-"
+    clean_val = str(val).replace("T", " ").replace("Z", "").split(".")[0]
+    try:
+        dt = datetime.strptime(clean_val, "%Y-%m-%d %H:%M:%S")
+        return dt.strftime("%d/%m/%y %H:%M")
+    except Exception:
+        try:
+            dt = datetime.strptime(clean_val, "%Y-%m-%d %H:%M")
+            return dt.strftime("%d/%m/%y %H:%M")
+        except Exception:
+            try:
+                dt = datetime.strptime(clean_val.split()[0], "%Y-%m-%d")
+                return dt.strftime("%d/%m/%y")
+            except Exception:
+                return val
+
 def format_bytes_py(val):
     if not val:
         return "0 Bytes"
@@ -67,6 +85,7 @@ def format_bytes_py(val):
     return f"{round(val / (1024 ** i), 1)} {sizes[i]}"
 
 app.jinja_env.filters["format_datetime"] = format_datetime_py
+app.jinja_env.filters["format_datetime_dmyy"] = format_datetime_dmyy_py
 app.jinja_env.filters["format_bytes"] = format_bytes_py
 app.jinja_env.filters["number_format"] = lambda val: f"{val or 0:,}".replace(",", ".")
 
