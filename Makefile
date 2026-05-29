@@ -19,3 +19,7 @@ test:
 .PHONY: viewer run-app
 viewer run-app:
 	uv run python -m symptoms_analyser.app
+
+.PHONY: tunnel
+tunnel:
+	ngrok http 8000 --url https://reveler-lagging-these.ngrok-free.dev --config ~/.config/ngrok/personal.yml
