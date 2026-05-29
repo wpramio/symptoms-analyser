@@ -22,7 +22,7 @@
         <div class="patients-grid">
             {% if patients %}
             {% for patient in patients %}
-            <div onclick="window.location.href='/patients/{{ patient.pseudonym }}'" class="patient-card patient-card-hover">
+            <a href="/patients/{{ patient.pseudonym }}" class="patient-card patient-card-hover">
                 <!-- Top Accent line -->
                 <div class="patient-card-accent"></div>
 
@@ -64,7 +64,7 @@
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </div>
-            </div>
+            </a>
             {% endfor %}
             {% else %}
             <div class="patients-empty-state">

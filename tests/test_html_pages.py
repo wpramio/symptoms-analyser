@@ -153,13 +153,13 @@ def test_therapy_sessions_list_page_dom(client, mock_get_db):
         
         soup = BeautifulSoup(resp.data, "html.parser")
         
-        # Check that table contains click navigation row elements
-        rows = soup.find_all("tr", class_="clickable-row")
+        # Check that grid contains click navigation row elements
+        rows = soup.find_all("a", class_="session-grid-row")
         assert len(rows) > 0
         
         # Verify row navigation action target
-        onclick_actions = [r.get("onclick") for r in rows if r.get("onclick")]
-        assert any("/therapy_sessions/1" in action for action in onclick_actions)
+        href_actions = [r.get("href") for r in rows if r.get("href")]
+        assert any("/therapy_sessions/1" in href for href in href_actions)
         
         # Check clinician name is rendered correctly
         assert "Dr. Félix" in soup.text
