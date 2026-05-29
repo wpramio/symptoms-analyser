@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             processingView.style.display = 'block';
             viewResultsBtn.style.display = 'none';
 
-            addLog(`Enviando arquivo de transcrição: ${selectedFile.name}...`);
+            addLog(`Enviando arquivo de transcrição: ${selectedFile.name}`);
         }
 
         try {
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 if (data.task_id) {
                     taskId = data.task_id;
-                    addLog('Upload concluído. Iniciando processamento relacional da sessão...');
+                    addLog('Upload concluído. Iniciando processamento relacional da sessão');
                     pollStatus();
                 } else {
                     // Successful manual creation without file

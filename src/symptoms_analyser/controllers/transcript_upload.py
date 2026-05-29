@@ -56,7 +56,7 @@ def process_transcript_pipeline(
         db_conn.row_factory = sqlite3.Row
 
         # STEP 3a: Text Extraction
-        add_log(f"Iniciando pré-processamento de {filepath.name}...")
+        add_log(f"Iniciando pré-processamento de {filepath.name}")
         transcript_id = extract_text_and_create_transcript(
             filepath=filepath,
             therapy_session_id=therapy_session_id,
@@ -65,7 +65,7 @@ def process_transcript_pipeline(
         )
 
         # STEP 3b: Local Anonymization & Patients creation
-        add_log("Executando etapa de anonimização local...")
+        add_log("Executando etapa de anonimização local")
         mappings = anonymize_transcript(
             transcript_id=transcript_id,
             db_conn=db_conn
@@ -78,7 +78,7 @@ def process_transcript_pipeline(
 
         # STEP 4: LLM Sanitization
         if skip_sanitization:
-            add_log("Pulando etapa de sanitização por IA (LLM). Utilizando transcrição direta...")
+            add_log("Pulando etapa de sanitização por IA (LLM). Utilizando transcrição direta")
             # If skipping, ensure state is set to preprocessed
             orm.update_transcript(
                 transcript_id=transcript_id,
@@ -87,7 +87,7 @@ def process_transcript_pipeline(
                 db_conn=db_conn
             )
         else:
-            add_log("Iniciando sanitização da transcrição com IA (LLM)...")
+            add_log("Iniciando sanitização da transcrição com IA (LLM)")
             sanitize_text_with_llm(
                 transcript_id=transcript_id,
                 blocks_per_call=100,
@@ -95,7 +95,7 @@ def process_transcript_pipeline(
             )
 
         # STEP 5: TDPM-20 Clinical scoring
-        add_log("Iniciando análise clínica automatizada de sintomas TDPM-20...")
+        add_log("Iniciando análise clínica automatizada de sintomas TDPM-20")
         tdpm_analysis_with_llm(
             transcript_id=transcript_id,
             blocks_per_call=100,
@@ -157,7 +157,7 @@ def handle_transcript_upload(
     task_id = str(uuid.uuid4())
     tasks[task_id] = {
         "status": "processing",
-        "logs": ["Upload concluído. Inicializando ambiente de análise..."],
+        "logs": ["Upload concluído. Inicializando ambiente de análise"],
         "error": ""
     }
 

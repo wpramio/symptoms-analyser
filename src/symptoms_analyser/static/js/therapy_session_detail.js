@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // STATE 2: PIPELINE POLLING LOGIC (When actively running)
     // =========================================================================
     if (initialTranscriptStatus && ['preprocessing', 'analyzing', 'queued'].includes(initialTranscriptStatus)) {
-        addLog(`Iniciando monitoramento de execução da sessão ${sessionId}...`, 'system');
+        addLog(`Iniciando monitoramento de execução da sessão ${sessionId}`, 'system');
 
         async function pollDatabaseStatus() {
             try {
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.status === 'completed') {
-                    addLog('Processamento finalizado com sucesso! Atualizando painel clínico...', 'success');
+                    addLog('Processamento finalizado com sucesso! Atualizando painel clínico', 'success');
                     setTimeout(() => {
                         window.location.reload();
                     }, 1500);
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hideElement(newSessionView);
             showElement(processingView, 'active');
             statusTitle.textContent = 'Enviando Arquivo...';
-            addLog(`Iniciando upload de ${selectedFile.name}...`, 'system');
+            addLog(`Iniciando upload de ${selectedFile.name}`, 'system');
 
             try {
                 const response = await fetch(`/therapy_sessions/${sessionId}/upload_transcript`, {
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok && data.success) {
                     statusTitle.textContent = 'Processando Transcrição...';
                     statusDesc.textContent = 'O pipeline assíncrono de IA está ativado no banco de dados. Acompanhe os logs de telemetria abaixo.';
-                    addLog('Upload de arquivo concluído com sucesso. Iniciando pré-processamento...', 'success');
+                    addLog('Upload de arquivo concluído com sucesso. Iniciando pré-processamento', 'success');
                     
                     // Start polling database status
                     activePolling = true;
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
 
                 if (data.status === 'completed') {
-                    addLog('Diagnóstico TDPM-20 finalizado com sucesso! Atualizando laudo clínico...', 'success');
+                    addLog('Diagnóstico TDPM-20 finalizado com sucesso! Atualizando laudo clínico', 'success');
                     setTimeout(() => {
                         window.location.reload();
                     }, 1500);
