@@ -226,12 +226,15 @@
     <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
     <div class="calc-results calc-results-centered">
         <div class="processing-card dashboard-card processing-centered" id="processingView">
-            <div class="spinner spinner-lg"></div>
-            <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
-            <p class="processing-desc" id="statusDesc">
-                O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando
-                sintomas por IA.
-            </p>
+            <div class="processing-header">
+                <div class="spinner spinner-lg"></div>
+                <div class="processing-header-text">
+                    <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
+                    <p class="processing-desc" id="statusDesc">
+                        O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando sintomas por IA.
+                    </p>
+                </div>
+            </div>
 
             <div class="log-console log-console-lg" id="logConsole">
                 <div class="log-entry log-entry-muted">[Iniciando sistema...] Aguardando atualização do estado da
@@ -302,10 +305,13 @@
 
         <!-- Processing Console (hidden initially, shown on submit) -->
         <div class="processing-card dashboard-card processing-centered" id="processingView">
-            <div class="spinner spinner-lg"></div>
-            <h3 class="processing-title" id="statusTitle">Enviando arquivo...</h3>
-            <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é
-                disparada.</p>
+            <div class="processing-header">
+                <div class="spinner spinner-lg"></div>
+                <div class="processing-header-text">
+                    <h3 class="processing-title" id="statusTitle">Enviando arquivo...</h3>
+                    <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é disparada.</p>
+                </div>
+            </div>
 
             <div class="log-console log-console-lg" id="logConsole">
                 <div class="log-entry">[Sistema] Preparando upload...</div>

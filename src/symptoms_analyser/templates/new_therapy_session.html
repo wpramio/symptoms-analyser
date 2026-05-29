@@ -104,11 +104,13 @@
 
         <!-- Async Processing Console inside matching dashboard-card style -->
         <div class="processing-card dashboard-card" id="processingView">
-            <div class="spinner"></div>
-            <h2 class="processing-title" id="statusTitle">Processando
-                transcrição...</h2>
-            <p class="processing-desc" id="statusDesc">A IA está processando e
-                analisando clinicamente o diálogo da sessão.</p>
+            <div class="processing-header">
+                <div class="spinner"></div>
+                <div class="processing-header-text">
+                    <h2 class="processing-title" id="statusTitle">Processando transcrição...</h2>
+                    <p class="processing-desc" id="statusDesc">A IA está processando e analisando clinicamente o diálogo da sessão.</p>
+                </div>
+            </div>
 
             <div class="log-console" id="logConsole">
                 <div class="log-entry">Aguardando início...</div>
