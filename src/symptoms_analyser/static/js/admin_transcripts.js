@@ -85,9 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const statusMap = {
                         'queued': 'Na Fila',
                         'preprocessing': 'Pré-processando',
-                        'preprocessed': 'Pré-processado',
+                        'preprocessed': 'Pré-processada',
                         'analyzing': 'Analisando',
-                        'completed': 'Concluído',
+                        'completed': 'Analisada',
                         'failed': 'Falha (Ver erro)'
                     };
                     const statusText = statusMap[job.status] || job.status;
