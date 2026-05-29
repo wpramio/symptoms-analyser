@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const importContainer = document.getElementById('importContainer');
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
-    const browseBtn = document.getElementById('browseBtn');
     const selectedFilePanel = document.getElementById('selectedFilePanel');
     const fileName = document.getElementById('fileName');
     const removeFileBtn = document.getElementById('removeFileBtn');
@@ -80,10 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     autoExtractInfoOpt.addEventListener('change', updateFormDisabledState);
 
     // 3. File upload click handlers
-    browseBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        fileInput.click();
-    });
     dropZone.addEventListener('click', () => fileInput.click());
 
     // 4. Drag & Drop

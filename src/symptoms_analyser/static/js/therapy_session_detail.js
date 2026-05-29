@@ -190,7 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('dropZone');
     if (dropZone) {
         const fileInput = document.getElementById('fileInput');
-        const browseBtn = document.getElementById('browseBtn');
         const selectedFilePanel = document.getElementById('selectedFilePanel');
         const fileName = document.getElementById('fileName');
         const removeFileBtn = document.getElementById('removeFileBtn');
@@ -202,10 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let activePolling = false;
 
         // Click selection triggers
-        browseBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            fileInput.click();
-        });
         dropZone.addEventListener('click', () => fileInput.click());
 
         // File selection input changes
