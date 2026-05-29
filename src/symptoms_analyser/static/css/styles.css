@@ -2422,7 +2422,7 @@ select:focus {
 
 .checkbox-container-flex {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     cursor: pointer;
 }
@@ -2435,6 +2435,9 @@ select:focus {
     font-size: 1.1rem;
     color: var(--text-heading);
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 .checkbox-desc-spaced {
@@ -2442,6 +2445,74 @@ select:focus {
     font-size: 0.85rem;
     color: var(--text-muted);
     margin-top: 0.25rem;
+}
+
+/* Premium CSS-only Tooltip */
+.info-tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0.4rem;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.info-tooltip-trigger-svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    transition: color 0.2s ease, transform 0.2s ease;
+    cursor: help;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.info-tooltip-container:hover .info-tooltip-trigger-svg {
+    color: var(--primary);
+    transform: scale(1.15);
+}
+
+.info-tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    bottom: 135%; /* Position above the trigger */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1e293b; /* Sleek dark slate background */
+    color: #f8fafc;
+    text-align: left;
+    padding: 0.65rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.4;
+    width: 280px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: normal;
+}
+
+/* Tooltip Arrow */
+.info-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%; /* At the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.info-tooltip-container:hover .info-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
 }
 
 .import-container-spaced {
@@ -2530,6 +2601,9 @@ select:focus {
 .checkbox-title-styled {
     font-size: 0.9rem;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 .checkbox-desc-styled {

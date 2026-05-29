@@ -75,23 +75,27 @@
                     <div class="popover-grid">
                         <div class="popover-item">
                             <span class="popover-label">Modelo LLM</span>
-                            <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-' }}</span>
+                            <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-'
+                                }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Blocos de análise</span>
-                            <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation else '-' }}</span>
+                            <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation else
+                                '-' }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Tempo de execução</span>
-                            <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
+                            <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if
+                                evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
                         </div>
                         <div class="popover-item">
                             <span class="popover-label">Tokens (prompt/resp.)</span>
                             <span class="popover-value" id="metaTokens">
                                 {% if evaluation and evaluation.token_usage %}
-                                    {{ evaluation.token_usage.prompt_tokens }} / {{ evaluation.token_usage.completion_tokens }}
+                                {{ evaluation.token_usage.prompt_tokens }} / {{ evaluation.token_usage.completion_tokens
+                                }}
                                 {% else %}
-                                    -
+                                -
                                 {% endif %}
                             </span>
                         </div>
@@ -112,211 +116,218 @@
             <section class="patient-navigation">
                 <ul id="patientTabs" class="patient-tabs">
                     {% if evaluation and evaluation.aggregated and evaluation.aggregated.patients %}
-                        {% for p_name in evaluation.aggregated.patients.keys() | sort %}
-                        <li class="patient-tab {% if loop.first %}active{% endif %}" data-patient="{{ p_name }}">
-                            {{ p_name }}
-                        </li>
-                        {% endfor %}
+                    {% for p_name in evaluation.aggregated.patients.keys() | sort %}
+                    <li class="patient-tab {% if loop.first %}active{% endif %}" data-patient="{{ p_name }}">
+                        {{ p_name }}
+                    </li>
+                    {% endfor %}
                     {% endif %}
                 </ul>
             </section>
 
             <section id="patientContent" class="patient-content">
                 {% if evaluation and evaluation.aggregated and evaluation.aggregated.patients %}
-                    {% for p_name, p_data in evaluation.aggregated.patients.items() %}
-                    <div class="patient-view-section {% if loop.first %}active{% endif %}" id="patient-view-{{ p_name }}">
-                        <div class="section-header section-header-top">
-                            <h3>Top 3 dimensões prioritárias</h3>
-                            <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
-                        </div>
-                        <div class="top3-grid">
-                            {% if p_data.top3 %}
-                                {% for dim in p_data.top3 %}
-                                    {% set max_size = 12 if dim.dim == "16" else 8 %}
-                                    {% set severity = ((dim.sum / max_size) * 4) | round(method='ceil') | int %}
-                                    {% if severity < 1 %}{% set severity = 1 %}{% endif %}
-                                    <div class="top3-card">
-                                        <div class="top3-rank">Prioridade #{{ loop.index }}</div>
-                                        <div class="top3-title">{{ dim.name }}</div>
-                                        <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.sum }}/{{ max_size }}</div>
-                                    </div>
-                                {% endfor %}
-                            {% else %}
-                                <p class="text-muted text-medium">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>
-                            {% endif %}
-                        </div>
-
-                        <div class="section-header section-header-major">
-                            <h3>Detalhamento das dimensões clínicas</h3>
-                            <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
-                        </div>
-                        <div class="dimensions-list">
-                            {% if p_data.dimensions %}
-                                {% set sorted_dims = p_data.dimensions.items() | sort(attribute='1.dimension_sum', reverse=True) %}
-                                {% for dim_key, dim in sorted_dims %}
-                                    {% set max_size = 12 if dim_key == "16" else 8 %}
-                                    {% set severity = ((dim.dimension_sum / max_size) * 4) | round(method='ceil') | int %}
-                                    {% if severity < 1 %}{% set severity = 1 %}{% endif %}
-                                    
-                                    <div class="dimension-item">
-                                        <div class="dimension-header">
-                                            <div class="dimension-title-group flex-align-center-gap">
-                                                <span class="dimension-name">{{ dim_key }}. {{ dim.name }}</span>
-                                            </div>
-                                            <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.dimension_sum }}/{{ max_size }}</div>
-                                        </div>
-                                        <div class="dimension-body">
-                                            {% for item_id, item in p_data['items'].items() %}
-                                                {% if item_id.startswith(dim_key ~ '.') %}
-                                                    <div class="item-row">
-                                                        <div class="item-header">
-                                                            <span class="item-name">{{ item_id }} - {{ item.name }}</span>
-                                                            <span class="score-badge" data-severity="{{ item.score }}">Pontuação: {{ item.score }}</span>
-                                                        </div>
-                                                        <ul class="item-evidence">
-                                                            {% for ev in item.evidence %}
-                                                                <li class="evidence-quote">"{{ ev }}"</li>
-                                                            {% endfor %}
-                                                        </ul>
-                                                    </div>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                {% endfor %}
-                            {% else %}
-                                <p class="text-muted text-medium">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>
-                            {% endif %}
-                        </div>
+                {% for p_name, p_data in evaluation.aggregated.patients.items() %}
+                <div class="patient-view-section {% if loop.first %}active{% endif %}" id="patient-view-{{ p_name }}">
+                    <div class="section-header section-header-top">
+                        <h3>Top 3 dimensões prioritárias</h3>
+                        <p>Dimensões com a maior relevância clínica e severidade detectadas nesta sessão.</p>
+                    </div>
+                    <div class="top3-grid">
+                        {% if p_data.top3 %}
+                        {% for dim in p_data.top3 %}
+                        {% set max_size = 12 if dim.dim == "16" else 8 %}
+                        {% set severity = ((dim.sum / max_size) * 4) | round(method='ceil') | int %}
+                        {% if severity < 1 %}{% set severity=1 %}{% endif %} <div class="top3-card">
+                            <div class="top3-rank">Prioridade #{{ loop.index }}</div>
+                            <div class="top3-title">{{ dim.name }}</div>
+                            <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.sum }}/{{ max_size
+                                }}</div>
                     </div>
                     {% endfor %}
+                    {% else %}
+                    <p class="text-muted text-medium">Nenhuma dimensão prioritária ativa para este paciente nesta
+                        sessão.</p>
+                    {% endif %}
+                </div>
+
+                <div class="section-header section-header-major">
+                    <h3>Detalhamento das dimensões clínicas</h3>
+                    <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
+                </div>
+                <div class="dimensions-list">
+                    {% if p_data.dimensions %}
+                    {% set sorted_dims = p_data.dimensions.items() | sort(attribute='1.dimension_sum', reverse=True) %}
+                    {% for dim_key, dim in sorted_dims %}
+                    {% set max_size = 12 if dim_key == "16" else 8 %}
+                    {% set severity = ((dim.dimension_sum / max_size) * 4) | round(method='ceil') | int %}
+                    {% if severity < 1 %}{% set severity=1 %}{% endif %} <div class="dimension-item">
+                        <div class="dimension-header">
+                            <div class="dimension-title-group flex-align-center-gap">
+                                <span class="dimension-name">{{ dim_key }}. {{ dim.name }}</span>
+                            </div>
+                            <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.dimension_sum
+                                }}/{{ max_size }}</div>
+                        </div>
+                        <div class="dimension-body">
+                            {% for item_id, item in p_data['items'].items() %}
+                            {% if item_id.startswith(dim_key ~ '.') %}
+                            <div class="item-row">
+                                <div class="item-header">
+                                    <span class="item-name">{{ item_id }} - {{ item.name }}</span>
+                                    <span class="score-badge" data-severity="{{ item.score }}">Pontuação: {{ item.score
+                                        }}</span>
+                                </div>
+                                <ul class="item-evidence">
+                                    {% for ev in item.evidence %}
+                                    <li class="evidence-quote">"{{ ev }}"</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-medium">Nenhuma dimensão quantificada para este paciente nesta sessão.</p>
                 {% endif %}
-            </section>
         </div>
     </div>
-
-    <!-- CARD 3: Full Transcript -->
-    {% if transcript %}
-    <div class="dashboard-card transcript-card">
-        <div class="dimension-item">
-            <div class="dimension-header" id="toggleTranscriptHeader">
-                <div class="flex-align-center-gap-sm">
-                    <span class="transcript-icon">📄</span>
-                    <span class="transcript-title">Transcrição completa da sessão</span>
-                </div>
-                <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
-            </div>
-            <div class="transcript-body-scroll" id="transcriptBodyContainer">
-                <div class="transcript-tab-row">
-                    <button type="button" class="btn btn-secondary btn-transcript-tab active"
-                        id="btnShowSanitized">Transcrição higienizada (PHI clean)</button>
-                    <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">Texto bruto
-                        original</button>
-                </div>
-                <pre id="transcriptTextContent"
-                    class="transcript-content-pre"
-                    data-sanitized="{{ transcript.sanitized_text or '' }}"
-                    data-raw="{{ transcript.raw_text or '' }}">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
-            </div>
-        </div>
-    </div>
+    {% endfor %}
     {% endif %}
+    </section>
+</div>
+</div>
 
-    {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
-    <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
-    <div class="calc-results calc-results-centered">
-        <div class="processing-card dashboard-card processing-centered" id="processingView">
-            <div class="processing-header">
-                <div class="spinner spinner-lg"></div>
-                <div class="processing-header-text">
-                    <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
-                    <p class="processing-desc" id="statusDesc">
-                        O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando sintomas por IA.
-                    </p>
-                </div>
+<!-- CARD 3: Full Transcript -->
+{% if transcript %}
+<div class="dashboard-card transcript-card">
+    <div class="dimension-item">
+        <div class="dimension-header" id="toggleTranscriptHeader">
+            <div class="flex-align-center-gap-sm">
+                <span class="transcript-icon">📄</span>
+                <span class="transcript-title">Transcrição completa da sessão</span>
             </div>
-
-            <div class="log-console log-console-lg" id="logConsole">
-                <div class="log-entry log-entry-muted">[Iniciando sistema...] Aguardando atualização do estado da
-                    pipeline no banco de dados...</div>
+            <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
+        </div>
+        <div class="transcript-body-scroll" id="transcriptBodyContainer">
+            <div class="transcript-tab-row">
+                <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowSanitized">
+                    Texto sanitizado</button>
+                <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">
+                    Texto original</button>
             </div>
+            <pre id="transcriptTextContent" class="transcript-content-pre"
+                data-sanitized="{{ transcript.sanitized_text or '' }}"
+                data-raw="{{ transcript.raw_text or '' }}">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
         </div>
     </div>
+</div>
+{% endif %}
 
-    {% else %}
-    <!-- STATE 3: NO TRANSCRIPT UPLOADED / UPLOAD FAILED -->
-    <div class="calc-results calc-results-centered">
-        <div class="dashboard-card" id="newSessionView">
-            <div class="upload-state-header">
-                <span class="upload-icon-large">📄</span>
-                <h3 class="upload-state-title">Registrar transcrição &amp; analisar sintomas</h3>
-                <p class="upload-state-desc">Esta sessão de terapia ainda não possui uma transcrição associada. Faça o
-                    upload do arquivo para executar a avaliação clínica baseada em IA.</p>
+{% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
+<!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
+<div class="calc-results calc-results-centered">
+    <div class="processing-card dashboard-card processing-centered" id="processingView">
+        <div class="processing-header">
+            <div class="spinner spinner-lg"></div>
+            <div class="processing-header-text">
+                <h3 class="processing-title" id="statusTitle">Processando transcrição da sessão...</h3>
+                <p class="processing-desc" id="statusDesc">
+                    O pipeline inteligente está ativado. Estamos higienizando os dados pessoais (PHI) e quantificando
+                    sintomas por IA.
+                </p>
             </div>
+        </div>
 
-            {% if transcript and transcript.status == 'failed' %}
-            <div class="upload-error-banner">
-                <strong class="upload-error-label">Falha na tentativa anterior:</strong>
-                <div class="upload-error-message">{{ transcript.error_message }}</div>
-            </div>
-            {% endif %}
+        <div class="log-console log-console-lg" id="logConsole">
+            <div class="log-entry log-entry-muted">[Iniciando sistema...] Aguardando atualização do estado da
+                pipeline no banco de dados...</div>
+        </div>
+    </div>
+</div>
 
-            <!-- Parameters Box -->
-            <div class="parameters-box">
-                <h4 class="parameters-box-title">Configurações de processamento</h4>
+{% else %}
+<!-- STATE 3: NO TRANSCRIPT UPLOADED / UPLOAD FAILED -->
+<div class="calc-results calc-results-centered">
+    <div class="dashboard-card" id="newSessionView">
+        <div class="upload-state-header">
+            <h3 class="upload-state-title">Registrar transcrição &amp; analisar sintomas</h3>
+        </div>
 
-                <label class="checkbox-container-flex">
-                    <input type="checkbox" id="skipSanitizationOpt" class="checkbox-margin-top">
-                    <div class="checkbox-info">
-                        <span class="checkbox-title-styled">Pular higienização por IA (LLM)</span>
-                        <span class="checkbox-desc-styled">
-                            Ative apenas se os dados pessoais (PHI) e nomes reais já tiverem sido removidos manualmente
-                            da transcrição.
+        {% if transcript and transcript.status == 'failed' %}
+        <div class="upload-error-banner">
+            <strong class="upload-error-label">Falha na tentativa anterior:</strong>
+            <div class="upload-error-message">{{ transcript.error_message }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Parameters Box -->
+        <div class="parameters-box">
+            <h4 class="parameters-box-title">Configurações de processamento</h4>
+
+            <label class="checkbox-container-flex">
+                <input type="checkbox" id="skipSanitizationOpt" checked>
+                <div class="checkbox-info">
+                    <span class="checkbox-title-styled">
+                        Pular sanitização por IA (LLM)
+                        <span class="info-tooltip-container" onclick="event.preventDefault();">
+                            <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            <span class="info-tooltip-text">Desative apenas se precisar corrigir imperfeições da
+                                transcrição.</span>
                         </span>
-                    </div>
-                </label>
-            </div>
-
-            <!-- File dropzone -->
-            <div class="upload-card-styled" id="dropZone">
-                <div class="upload-icon-large">📤</div>
-                <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
-                <p class="upload-hint-styled">Formatos de diálogo suportados: .docx, .txt</p>
-                <input type="file" id="fileInput" accept=".docx,.txt" class="display-none">
-            </div>
-
-            <!-- Selected File Display -->
-            <div id="selectedFilePanel" class="selected-file-panel-styled">
-                <div class="flex-align-center-gap-sm">
-                    <span>📄</span>
-                    <span id="fileName" class="file-name-styled"></span>
+                    </span>
                 </div>
-                <button type="button" class="btn btn-secondary btn-remove-file" id="removeFileBtn">Remover</button>
-            </div>
-
-            <div class="btn-submit-row">
-                <button type="button" class="btn btn-min-width" id="startBtn">
-                    Iniciar processamento &amp; análise
-                </button>
-            </div>
+            </label>
         </div>
 
-        <!-- Processing Console (hidden initially, shown on submit) -->
-        <div class="processing-card dashboard-card processing-centered" id="processingView">
-            <div class="processing-header">
-                <div class="spinner spinner-lg"></div>
-                <div class="processing-header-text">
-                    <h3 class="processing-title" id="statusTitle">Enviando arquivo...</h3>
-                    <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é disparada.</p>
-                </div>
-            </div>
+        <!-- File dropzone -->
+        <div class="upload-card-styled" id="dropZone">
+            <div class="upload-icon-large">📤</div>
+            <h3 class="upload-text-styled">Arraste a transcrição aqui ou clique para selecionar</h3>
+            <p class="upload-hint-styled">Formatos suportados: .docx, .txt</p>
+            <input type="file" id="fileInput" accept=".docx,.txt" class="display-none">
+        </div>
 
-            <div class="log-console log-console-lg" id="logConsole">
-                <div class="log-entry">[Sistema] Preparando upload...</div>
+        <!-- Selected File Display -->
+        <div id="selectedFilePanel" class="selected-file-panel-styled">
+            <div class="flex-align-center-gap-sm">
+                <span>📄</span>
+                <span id="fileName" class="file-name-styled"></span>
             </div>
+            <button type="button" class="btn btn-secondary btn-remove-file" id="removeFileBtn">Remover</button>
+        </div>
+
+        <div class="btn-submit-row">
+            <button type="button" class="btn btn-min-width" id="startBtn">
+                Iniciar processamento &amp; análise
+            </button>
         </div>
     </div>
-    {% endif %}
+
+    <!-- Processing Console (hidden initially, shown on submit) -->
+    <div class="processing-card dashboard-card processing-centered" id="processingView">
+        <div class="processing-header">
+            <div class="spinner spinner-lg"></div>
+            <div class="processing-header-text">
+                <h3 class="processing-title" id="statusTitle">Enviando arquivo</h3>
+                <p class="processing-desc" id="statusDesc">Aguarde enquanto os dados são salvos e a pipeline de IA é
+                    disparada.</p>
+            </div>
+        </div>
+
+        <div class="log-console log-console-lg" id="logConsole">
+            <div class="log-entry">[Sistema] Preparando upload</div>
+        </div>
+    </div>
+</div>
+{% endif %}
 </div>
 {% endblock %}
 
