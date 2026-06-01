@@ -150,3 +150,17 @@ CREATE TABLE IF NOT EXISTS sanitization_telemetry (
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id);
+
+-- 10. Session Syntheses Table (qualitative whole-text clinical analyses)
+CREATE TABLE IF NOT EXISTS session_syntheses (
+    transcript_id INTEGER PRIMARY KEY,
+    therapy_session_id INTEGER NOT NULL,
+    group_progress_note_draft TEXT,
+    mutual_support_mapping TEXT,       -- JSON text representing mutual support network (future-proofing)
+    cohesion_metrics TEXT,             -- JSON text representing cohesion metrics (future-proofing)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_syntheses_session ON session_syntheses (therapy_session_id);
+

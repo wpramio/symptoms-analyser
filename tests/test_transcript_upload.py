@@ -44,8 +44,9 @@ def test_allowed_file():
 @mock.patch("symptoms_analyser.controllers.transcript_upload.anonymize_transcript")
 @mock.patch("symptoms_analyser.controllers.transcript_upload.sanitize_text_with_llm")
 @mock.patch("symptoms_analyser.controllers.transcript_upload.tdpm_analysis_with_llm")
+@mock.patch("symptoms_analyser.controllers.transcript_upload.generate_clinical_synthesis")
 def test_process_transcript_pipeline_success(
-    mock_tdpm, mock_sanitize, mock_anon, mock_extract, test_db_path
+    mock_synthesis, mock_tdpm, mock_sanitize, mock_anon, mock_extract, test_db_path
 ):
     # Set up mocks
     mock_extract.return_value = 1

@@ -4261,3 +4261,167 @@ select:focus {
     color: var(--text-muted);
     font-size: 0.875rem;
 }
+
+/* ==========================================================================
+   Clinical Synthesis / Minuta de evolução clínica (Sentence case)
+   ========================================================================== */
+
+.synthesis-card {
+    background-color: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius, 12px);
+    padding: 2rem;
+    box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03));
+    margin-bottom: 2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.synthesis-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    padding-bottom: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.synthesis-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.synthesis-header-icon {
+    width: 24px;
+    height: 24px;
+    color: var(--primary, #2563eb);
+}
+
+.synthesis-title-text-group .synthesis-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    line-height: 1.2;
+    color: var(--text-main, #0f172a);
+}
+
+.synthesis-title-text-group {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem; /* Tight, visually cohesive spacing */
+}
+
+.synthesis-title-text-group .info-tooltip-container {
+    margin-left: 0;
+    display: inline-flex;
+    align-self: center;
+}
+
+.synthesis-title-text-group .info-tooltip-trigger-svg {
+    width: 17px;
+    height: 17px;
+}
+
+.synthesis-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.synthesis-description {
+    font-size: 0.925rem;
+    line-height: 1.6;
+    color: var(--text-muted, #64748b);
+    margin: 0;
+}
+
+.synthesis-textarea-wrapper {
+    position: relative;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid var(--border, #e2e8f0);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.synthesis-textarea-wrapper:focus-within {
+    border-color: var(--primary, #2563eb);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.synthesis-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-main, #0f172a);
+    padding: 1.25rem;
+    resize: vertical;
+    min-height: 140px;
+    border-radius: 8px;
+}
+
+.synthesis-alert-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background-color: #fffbeb;
+    border: 1px solid #fef3c7;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+}
+
+.synthesis-alert-icon {
+    width: 20px;
+    height: 20px;
+    color: #d97706;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.synthesis-alert-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.synthesis-alert-text {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #b45309;
+    margin: 0;
+}
+
+.synthesis-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.btn-icon-flex-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-icon-svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Animations & Visual states for Copy and Save */
+@keyframes successPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.btn-success-animated {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: #ffffff !important;
+    animation: successPulse 0.35s ease-in-out;
+}

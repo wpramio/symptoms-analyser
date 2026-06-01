@@ -62,9 +62,32 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
         )
         row = cursor.fetchone()
 
+        synthesis_row = None
+        if row:
+            cursor.execute(
+                """
+                SELECT group_progress_note_draft, mutual_support_mapping, cohesion_metrics
+                FROM session_syntheses
+                WHERE transcript_id = (SELECT transcript_id FROM tdpm_evaluations WHERE id = ?)
+                """,
+                (eval_id,),
+            )
+            synthesis_row = cursor.fetchone()
+
     if row and row[0]:
         payload = json.loads(row[0])
         payload["session"] = f"{row[1]} ({row[2] or 'Sem clínico'})"
+        
+        # Inject clinical synthesis
+        if synthesis_row:
+            payload["synthesis"] = {
+                "group_clinical_progress_note_draft": synthesis_row["group_progress_note_draft"],
+                "mutual_support_mapping": json.loads(synthesis_row["mutual_support_mapping"]) if synthesis_row["mutual_support_mapping"] else None,
+                "cohesion_metrics": json.loads(synthesis_row["cohesion_metrics"]) if synthesis_row["cohesion_metrics"] else None
+            }
+        else:
+            payload["synthesis"] = None
+            
         return payload
     return None
 

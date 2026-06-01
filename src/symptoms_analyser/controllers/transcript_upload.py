@@ -18,6 +18,7 @@ import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text_and_create_transcript, anonymize_transcript
 from symptoms_analyser.pipeline.sanitization import sanitize_text_with_llm
 from symptoms_analyser.pipeline.tdpm_analysis import tdpm_analysis_with_llm
+from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 UPLOAD_FOLDER = PROJECT_ROOT / "input/uploads"
@@ -100,6 +101,13 @@ def process_transcript_pipeline(
             transcript_id=transcript_id,
             blocks_per_call=100,
             evaluator_id="clinician_1",
+            db_conn=db_conn
+        )
+
+        # STEP 6: Clinical Synthesis (Minuta de evolução clínica do grupo)
+        add_log("Iniciando síntese clínica qualitativa da sessão com IA (LLM)")
+        generate_clinical_synthesis(
+            transcript_id=transcript_id,
             db_conn=db_conn
         )
 

@@ -226,3 +226,85 @@ def test_tdpm_analysis_with_llm(mock_load, mock_openai, test_db_path):
     assert evidence_list[0]["raw_evidence"] == "Eu sinto muita fome o dia todo"
     
     conn.close()
+
+
+def test_session_synthesis_orm(test_db_path):
+    import symptoms_analyser.db as orm
+    conn = sqlite3.connect(test_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
+    
+    # 1. Create a dummy transcript in db to avoid foreign key errors
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (42, 1, 'test.txt', 'txt', 'Raw Text content', 'completed')
+    """)
+    conn.commit()
+
+    # 2. Test create_session_synthesis
+    orm.create_session_synthesis(
+        transcript_id=42,
+        therapy_session_id=1,
+        group_progress_note_draft="Minuta inicial sugerida pela IA.",
+        mutual_support_mapping='{"cohesion": 0.9}',
+        cohesion_metrics='{"level": "high"}',
+        db_conn=conn
+    )
+    
+    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
+    assert row is not None
+    assert row["group_progress_note_draft"] == "Minuta inicial sugerida pela IA."
+    assert row["mutual_support_mapping"] == '{"cohesion": 0.9}'
+    assert row["cohesion_metrics"] == '{"level": "high"}'
+
+    # 3. Test update_session_synthesis (simulating clinician edit)
+    orm.update_session_synthesis(
+        transcript_id=42,
+        group_progress_note_draft="Minuta editada pelo clínico.",
+        db_conn=conn
+    )
+    
+    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
+    assert row is not None
+    assert row["group_progress_note_draft"] == "Minuta editada pelo clínico."
+    assert row["mutual_support_mapping"] == '{"cohesion": 0.9}'  # Kept intact!
+    
+    conn.close()
+
+
+@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
+    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
+    
+    # Mock LLM return value
+    mock_synthesis_json = {
+        "group_clinical_progress_note_draft": "Esta é a evolução do grupo da sessão 1.",
+        "mutual_support_mapping": {"nodes": [], "edges": []},
+        "cohesion_metrics": {"score": 5, "analysis": "Grupo coeso"}
+    }
+    mock_call_model.return_value = (json.dumps(mock_synthesis_json), {"prompt_tokens": 100, "completion_tokens": 50})
+    
+    conn = sqlite3.connect(test_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
+    
+    # Insert test transcript
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        VALUES (10, 1, 'test.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
+    """)
+    conn.commit()
+    
+    # Run the clinical synthesis pipeline
+    generate_clinical_synthesis(transcript_id=10, db_conn=conn)
+    
+    # Assert DB was updated with synthesized data
+    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 10").fetchone()
+    assert row is not None
+    assert row["therapy_session_id"] == 1
+    assert row["group_progress_note_draft"] == "Esta é a evolução do grupo da sessão 1."
+    assert json.loads(row["mutual_support_mapping"]) == {"nodes": [], "edges": []}
+    assert json.loads(row["cohesion_metrics"]) == {"score": 5, "analysis": "Grupo coeso"}
+    
+    conn.close()
+

@@ -424,3 +424,51 @@ def update_patient(
     else:
         with get_db() as conn:
             _execute(conn)
+
+
+def create_session_synthesis(
+    transcript_id: int,
+    therapy_session_id: int,
+    group_progress_note_draft: Optional[str] = None,
+    mutual_support_mapping: Optional[str] = None,
+    cohesion_metrics: Optional[str] = None,
+    db_conn: Optional[sqlite3.Connection] = None
+) -> None:
+    """Insert or replace a qualitative whole-session clinical synthesis."""
+    sql = """
+        INSERT OR REPLACE INTO session_syntheses 
+        (transcript_id, therapy_session_id, group_progress_note_draft, mutual_support_mapping, cohesion_metrics)
+        VALUES (?, ?, ?, ?, ?)
+    """
+    params = (transcript_id, therapy_session_id, group_progress_note_draft, mutual_support_mapping, cohesion_metrics)
+
+    if db_conn:
+        db_conn.execute(sql, params)
+        db_conn.commit()
+    else:
+        with get_db() as conn:
+            db_conn_to_use = conn
+            db_conn_to_use.execute(sql, params)
+            db_conn_to_use.commit()
+
+
+def update_session_synthesis(
+    transcript_id: int,
+    group_progress_note_draft: str,
+    db_conn: Optional[sqlite3.Connection] = None
+) -> None:
+    """Update only the progress note draft of a session's clinical synthesis."""
+    sql = """
+        UPDATE session_syntheses
+        SET group_progress_note_draft = ?
+        WHERE transcript_id = ?
+    """
+    if db_conn:
+        db_conn.execute(sql, (group_progress_note_draft, transcript_id))
+        db_conn.commit()
+    else:
+        with get_db() as conn:
+            db_conn_to_use = conn
+            db_conn_to_use.execute(sql, (group_progress_note_draft, transcript_id))
+            db_conn_to_use.commit()
+

@@ -551,6 +551,29 @@ def api_create_patient():
         return jsonify(result), status
     except Exception as e:
         print(f"Error creating patient mapping: {e}")
+@app.route("/api/evaluations/<int:eval_id>/synthesis", methods=["POST"])
+def api_save_clinical_synthesis(eval_id: int):
+    try:
+        import symptoms_analyser.db as orm
+        from symptoms_analyser.db import get_db
+        
+        data = request.get_json() or {}
+        draft = data.get("group_progress_note_draft")
+        if draft is None:
+            return jsonify({"error": "Dados inválidos: campo 'group_progress_note_draft' é obrigatório"}), 400
+            
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT transcript_id FROM tdpm_evaluations WHERE id = ?", (eval_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({"error": "Avaliação não encontrada"}), 404
+            transcript_id = row["transcript_id"]
+            
+        orm.update_session_synthesis(transcript_id, draft)
+        return jsonify({"message": "Minuta de evolução clínica salva com sucesso!"}), 200
+    except Exception as e:
+        print(f"Error saving clinical synthesis: {e}")
         return jsonify({"error": str(e)}), 500
 
 

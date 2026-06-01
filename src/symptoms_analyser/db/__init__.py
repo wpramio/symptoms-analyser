@@ -17,6 +17,8 @@ from .orm import (
     create_evaluation_telemetry,
     create_patient_item_score,
     update_patient,
+    create_session_synthesis,
+    update_session_synthesis,
 )
 
 __all__ = [
@@ -32,4 +34,6 @@ __all__ = [
     "create_evaluation_telemetry",
     "create_patient_item_score",
     "update_patient",
+    "create_session_synthesis",
+    "update_session_synthesis",
 ]
