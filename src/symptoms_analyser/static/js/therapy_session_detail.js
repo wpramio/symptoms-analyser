@@ -2,8 +2,107 @@ document.addEventListener('DOMContentLoaded', () => {
     const _page = JSON.parse(document.getElementById('page-data').textContent);
     const sessionId = _page.sessionId;
     const evaluationId = _page.evaluationId;
-    const evaluationPath = _page.evaluationPath;
     const initialTranscriptStatus = _page.transcriptStatus;
+
+    // =========================================================================
+    // Speaking Airtime (Tempo de Fala) Donut Chart rendering
+    // =========================================================================
+    const airtimeData = _page.airtime;
+    if (airtimeData && airtimeData.speakers && airtimeData.speakers.length > 0) {
+        const HSL_COLORS = [
+            'hsl(142, 71%, 45%)',  // Green (Index 1 -> Paciente1)
+            'hsl(38,  92%, 50%)',  // Yellow/Orange (Index 2 -> Paciente2)
+            'hsl(350, 89%, 60%)',  // Red (Index 3 -> Paciente3)
+            'hsl(280, 87%, 65%)',  // Purple (Index 4 -> Paciente4)
+            'hsl(180, 70%, 45%)',  // Teal (Index 5 -> Paciente5)
+            'hsl(25,  95%, 55%)',  // Orange
+            'hsl(320, 80%, 60%)',  // Pink
+            'hsl(160, 84%, 39%)',  // Mint
+            'hsl(260, 60%, 50%)',  // Indigo
+        ];
+
+        // Resolves speaker pseudonym deterministically to a fixed color
+        function getSpeakerColor(name) {
+            const lower = name.toLowerCase();
+            // Clinician always gets a dedicated slate blue accent
+            if (lower === 'terapeuta' || lower === 'clinico' || lower === 'clínico' || lower === 'clinician') {
+                return 'hsl(217, 91%, 60%)'; // Elegant Blue
+            }
+
+            // Extract the numeric identifier for patient pseudonyms (e.g. Paciente1 -> 1)
+            const match = name.match(/\d+/);
+            if (match) {
+                const num = parseInt(match[0], 10);
+                // Map cleanly onto color array
+                const index = (num - 1) % HSL_COLORS.length;
+                return HSL_COLORS[index];
+            }
+
+            // Fallback deterministic string hash
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash) % HSL_COLORS.length;
+            return HSL_COLORS[index];
+        }
+
+        const labels = airtimeData.speakers.map(s => s.speaker);
+        const percentages = airtimeData.speakers.map(s => s.word_percentage);
+        const counts = airtimeData.speakers.map(s => s.word_count);
+        const colors = airtimeData.speakers.map(s => getSpeakerColor(s.speaker));
+
+        // 1. Assign dot colors in the legend dynamically
+        document.querySelectorAll('.airtime-legend-color-dot').forEach(dot => {
+            const index = parseInt(dot.dataset.speakerIndex);
+            if (!isNaN(index) && airtimeData.speakers[index]) {
+                const speakerName = airtimeData.speakers[index].speaker;
+                dot.style.backgroundColor = getSpeakerColor(speakerName);
+            }
+        });
+
+        // 2. Instantiate Chart.js Donut Chart
+        const canvas = document.getElementById('airtimeChart');
+        if (canvas) {
+            new Chart(canvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: percentages,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            padding: 10,
+                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                            titleFont: { family: "'Inter', sans-serif", weight: '700', size: 12 },
+                            bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                            callbacks: {
+                                label: function (context) {
+                                    const index = context.dataIndex;
+                                    const pct = percentages[index];
+                                    const cnt = counts[index];
+                                    return ` ${pct}% (${cnt.toLocaleString('pt-BR')} palavras)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
 
     // Shared UI Elements
     const logConsole = document.getElementById('logConsole');
@@ -18,11 +117,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!logConsole) return;
         const entry = document.createElement('div');
         entry.className = 'log-entry';
-        
+
         if (type === 'success') entry.classList.add('success-text');
         else if (type === 'error') entry.classList.add('error-text');
         else if (type === 'system') entry.classList.add('system-text');
-        
+
         const time = new Date().toLocaleTimeString();
         entry.textContent = `[${time}] ${msg}`;
         logConsole.appendChild(entry);
@@ -285,13 +384,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (progressSpan) {
                         progressSpan.textContent = `Processando (${data.progress_percent}%)`;
                     }
-                    
+
                     if (data.logs && data.logs.length > 0) {
                         // Clear wait message
                         if (logConsole.children.length === 1 && logConsole.children[0].textContent.includes('Aguardando')) {
                             logConsole.innerHTML = '';
                         }
-                        
+
                         const lastLogCount = parseInt(logConsole.dataset.logCount || '0');
                         if (data.logs.length > lastLogCount) {
                             for (let i = lastLogCount; i < data.logs.length; i++) {
@@ -404,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok && data.success) {
                     statusTitle.textContent = 'Processando Transcrição...';
                     statusDesc.textContent = 'O pipeline assíncrono de IA está ativado no banco de dados. Acompanhe os logs de telemetria abaixo.';
-                    
+
                     // Start polling database status
                     activePolling = true;
                     pollDatabaseStatusAfterUpload();

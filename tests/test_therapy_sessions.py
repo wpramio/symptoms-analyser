@@ -145,9 +145,53 @@ def test_get_therapy_session_detail_found_with_transcript(mock_get_db):
         assert detail["transcript"]["status"] == "preprocessed"
         assert detail["evaluation_id"] is None
 
+
 def test_get_session_transcript_status_empty(mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db):
         status = get_session_transcript_status(1)
         assert status["status"] == "none"
         assert status["progress_percent"] == 0
         assert status["logs"] == []
+
+
+def test_calculate_airtime():
+    from symptoms_analyser.controllers.therapy_sessions import calculate_airtime
+
+    # Test both standalone timestamps and inline timestamps
+    transcript = """
+    00:01:00
+    Paciente1: Olá doutor, tudo bem?
+    00:01:15 Terapeuta: Olá! Tudo ótimo, e com você?
+    Paciente1: Comigo também.
+    Eu ando meio cansado.
+    [00:02:15] Paciente2: Eu também sinto isso às vezes.
+    ## Sanitization Log
+    Number of turns merged: 3
+    """
+
+    patients = ["Paciente1", "Paciente2"]
+    res = calculate_airtime(transcript, patients)
+
+    assert res["total_words"] == 22  # 4 + 6 + 2 + 4 + 6 = 22 words
+    assert res["total_turns"] == 4
+
+    speakers = {s["speaker"]: s for s in res["speakers"]}
+
+    # Check Paciente1
+    assert "Paciente1" in speakers
+    # "Olá doutor, tudo bem?" (4 words) + "Comigo também. Eu ando meio cansado." (6 words) = 10 words
+    assert speakers["Paciente1"]["word_count"] == 10
+    assert speakers["Paciente1"]["turn_count"] == 2
+    assert speakers["Paciente1"]["word_percentage"] == round((10 / 22) * 100, 1)
+
+    # Check Terapeuta
+    assert "Terapeuta" in speakers
+    # "Olá! Tudo ótimo, e com você?" (6 words)
+    assert speakers["Terapeuta"]["word_count"] == 6
+    assert speakers["Terapeuta"]["turn_count"] == 1
+
+    # Check Paciente2
+    assert "Paciente2" in speakers
+    # "Eu também sinto isso às vezes." (6 words)
+    assert speakers["Paciente2"]["word_count"] == 6
+    assert speakers["Paciente2"]["turn_count"] == 1

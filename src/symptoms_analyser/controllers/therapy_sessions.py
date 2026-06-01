@@ -105,6 +105,100 @@ def get_therapy_sessions() -> list[dict]:
         ]
 
 
+def calculate_airtime(transcript_text: str, patients_list: list[str]) -> dict:
+    """
+    Calculate the relative speaking time of each patient and therapist in the session.
+    Quantifies word counts and speaker turn counts.
+    """
+    if not transcript_text:
+        return {}
+
+    import re
+    # Match speaker label at the beginning of a line (e.g. Paciente1: or Terapeuta:)
+    speaker_prefix_re = re.compile(r"^([^:!?.,\n]{1,40}):\s*(.*)$")
+    # Match standard timestamp line
+    timestamp_re = re.compile(r"^(\[)?\d{1,2}:\d{2}(:\d{2})?(\])?$")
+    # Match leading timestamp at the beginning of a speech line
+    leading_timestamp_re = re.compile(r"^(\[)?\d{1,2}:\d{2}(:\d{2})?(\])?\s*")
+
+    word_counts = {}
+    turn_counts = {}
+    current_speaker = None
+
+    for line in transcript_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # Stop parsing if we hit a sanitization log block
+        if line.startswith("##") and "Sanitization Log" in line:
+            break
+
+        # Skip timestamp markings when they sit on their own separate line
+        if timestamp_re.match(line):
+            continue
+
+        # Strip any leading inline timestamp (e.g., "00:00:00 Terapeuta: ...")
+        line = leading_timestamp_re.sub("", line).strip()
+        if not line:
+            continue
+
+        # Detect speaker prefix
+        match = speaker_prefix_re.match(line)
+        is_speaker = False
+        if match:
+            potential_speaker = match.group(1).strip()
+            pot_lower = potential_speaker.lower()
+
+            # Align with known roles or actual participating patients list
+            if (pot_lower in ["terapeuta", "clinico", "clínico", "clinician", "dr.", "dra."] or
+                pot_lower.startswith("paciente") or
+                pot_lower in [p.lower() for p in patients_list]):
+                is_speaker = True
+
+        if is_speaker:
+            speaker = match.group(1).strip()
+            content = match.group(2).strip()
+            current_speaker = speaker
+
+            # Turn statistics
+            turn_counts[speaker] = turn_counts.get(speaker, 0) + 1
+
+            # Word statistics
+            words = content.split()
+            word_counts[speaker] = word_counts.get(speaker, 0) + len(words)
+        else:
+            # Continuation text under current active speaker
+            if current_speaker:
+                words = line.split()
+                word_counts[current_speaker] = word_counts.get(current_speaker, 0) + len(words)
+
+    total_words = sum(word_counts.values())
+    total_turns = sum(turn_counts.values())
+
+    speakers_data = []
+    for speaker in sorted(word_counts.keys()):
+        w_count = word_counts[speaker]
+        t_count = turn_counts.get(speaker, 0)
+
+        w_pct = round((w_count / total_words) * 100, 1) if total_words > 0 else 0
+        t_pct = round((t_count / total_turns) * 100, 1) if total_turns > 0 else 0
+
+        speakers_data.append({
+            "speaker": speaker,
+            "word_count": w_count,
+            "word_percentage": w_pct,
+            "turn_count": t_count,
+            "turn_percentage": t_pct
+        })
+
+    return {
+        "speakers": speakers_data,
+        "total_words": total_words,
+        "total_turns": total_turns
+    }
+
+
 def get_therapy_session_detail(session_id: int) -> dict | None:
     """Retrieve details for a single therapy session including participants, transcripts, and evaluation identifiers."""
     from symptoms_analyser.db import get_db
@@ -144,6 +238,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
         transcript_row = cursor.fetchone()
         
         transcript_data = None
+        airtime_data = None
         if transcript_row:
             transcript_data = {
                 "id": transcript_row["id"],
@@ -154,6 +249,10 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
                 "sanitized_text": transcript_row["sanitized_text"],
                 "error_message": transcript_row["error_message"]
             }
+            # Fallback to raw text if sanitized text is not yet generated
+            text_for_airtime = transcript_row["sanitized_text"] or transcript_row["raw_text"]
+            if text_for_airtime:
+                airtime_data = calculate_airtime(text_for_airtime, patients_list)
             
         # Query latest evaluation if exists
         cursor.execute("""
@@ -168,7 +267,8 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
             "session": session_data,
             "patients_list": patients_list,
             "transcript": transcript_data,
-            "evaluation_id": evaluation_id
+            "evaluation_id": evaluation_id,
+            "airtime": airtime_data
         }
 
 

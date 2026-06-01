@@ -170,7 +170,8 @@ def therapy_session_detail(session_id):
             patients_list=data["patients_list"],
             transcript=data["transcript"],
             evaluation_id=data["evaluation_id"],
-            evaluation=evaluation_payload
+            evaluation=evaluation_payload,
+            airtime=data.get("airtime")
         )
     except Exception as e:
         print(f"Error serving session detail for {session_id}: {e}")

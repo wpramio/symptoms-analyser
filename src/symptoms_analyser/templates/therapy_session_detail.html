@@ -19,33 +19,61 @@
             Voltar para sessões
         </a>
 
-        <!-- CARD 1: Session Details + Patients -->
-        <div class="dashboard-card session-detail-card">
-            <div class="page-header page-header-flex-start">
-                <div>
-                    <div class="session-title-row">
-                        <h2 class="mb-1">{{ session.name }}</h2>
+        <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
+            <!-- CARD 1: Session Details + Patients -->
+            <div class="dashboard-card session-detail-card">
+                <div class="page-header page-header-flex-start">
+                    <div>
+                        <div class="session-title-row">
+                            <h2 class="mb-1">{{ session.name }}</h2>
+                        </div>
+                        <p class="session-meta-line">
+                            Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
+                                session.start_at | format_datetime_dmyy }}</strong> | Duração: <strong>{{ session.duration
+                                }}
+                                minutos</strong>
+                        </p>
                     </div>
-                    <p class="session-meta-line">
-                        Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
-                            session.start_at | format_datetime_dmyy }}</strong> | Duração: <strong>{{ session.duration
-                            }}
-                            minutos</strong>
-                    </p>
+                </div>
+
+                <!-- Participating Patients -->
+                <div class="session-participants-panel session-participants-panel--incard">
+                    <span class="session-participants-label">Pacientes na sessão:</span>
+                    <div class="flex-wrap-gap-sm">
+                        {% for pat in patients_list %}
+                        <a href="/patients/{{ pat }}" class="patient-pill-link">
+                            {{ pat }}
+                        </a>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
 
-            <!-- Participating Patients -->
-            <div class="session-participants-panel session-participants-panel--incard">
-                <span class="session-participants-label">Pacientes na sessão:</span>
-                <div class="flex-wrap-gap-sm">
-                    {% for pat in patients_list %}
-                    <a href="/patients/{{ pat }}" class="patient-pill-link">
-                        {{ pat }}
-                    </a>
-                    {% endfor %}
+            <!-- CARD 1B: Airtime / Divisão de Tempo de Fala -->
+            {% if airtime %}
+            <div class="dashboard-card airtime-card">
+                <div class="airtime-card-header">
+                    <h3 class="airtime-title">Divisão do Tempo de Fala</h3>
+                    <p class="airtime-subtitle">Participação verbal relativa calculada a partir do número de palavras faladas.</p>
+                </div>
+                <div class="airtime-body">
+                    <div class="airtime-chart-wrapper">
+                        <canvas id="airtimeChart"></canvas>
+                    </div>
+                    <div class="airtime-legend-grid">
+                        {% for spk in airtime.speakers %}
+                        <div class="airtime-legend-item">
+                            <span class="airtime-legend-color-dot" data-speaker-index="{{ loop.index0 }}"></span>
+                            <div class="airtime-legend-details">
+                                <span class="airtime-legend-name">{{ spk.speaker }}</span>
+                                <span class="airtime-legend-stats">{{ spk.word_percentage }}% ({{ spk.word_count | number_format }} pal.)</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 
@@ -403,7 +431,8 @@
     "sessionId": {{ session.id }},
     "evaluationId": {{ evaluation_id if evaluation_id else 'null' }},
     "evaluationPath": {{ ('/api/evaluations/' ~ evaluation_id) | tojson if evaluation_id else 'null' }},
-    "transcriptStatus": {{ transcript.status | tojson if transcript else 'null' }}
+    "transcriptStatus": {{ transcript.status | tojson if transcript else 'null' }},
+    "airtime": {{ airtime | tojson if airtime else 'null' }}
 }
 </script>
 <script src="/static/js/therapy_session_detail.js"></script>
