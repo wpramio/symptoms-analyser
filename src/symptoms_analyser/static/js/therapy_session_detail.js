@@ -360,12 +360,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // CLINICAL SYNTHESIS / MINUTA DE EVOLUÇÃO CLÍNICA HANDLERS
         // =========================================================================
         const btnCopySynthesis = document.getElementById('btn-copy-synthesis');
-        const btnSaveSynthesis = document.getElementById('btn-save-synthesis');
         const progressNoteTextarea = document.getElementById('group-progress-note-textarea');
+
+        if (progressNoteTextarea) {
+            const rawText = progressNoteTextarea.textContent.trim();
+            if (rawText && !rawText.includes('<p>')) {
+                // Split text into sentences using positive lookbehind for periods followed by spacing
+                const sentences = rawText.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0);
+                if (sentences.length > 0) {
+                    let htmlContent = '';
+                    sentences.forEach(sentence => {
+                        htmlContent += `<p class="synthesis-bullet-item">${sentence}</p>`;
+                    });
+                    progressNoteTextarea.innerHTML = htmlContent;
+                }
+            }
+        }
 
         if (btnCopySynthesis && progressNoteTextarea) {
             btnCopySynthesis.addEventListener('click', () => {
-                const text = progressNoteTextarea.value.trim();
+                // innerText fetches only the textual sentences; CSS generated ::before markers (bullets) are excluded!
+                const text = (progressNoteTextarea.value || progressNoteTextarea.innerText || progressNoteTextarea.textContent || '').trim();
                 navigator.clipboard.writeText(text).then(() => {
                     const btnText = document.getElementById('btn-copy-text');
                     const originalText = btnText.textContent;
@@ -382,91 +397,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Failed to copy text: ', err);
                     showToast('Falha ao copiar a minuta.', 'error');
                 });
-            });
-        }
-
-        if (btnSaveSynthesis && progressNoteTextarea) {
-            const btnCancelSynthesis = document.getElementById('btn-cancel-synthesis');
-            let initialValue = progressNoteTextarea.value;
-
-            // Hide save and cancel buttons initially since there are no unsaved changes
-            btnSaveSynthesis.style.display = 'none';
-            if (btnCancelSynthesis) {
-                btnCancelSynthesis.style.display = 'none';
-            }
-
-            function updateButtonVisibility() {
-                const currentValue = progressNoteTextarea.value;
-                if (currentValue !== initialValue) {
-                    btnSaveSynthesis.style.display = 'inline-flex';
-                    if (btnCancelSynthesis) {
-                        btnCancelSynthesis.style.display = 'inline-flex';
-                    }
-                } else {
-                    btnSaveSynthesis.style.display = 'none';
-                    if (btnCancelSynthesis) {
-                        btnCancelSynthesis.style.display = 'none';
-                    }
-                }
-            }
-
-            progressNoteTextarea.addEventListener('input', updateButtonVisibility);
-
-            if (btnCancelSynthesis) {
-                btnCancelSynthesis.addEventListener('click', () => {
-                    progressNoteTextarea.value = initialValue;
-                    updateButtonVisibility();
-                });
-            }
-
-            btnSaveSynthesis.addEventListener('click', async () => {
-                const text = progressNoteTextarea.value.trim();
-                const evalId = btnSaveSynthesis.dataset.evalId;
-
-                btnSaveSynthesis.disabled = true;
-                const btnText = document.getElementById('btn-save-text');
-                const originalText = btnText.textContent;
-                btnText.textContent = 'Salvando...';
-
-                try {
-                    const response = await fetch(`/api/evaluations/${evalId}/synthesis`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            group_progress_note_draft: text
-                        })
-                    });
-
-                    if (response.ok) {
-                        btnSaveSynthesis.classList.add('btn-success-animated');
-                        btnText.textContent = 'Salvo com sucesso!';
-                        showToast('Minuta de evolução clínica salva com sucesso!', 'success');
-
-                        // Update initial value to the new saved text
-                        initialValue = progressNoteTextarea.value;
-
-                        setTimeout(() => {
-                            btnSaveSynthesis.style.display = 'none';
-                            if (btnCancelSynthesis) {
-                                btnCancelSynthesis.style.display = 'none';
-                            }
-                        }, 1500);
-                    } else {
-                        const data = await response.json();
-                        throw new Error(data.error || 'Erro ao salvar a minuta.');
-                    }
-                } catch (err) {
-                    console.error('Failed to save clinical note:', err);
-                    showToast(err.message || 'Falha ao salvar a minuta clínica.', 'error');
-                } finally {
-                    setTimeout(() => {
-                        btnSaveSynthesis.disabled = false;
-                        btnSaveSynthesis.classList.remove('btn-success-animated');
-                        btnText.textContent = originalText;
-                    }, 2000);
-                }
             });
         }
     }

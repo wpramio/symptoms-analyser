@@ -19,34 +19,80 @@
             Voltar para sessões
         </a>
 
-        <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
-            <!-- CARD 1: Session Details + Patients -->
-            <div class="dashboard-card session-detail-card">
-                <div class="page-header page-header-flex-start">
-                    <div>
-                        <div class="session-title-row">
-                            <h2 class="mb-1">{{ session.name }}</h2>
-                        </div>
-                        <p class="session-meta-line">
-                            Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
-                                session.start_at | format_datetime_dmyy }}</strong> | Duração:
-                            <strong>{{ session.duration }} minutos</strong>
-                        </p>
+        <!-- CARD 1: Session Details + Patients -->
+        <div class="dashboard-card session-detail-card mb-4">
+            <div class="page-header page-header-flex-start">
+                <div>
+                    <div class="session-title-row">
+                        <h2 class="mb-1">{{ session.name }}</h2>
                     </div>
+                    <p class="session-meta-line">
+                        Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
+                            session.start_at | format_datetime_dmyy }}</strong> | Duração:
+                        <strong>{{ session.duration }} minutos</strong>
+                    </p>
                 </div>
+            </div>
 
-                <!-- Participating Patients -->
-                <div class="session-participants-panel session-participants-panel--incard">
-                    <span class="session-participants-label">Pacientes na sessão:</span>
-                    <div class="flex-wrap-gap-sm">
-                        {% for pat in patients_list %}
-                        <a href="/patients/{{ pat }}" class="patient-pill-link">
-                            {{ pat }}
-                        </a>
-                        {% endfor %}
+            <!-- Participating Patients -->
+            <div class="session-participants-panel session-participants-panel--incard">
+                <span class="session-participants-label">Pacientes na sessão:</span>
+                <div class="flex-wrap-gap-sm">
+                    {% for pat in patients_list %}
+                    <a href="/patients/{{ pat }}" class="patient-pill-link">
+                        {{ pat }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
+            <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
+            {% if evaluation_id and evaluation and evaluation.synthesis %}
+            <div class="dashboard-card synthesis-card" id="synthesis-section">
+                <div class="synthesis-card-header">
+                    <div class="synthesis-title-container">
+                        <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <div class="synthesis-title-text-group">
+                            <h3 class="synthesis-card-title">Minuta de evolução clínica (IA)</h3>
+                            <span class="info-tooltip-container" onclick="event.preventDefault();">
+                                <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <span class="info-tooltip-text">Esta é uma sugestão automatizada baseada nas falas mais
+                                    significativas, temas transversais e técnicas terapêuticas observadas na
+                                    sessão.</span>
+                            </span>
+                        </div>
+                    </div>
+                    <button id="btn-copy-synthesis" class="btn btn-secondary btn-icon-flex-start" type="button">
+                        <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        <span id="btn-copy-text">Copiar</span>
+                    </button>
+                </div>
+                <div class="synthesis-card-body">
+                    <div class="synthesis-textarea-wrapper">
+                        <div id="group-progress-note-textarea" class="synthesis-text-container">{{ evaluation.synthesis.group_clinical_progress_note_draft or '' }}</div>
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <!-- CARD 1B: Airtime / Divisão de Tempo de Fala -->
             {% if airtime %}
@@ -81,89 +127,6 @@
     <!-- MAIN INTERACTIVE STATE AREA -->
     {% if evaluation_id %}
     <!-- STATE 1: SESSION IS FULLY ANALYZED -->
-
-    <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
-    {% if evaluation and evaluation.synthesis %}
-    <div class="dashboard-card synthesis-card mb-4" id="synthesis-section">
-        <div class="synthesis-card-header">
-            <div class="synthesis-title-container">
-                <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                <div class="synthesis-title-text-group">
-                    <h3 class="synthesis-card-title">Minuta de evolução clínica (IA)</h3>
-                    <span class="info-tooltip-container" onclick="event.preventDefault();">
-                        <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        <span class="info-tooltip-text">Esta é uma sugestão automatizada baseada nas falas mais
-                            significativas, temas transversais e técnicas terapêuticas observadas na sessão.</span>
-                    </span>
-                </div>
-            </div>
-        </div>
-        <div class="synthesis-card-body">
-            <div class="synthesis-textarea-wrapper">
-                <textarea id="group-progress-note-textarea" class="synthesis-textarea"
-                    placeholder="Nenhuma minuta disponível..."
-                    rows="5">{{ evaluation.synthesis.group_clinical_progress_note_draft or '' }}</textarea>
-            </div>
-
-            <div class="synthesis-alert-box">
-                <div class="synthesis-alert-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                </div>
-                <div class="synthesis-alert-text">
-                    <strong>Aviso Clínico:</strong> O registro definitivo no prontuário do paciente é de
-                    responsabilidade técnica exclusiva do profissional. Revise e edite a minuta antes de salvá-la ou
-                    utilizá-la.
-                </div>
-            </div>
-
-            <div class="synthesis-actions">
-                <button id="btn-copy-synthesis" class="btn btn-secondary btn-icon-flex-start" type="button">
-                    <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <span id="btn-copy-text">Copiar</span>
-                </button>
-                <button id="btn-cancel-synthesis" class="btn btn-secondary btn-icon-flex-start" type="button">
-                    <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    <span id="btn-cancel-text">Cancelar</span>
-                </button>
-                <button id="btn-save-synthesis" class="btn btn-primary btn-icon-flex-start" type="button"
-                    data-eval-id="{{ evaluation_id }}">
-                    <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                        <polyline points="7 3 7 8 15 8"></polyline>
-                    </svg>
-                    <span id="btn-save-text">Salvar</span>
-                </button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- CARD 2: TDPM Analysis -->
     <div class="dashboard-card tdpm-analysis-card">

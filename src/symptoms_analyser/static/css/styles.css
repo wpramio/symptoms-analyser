@@ -4028,15 +4028,15 @@ select:focus {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
+    gap: 2rem;
     flex: 1;
-    justify-content: center;
+    justify-content: space-around;
 }
 
 .airtime-chart-wrapper {
     position: relative;
-    width: 170px;
-    height: 170px;
+    width: 220px;
+    height: 220px;
 }
 
 .airtime-legend-grid {
@@ -4274,6 +4274,8 @@ select:focus {
     box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03));
     margin-bottom: 2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
 }
 
 .synthesis-card-header {
@@ -4327,6 +4329,8 @@ select:focus {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    flex: 1;
+    min-height: 0;
 }
 
 .synthesis-description {
@@ -4342,6 +4346,10 @@ select:focus {
     background: #f8fafc;
     border: 1px solid var(--border, #e2e8f0);
     transition: border-color 0.2s, box-shadow 0.2s;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .synthesis-textarea-wrapper:focus-within {
@@ -4362,6 +4370,39 @@ select:focus {
     resize: vertical;
     min-height: 140px;
     border-radius: 8px;
+    flex: 1;
+}
+
+.synthesis-text-container {
+    width: 100%;
+    background: transparent;
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 0;
+}
+
+.synthesis-bullet-item {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--text-main, #0f172a);
+    margin: 0;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.synthesis-bullet-item::before {
+    content: "•";
+    position: absolute;
+    left: 0.25rem;
+    top: 0;
+    color: var(--primary, #2563eb);
+    font-weight: bold;
+    font-size: 1.25rem;
+    line-height: 1.2;
 }
 
 .synthesis-alert-box {
