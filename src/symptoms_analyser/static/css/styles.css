@@ -3914,3 +3914,61 @@ select:focus {
     font-size: 0.85rem;
     font-weight: 600;
 }
+
+/* Telemetry Tooltip Styles */
+.session-card-header-title-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.session-card-header-title-container .session-card-title {
+    margin: 0;
+}
+
+.session-card-header-title-container .info-tooltip-container {
+    margin-left: 0.1rem;
+}
+
+.session-card-header-title-container .info-tooltip-trigger-svg {
+    width: 18px;
+    height: 18px;
+}
+
+.telemetry-tooltip-title {
+    font-weight: 700;
+    display: block;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+}
+
+.telemetry-tooltip-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+
+.telemetry-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.telemetry-tooltip-label {
+    color: #94a3b8;
+}
+
+.telemetry-tooltip-value {
+    color: #f8fafc;
+    font-weight: 700;
+}
+
+.telemetry-tooltip-value.word-break {
+    text-align: right;
+    word-break: break-all;
+}

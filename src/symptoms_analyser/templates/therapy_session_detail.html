@@ -56,7 +56,47 @@
     <!-- CARD 2: TDPM Analysis -->
     <div class="dashboard-card tdpm-analysis-card">
         <div class="session-card-header page-header-flex-start">
-            <h3 class="session-card-title">Análise TDPM-20</h3>
+            <div class="session-card-header-title-container">
+                <h3 class="session-card-title">Análise TDPM-20</h3>
+                {% if evaluation_id %}
+                <span class="info-tooltip-container" onclick="event.preventDefault();">
+                    <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span class="info-tooltip-text">
+                        <span class="telemetry-tooltip-title">Telemetria de IA</span>
+                        <span class="telemetry-tooltip-grid">
+                            <span class="telemetry-tooltip-row">
+                                <span class="telemetry-tooltip-label">Modelo LLM:</span>
+                                <strong class="telemetry-tooltip-value word-break">{{ evaluation.model if evaluation else '-' }}</strong>
+                            </span>
+                            <span class="telemetry-tooltip-row">
+                                <span class="telemetry-tooltip-label">Blocos de análise:</span>
+                                <strong class="telemetry-tooltip-value">{{ evaluation.chunks_analyzed if evaluation else '-' }}</strong>
+                            </span>
+                            <span class="telemetry-tooltip-row">
+                                <span class="telemetry-tooltip-label">Tempo de execução:</span>
+                                <strong class="telemetry-tooltip-value">{{ evaluation.total_elapsed_seconds ~ 's' if evaluation and evaluation.total_elapsed_seconds else '-' }}</strong>
+                            </span>
+                            <span class="telemetry-tooltip-row">
+                                <span class="telemetry-tooltip-label">Tokens (prompt/resp.):</span>
+                                <strong class="telemetry-tooltip-value">
+                                    {% if evaluation and evaluation.token_usage %}
+                                    {{ evaluation.token_usage.prompt_tokens }} / {{ evaluation.token_usage.completion_tokens }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </strong>
+                            </span>
+                        </span>
+                    </span>
+                </span>
+                {% endif %}
+            </div>
 
             {% if evaluation_id %}
             <div class="flex-align-center-gap-sm">
@@ -81,53 +121,6 @@
                         id="btnCancelRevision">
                         Cancelar
                     </button>
-                </div>
-
-                <!-- Technical details popover (only shown if analyzed) -->
-                <div class="meta-popover-container">
-                    <button type="button" class="btn btn-secondary btn-with-icon" id="btnShowSessionMeta">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        Detalhes técnicos
-                    </button>
-
-                    <!-- Floating Popover (Server-side pre-rendered) -->
-                    <div class="meta-popover" id="metaPopover">
-                        <div class="popover-arrow"></div>
-                        <h4 class="popover-title">Telemetria de IA</h4>
-                        <div class="popover-grid">
-                            <div class="popover-item">
-                                <span class="popover-label">Modelo LLM</span>
-                                <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-'
-                                    }}</span>
-                            </div>
-                            <div class="popover-item">
-                                <span class="popover-label">Blocos de análise</span>
-                                <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation
-                                    else '-' }}</span>
-                            </div>
-                            <div class="popover-item">
-                                <span class="popover-label">Tempo de execução</span>
-                                <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if
-                                    evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
-                            </div>
-                            <div class="popover-item">
-                                <span class="popover-label">Tokens (prompt/resp.)</span>
-                                <span class="popover-value" id="metaTokens">
-                                    {% if evaluation and evaluation.token_usage %}
-                                    {{ evaluation.token_usage.prompt_tokens }} /
-                                    {{ evaluation.token_usage.completion_tokens }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
             {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}

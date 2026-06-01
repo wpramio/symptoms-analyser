@@ -45,24 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // STATE 1: CLINICAL DASHBOARD LOGIC (When analyzed)
     // =========================================================================
     if (evaluationId) {
-        const btnShowSessionMeta = document.getElementById('btnShowSessionMeta');
-        const metaPopover = document.getElementById('metaPopover');
 
-        // Toggle popover visibility
-        if (btnShowSessionMeta && metaPopover) {
-            btnShowSessionMeta.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const isShown = metaPopover.classList.toggle('show');
-                btnShowSessionMeta.classList.toggle('active', isShown);
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!metaPopover.contains(e.target) && e.target !== btnShowSessionMeta) {
-                    metaPopover.classList.remove('show');
-                    btnShowSessionMeta.classList.remove('active');
-                }
-            });
-        }
 
         // Lightweight patient tab toggler
         const patientTabs = document.getElementById('patientTabs');
