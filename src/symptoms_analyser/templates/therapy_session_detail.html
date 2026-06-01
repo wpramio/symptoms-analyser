@@ -28,7 +28,8 @@
                     </div>
                     <p class="session-meta-line">
                         Clínico responsável: <strong>{{ session.clinician_name }}</strong> | Data: <strong>{{
-                            session.start_at | format_datetime_dmyy }}</strong> | Duração: <strong>{{ session.duration }}
+                            session.start_at | format_datetime_dmyy }}</strong> | Duração: <strong>{{ session.duration
+                            }}
                             minutos</strong>
                     </p>
                 </div>
@@ -58,48 +59,73 @@
             <h3 class="session-card-title">Análise TDPM-20</h3>
 
             {% if evaluation_id %}
-            <!-- Technical details popover (only shown if analyzed) -->
-            <div class="meta-popover-container">
-                <button type="button" class="btn btn-secondary btn-with-icon" id="btnShowSessionMeta">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                    Detalhes técnicos
-                </button>
+            <div class="flex-align-center-gap-sm">
+                <div class="evaluation-actions-group">
+                    <button type="button" class="btn btn-primary btn-with-icon only-read-mode" id="btnStartRevision">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        Revisar avaliação
+                    </button>
+                    <button type="button" class="btn btn-success btn-with-icon only-edit-mode only-edit-mode-flex"
+                        id="btnSaveRevision">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        Salvar alterações
+                    </button>
+                    <button type="button" class="btn btn-secondary only-edit-mode only-edit-mode-flex"
+                        id="btnCancelRevision">
+                        Cancelar
+                    </button>
+                </div>
 
-                <!-- Floating Popover (Server-side pre-rendered) -->
-                <div class="meta-popover" id="metaPopover">
-                    <div class="popover-arrow"></div>
-                    <h4 class="popover-title">Telemetria de IA</h4>
-                    <div class="popover-grid">
-                        <div class="popover-item">
-                            <span class="popover-label">Modelo LLM</span>
-                            <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-'
-                                }}</span>
-                        </div>
-                        <div class="popover-item">
-                            <span class="popover-label">Blocos de análise</span>
-                            <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation else
-                                '-' }}</span>
-                        </div>
-                        <div class="popover-item">
-                            <span class="popover-label">Tempo de execução</span>
-                            <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if
-                                evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
-                        </div>
-                        <div class="popover-item">
-                            <span class="popover-label">Tokens (prompt/resp.)</span>
-                            <span class="popover-value" id="metaTokens">
-                                {% if evaluation and evaluation.token_usage %}
-                                {{ evaluation.token_usage.prompt_tokens }} / {{ evaluation.token_usage.completion_tokens
-                                }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </span>
+                <!-- Technical details popover (only shown if analyzed) -->
+                <div class="meta-popover-container">
+                    <button type="button" class="btn btn-secondary btn-with-icon" id="btnShowSessionMeta">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="btn-svg-icon">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Detalhes técnicos
+                    </button>
+
+                    <!-- Floating Popover (Server-side pre-rendered) -->
+                    <div class="meta-popover" id="metaPopover">
+                        <div class="popover-arrow"></div>
+                        <h4 class="popover-title">Telemetria de IA</h4>
+                        <div class="popover-grid">
+                            <div class="popover-item">
+                                <span class="popover-label">Modelo LLM</span>
+                                <span class="popover-value" id="metaModel">{{ evaluation.model if evaluation else '-'
+                                    }}</span>
+                            </div>
+                            <div class="popover-item">
+                                <span class="popover-label">Blocos de análise</span>
+                                <span class="popover-value" id="metaChunks">{{ evaluation.chunks_analyzed if evaluation
+                                    else '-' }}</span>
+                            </div>
+                            <div class="popover-item">
+                                <span class="popover-label">Tempo de execução</span>
+                                <span class="popover-value" id="metaTime">{{ evaluation.total_elapsed_seconds ~ 's' if
+                                    evaluation and evaluation.total_elapsed_seconds else '-' }}</span>
+                            </div>
+                            <div class="popover-item">
+                                <span class="popover-label">Tokens (prompt/resp.)</span>
+                                <span class="popover-value" id="metaTokens">
+                                    {% if evaluation and evaluation.token_usage %}
+                                    {{ evaluation.token_usage.prompt_tokens }} /
+                                    {{ evaluation.token_usage.completion_tokens }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -175,16 +201,61 @@
                             {% for item_id, item in p_data['items'].items() %}
                             {% if item_id.startswith(dim_key ~ '.') %}
                             <div class="item-row">
-                                <div class="item-header">
+                                <div class="item-header" data-item-id="{{ item_id }}">
                                     <span class="item-name">{{ item_id }} - {{ item.name }}</span>
-                                    <span class="score-badge" data-severity="{{ item.score }}">Pontuação: {{ item.score
-                                        }}</span>
+
+                                    <!-- Read-only score badge -->
+                                    <span class="score-badge only-read-mode" data-severity="{{ item.score }}">Pontuação:
+                                        {{ item.score }}</span>
+
+                                    <!-- Edit mode select box -->
+                                    <select class="score-select-compact only-edit-mode only-edit-mode-inline"
+                                        data-item-id="{{ item_id }}" data-score="{{ item.score }}">
+                                        <option value="0" {% if item.score==0 %}selected{% endif %}>0 - Ausente</option>
+                                        <option value="1" {% if item.score==1 %}selected{% endif %}>1 - Leve</option>
+                                        <option value="2" {% if item.score==2 %}selected{% endif %}>2 - Moderada
+                                        </option>
+                                        <option value="3" {% if item.score==3 %}selected{% endif %}>3 - Alta</option>
+                                        <option value="4" {% if item.score==4 %}selected{% endif %}>4 - Grave</option>
+                                    </select>
                                 </div>
-                                <ul class="item-evidence">
+
+                                <!-- Read-only evidence list -->
+                                <ul class="item-evidence only-read-mode">
                                     {% for ev in item.evidence %}
                                     <li class="evidence-quote">"{{ ev }}"</li>
                                     {% endfor %}
                                 </ul>
+
+                                <!-- Edit mode evidence worksheet -->
+                                <div class="only-edit-mode only-edit-mode-block evidence-editor-container"
+                                    data-item-id="{{ item_id }}">
+                                    <ul class="evidence-editor-list" data-item-id="{{ item_id }}">
+                                        {% for ev in item.evidence %}
+                                        <li class="evidence-editor-item">
+                                            <span class="evidence-text-field">{{ ev }}</span>
+                                            <button type="button" class="btn-delete-evidence" title="Remover evidência">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                                    stroke-linejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path
+                                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                    </path>
+                                                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                </svg>
+                                            </button>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    <div class="add-evidence-form-group">
+                                        <input type="text" class="add-evidence-input"
+                                            placeholder="Adicionar nova fala de evidência (ex: 00:10:00 Fala do paciente)...">
+                                        <button type="button"
+                                            class="btn btn-secondary btn-add-evidence">Adicionar</button>
+                                    </div>
+                                </div>
                             </div>
                             {% endif %}
                             {% endfor %}

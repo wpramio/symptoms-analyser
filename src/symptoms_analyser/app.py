@@ -15,6 +15,7 @@ from symptoms_analyser.controllers.admin import (
     update_patient,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
+from symptoms_analyser.controllers.revisions import save_revision_logic
 from symptoms_analyser.controllers.therapy_sessions import (
     handle_new_therapy_session,
     get_therapy_sessions,
@@ -417,6 +418,23 @@ def serve_evaluation(eval_id):
     except Exception as e:
         print(f"Error fetching evaluation payload for {eval_id}: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/evaluations/<int:eval_id>/revise", methods=["POST"])
+def revise_evaluation(eval_id):
+    try:
+        edits_json = request.get_json() or {}
+        new_eval_id = save_revision_logic(original_eval_id=eval_id, edits_json=edits_json, user_id=2)
+        return jsonify({
+            "success": True,
+            "message": "Revisão salva com sucesso!",
+            "evaluation_id": new_eval_id
+        }), 201
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+    except Exception as e:
+        print(f"Error saving revised evaluation: {e}")
+        return jsonify({"success": False, "error": f"Erro interno do servidor: {str(e)}"}), 500
 
 
 # ---------------------------------------------------------------------------

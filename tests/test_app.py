@@ -25,6 +25,10 @@ def seeded_db_path(tmp_path, schema_sql):
         INSERT INTO users (id, username, email, name, role, password_hash)
         VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Clinician', 'clinician', 'hash')
     """)
+    cursor.execute("""
+        INSERT INTO users (id, username, email, name, role, password_hash)
+        VALUES (2, 'clinician_2', 'clinician_2@symptomsanalyser.org', 'Dr. Clinician 2', 'clinician', 'hash')
+    """)
     
     # 2. Seed Patients
     cursor.execute("""
@@ -406,3 +410,61 @@ def test_exceptional_500_routing(mock_sessions, client):
     resp = client.get("/therapy_sessions")
     assert resp.status_code == 500
     assert b"Fatal Database crash" in resp.data
+
+
+def test_revise_evaluation_api(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.revisions.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+
+        # Post a valid revision request
+        revision_data = {
+            "patients": {
+                "Paciente1": {
+                    "items": {
+                        "1.1": {
+                            "score": 1,
+                            "evidence": ["00:05:00 Apetite ligeiramente melhorado"]
+                        }
+                    }
+                }
+            }
+        }
+        resp = client.post("/api/evaluations/1/revise", json=revision_data)
+        assert resp.status_code == 201
+        assert resp.json["success"] is True
+        new_eval_id = resp.json["evaluation_id"]
+        assert new_eval_id > 1
+
+        # Check that serve_evaluation returns the revised content
+        resp = client.get(f"/api/evaluations/{new_eval_id}")
+        assert resp.status_code == 200
+        patient_data = resp.json["aggregated"]["patients"]["Paciente1"]
+        assert patient_data["items"]["1.1"]["score"] == 1
+        assert patient_data["items"]["1.1"]["evidence"] == ["00:05:00 Apetite ligeiramente melhorado"]
+        
+        # Verify that original evaluation is unchanged
+        resp = client.get("/api/evaluations/1")
+        assert resp.status_code == 200
+        original_patient_data = resp.json["aggregated"]["patients"]["Paciente1"]
+        assert original_patient_data["items"]["1.1"]["score"] == 3
+        
+        # Test validation error (score out of range)
+        invalid_data = {
+            "patients": {
+                "Paciente1": {
+                    "items": {
+                        "1.1": {
+                            "score": 10,  # Invalid
+                            "evidence": []
+                        }
+                    }
+                }
+            }
+        }
+        resp = client.post("/api/evaluations/1/revise", json=invalid_data)
+        assert resp.status_code == 400
+        assert resp.json["success"] is False
+

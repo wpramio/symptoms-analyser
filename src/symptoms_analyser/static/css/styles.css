@@ -3754,3 +3754,163 @@ select:focus {
         transform: translateY(0);
     }
 }
+
+/* ==========================================================================
+   Clinical Evaluations Revision (Edit Mode) Styles
+   ========================================================================== */
+
+/* State Toggles */
+.only-edit-mode {
+    display: none !important;
+}
+
+.tdpm-analysis-card--editing .only-edit-mode-flex {
+    display: flex !important;
+}
+
+.tdpm-analysis-card--editing .only-edit-mode-block {
+    display: block !important;
+}
+
+.tdpm-analysis-card--editing .only-edit-mode-inline {
+    display: inline-block !important;
+}
+
+.tdpm-analysis-card--editing .only-read-mode {
+    display: none !important;
+}
+
+/* Top Actions Group */
+.evaluation-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Interactive Score Dropdowns */
+.score-select-compact {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--card-bg);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.score-select-compact:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Styled colors based on score value selected */
+.score-select-compact[data-score="0"] {
+    background-color: rgba(148, 163, 184, 0.1);
+    color: var(--text-muted);
+    border-color: rgba(148, 163, 184, 0.2);
+}
+.score-select-compact[data-score="1"] {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.2);
+}
+.score-select-compact[data-score="2"] {
+    background-color: rgba(234, 179, 8, 0.1);
+    color: #eab308;
+    border-color: rgba(234, 179, 8, 0.2);
+}
+.score-select-compact[data-score="3"] {
+    background-color: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+    border-color: rgba(249, 115, 22, 0.2);
+}
+.score-select-compact[data-score="4"] {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Evidences Worksheet list */
+.evidence-editor-list {
+    padding-left: 0;
+    margin: 0.5rem 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.evidence-editor-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.875rem;
+    color: var(--text-main);
+    transition: all 0.2s ease;
+}
+
+.evidence-editor-item:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.evidence-text-field {
+    flex-grow: 1;
+    font-family: inherit;
+    line-height: 1.5;
+}
+
+.btn-delete-evidence {
+    background: none;
+    border: none;
+    color: var(--error);
+    cursor: pointer;
+    padding: 0.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+.btn-delete-evidence:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    transform: scale(1.05);
+}
+
+/* Add Evidence input fields */
+.add-evidence-form-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.add-evidence-input {
+    flex-grow: 1;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--card-bg);
+    color: var(--text-main);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.add-evidence-input:focus {
+    border-color: var(--primary);
+}
+
+.btn-add-evidence {
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}

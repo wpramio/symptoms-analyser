@@ -359,11 +359,19 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         ]
 
         # --- All evaluated sessions for this patient (chronological) ---
+        # We select only the latest evaluation ID for each session using a subquery (MAX(id))
+        # to ensure that if a session has both an automated and revised evaluation,
+        # we only pick the latest (human-revised) evaluation.
         cursor.execute(
             """
             SELECT e.id as eval_id, s.name as session_name, s.start_at,
                    et.raw_payload
             FROM tdpm_evaluations e
+            JOIN (
+                SELECT therapy_session_id, MAX(id) as max_eval_id
+                FROM tdpm_evaluations
+                GROUP BY therapy_session_id
+            ) latest_eval ON e.id = latest_eval.max_eval_id
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
             JOIN evaluation_telemetry et ON et.evaluation_id = e.id

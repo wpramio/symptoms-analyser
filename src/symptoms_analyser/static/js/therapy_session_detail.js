@@ -127,6 +127,152 @@ document.addEventListener('DOMContentLoaded', () => {
                 transcriptTextContent.textContent = transcriptTextContent.dataset.raw || '';
             });
         }
+
+        // =========================================================================
+        // CLINICAL EVALUATION REVISION LOGIC (Workstation)
+        // =========================================================================
+        const btnStartRevision = document.getElementById('btnStartRevision');
+        const btnSaveRevision = document.getElementById('btnSaveRevision');
+        const btnCancelRevision = document.getElementById('btnCancelRevision');
+        const tdpmCard = document.querySelector('.tdpm-analysis-card');
+
+        if (btnStartRevision && tdpmCard) {
+            // Enter Edit Mode
+            btnStartRevision.addEventListener('click', () => {
+                tdpmCard.classList.add('tdpm-analysis-card--editing');
+                addLog('Entrou no modo de revisão clínica manual.', 'system');
+            });
+        }
+
+        if (btnCancelRevision) {
+            // Cancel and restore by reloading
+            btnCancelRevision.addEventListener('click', () => {
+                window.location.reload();
+            });
+        }
+
+        // Dynamic HSL Score Color coloring on select drop-down change
+        document.querySelectorAll('.score-select-compact').forEach(select => {
+            select.addEventListener('change', () => {
+                select.dataset.score = select.value;
+            });
+        });
+
+        // Add Evidence Handler
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-add-evidence');
+            if (!btn) return;
+
+            const formGroup = btn.closest('.add-evidence-form-group');
+            const input = formGroup.querySelector('.add-evidence-input');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const container = btn.closest('.evidence-editor-container');
+            const list = container.querySelector('.evidence-editor-list');
+
+            const li = document.createElement('li');
+            li.className = 'evidence-editor-item';
+            li.innerHTML = `
+                <span class="evidence-text-field">${escapeHtml(val)}</span>
+                <button type="button" class="btn-delete-evidence" title="Remover evidência">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
+            `;
+            list.appendChild(li);
+            input.value = '';
+        });
+
+        // Support Enter key inside Add Evidence input field
+        document.addEventListener('keydown', (e) => {
+            const input = e.target.closest('.add-evidence-input');
+            if (!input || e.key !== 'Enter') return;
+            e.preventDefault();
+            const btn = input.closest('.add-evidence-form-group').querySelector('.btn-add-evidence');
+            if (btn) btn.click();
+        });
+
+        // Delete Evidence Handler (Delegated click)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-delete-evidence');
+            if (!btn) return;
+            const li = btn.closest('.evidence-editor-item');
+            if (li) li.remove();
+        });
+
+        // Helper to Escape HTML
+        function escapeHtml(str) {
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Save Revisions via API endpoint
+        if (btnSaveRevision) {
+            btnSaveRevision.addEventListener('click', async () => {
+                btnSaveRevision.disabled = true;
+                const originalText = btnSaveRevision.innerHTML;
+                btnSaveRevision.innerHTML = `
+                    <svg class="spinner" viewBox="0 0 24 24" width="16" height="16" style="margin-right: 6px; animation: spin 1s linear infinite; display: inline-block;">
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="31.415, 31.415" stroke-linecap="round"></circle>
+                    </svg>
+                    Salvando...
+                `;
+
+                // Gather revisions data
+                const edits = { patients: {} };
+                document.querySelectorAll('.patient-view-section').forEach(view => {
+                    const patientName = view.id.replace('patient-view-', '');
+                    edits.patients[patientName] = { items: {} };
+
+                    view.querySelectorAll('.score-select-compact').forEach(select => {
+                        const itemId = select.dataset.itemId;
+                        const score = parseInt(select.value);
+
+                        const evidenceList = [];
+                        view.querySelectorAll(`.evidence-editor-list[data-item-id="${itemId}"] .evidence-text-field`).forEach(span => {
+                            evidenceList.push(span.textContent.trim());
+                        });
+
+                        edits.patients[patientName].items[itemId] = {
+                            score: score,
+                            evidence: evidenceList
+                        };
+                    });
+                });
+
+                try {
+                    const response = await fetch(`/api/evaluations/${evaluationId}/revise`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(edits)
+                    });
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        showToast('Revisão clínica salva com sucesso! Atualizando laudo...', 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1200);
+                    } else {
+                        throw new Error(data.error || 'Erro inesperado ao salvar revisão.');
+                    }
+                } catch (err) {
+                    console.error("Save revision error:", err);
+                    showToast(err.message || 'Falha ao conectar com o servidor.', 'error');
+                    btnSaveRevision.disabled = false;
+                    btnSaveRevision.innerHTML = originalText;
+                }
+            });
+        }
     }
 
     // =========================================================================
