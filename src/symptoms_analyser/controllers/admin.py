@@ -515,3 +515,257 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         "chart_totals": chart_totals,
         "chart_dimensions": chart_dimensions,
     }
+
+
+def get_cohort_evolution_data() -> dict:
+    """
+    Build the full server-side cohort/group evolution dataset.
+    
+    Returns a dict with:
+      - timeline: list of session snapshots with mean/median scores
+      - kpis: dict of group summary statistics
+      - heatmap_dims: ordered list of 20 dimensions with session-by-session cell scores
+      - critical_sessions: list of sessions flagged with collective spikes
+      - chart_labels: JSON-safe list of labels
+      - chart_mean_totals: JSON-safe list of mean totals
+      - chart_median_totals: JSON-safe list of median totals
+      - chart_dimensions: JSON-safe list of per-dimension datasets
+    """
+    import statistics
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # Chronological sessions with latest evaluations
+        cursor.execute(
+            """
+            SELECT e.id as eval_id, s.id as session_id, s.name as session_name, s.start_at,
+                   et.raw_payload
+            FROM tdpm_evaluations e
+            JOIN (
+                SELECT therapy_session_id, MAX(id) as max_eval_id
+                FROM tdpm_evaluations
+                GROUP BY therapy_session_id
+            ) latest_eval ON e.id = latest_eval.max_eval_id
+            JOIN therapy_sessions s ON e.therapy_session_id = s.id
+            JOIN evaluation_telemetry et ON et.evaluation_id = e.id
+            ORDER BY s.start_at ASC
+            """
+        )
+        eval_rows = cursor.fetchall()
+        
+    timeline = []
+    
+    # Process each evaluated session
+    for row in eval_rows:
+        payload = json.loads(row["raw_payload"]) if row["raw_payload"] else {}
+        patients_agg = payload.get("aggregated", {}).get("patients", {})
+        if not patients_agg:
+            continue
+            
+        date_str = format_date_dmyy(row["start_at"])
+        
+        # Collect scores for all patients in this session
+        session_patient_totals = []
+        session_patient_dims = {str(d): [] for d in range(1, 21)}
+        
+        for p_id, p_data in patients_agg.items():
+            dimensions_raw = p_data.get("dimensions", {})
+            patient_total = 0
+            for d in range(1, 21):
+                d_str = str(d)
+                score = dimensions_raw.get(d_str, {}).get("dimension_sum", 0)
+                session_patient_dims[d_str].append(score)
+                patient_total += score
+            session_patient_totals.append(patient_total)
+            
+        n_patients = len(session_patient_totals)
+        if n_patients == 0:
+            continue
+            
+        # Calculate mean and median for total severity
+        mean_total = round(sum(session_patient_totals) / n_patients, 2)
+        median_total = round(statistics.median(session_patient_totals), 2)
+        
+        # Calculate mean and median per dimension
+        mean_dims = {}
+        median_dims = {}
+        for d in range(1, 21):
+            d_str = str(d)
+            scores = session_patient_dims[d_str]
+            mean_dims[d_str] = round(sum(scores) / n_patients, 2) if scores else 0.0
+            median_dims[d_str] = round(statistics.median(scores), 2) if scores else 0.0
+            
+        timeline.append({
+            "session_id": row["session_id"],
+            "session_name": row["session_name"],
+            "date": date_str,
+            "patient_count": n_patients,
+            "mean_total": mean_total,
+            "median_total": median_total,
+            "mean_dimensions": mean_dims,
+            "median_dimensions": median_dims,
+        })
+        
+    if not timeline:
+        return {
+            "timeline": [],
+            "kpis": None,
+            "heatmap_dims": [],
+            "critical_sessions": [],
+            "chart_labels": "[]",
+            "chart_mean_totals": "[]",
+            "chart_median_totals": "[]",
+            "chart_dimensions": "[]"
+        }
+        
+    # --- Calculate KPIs based on Means ---
+    peak_mean_entry = max(timeline, key=lambda t: t["mean_total"])
+    first_mean_score = timeline[0]["mean_total"]
+    last_mean_score = timeline[-1]["mean_total"]
+    diff_mean = round(last_mean_score - first_mean_score, 2)
+    
+    # Calculate group trend description
+    if diff_mean < 0:
+        trend_value = f"▼ {abs(diff_mean)}"
+        trend_class = "text-success"
+        trend_desc = "Melhora clínica coletiva (redução média de sintomas)"
+    elif diff_mean > 0:
+        trend_value = f"▲ +{diff_mean}"
+        trend_class = "text-danger"
+        trend_desc = "Piora clínica coletiva (aumento médio de sintomas)"
+    else:
+        trend_value = "● 0"
+        trend_class = "text-warning"
+        trend_desc = "Estável (mesma severidade média inicial)"
+        
+    if len(timeline) < 2:
+        trend_value = "N/A"
+        trend_class = ""
+        trend_desc = "Apenas 1 sessão registrada"
+        
+    # Most active dimension collectively by average score across all timeline sessions
+    dim_total_sums = {str(d): 0.0 for d in range(1, 21)}
+    for entry in timeline:
+        for d_str, score in entry["mean_dimensions"].items():
+            dim_total_sums[d_str] += score
+            
+    top_dim_key = max(dim_total_sums, key=lambda k: dim_total_sums[k])
+    top_dim_avg = round(dim_total_sums[top_dim_key] / len(timeline), 2)
+    top_dim_max = (3 if top_dim_key == "16" else 2) * 4
+    
+    kpis = {
+        "total_sessions": len(timeline),
+        "peak_score": peak_mean_entry["mean_total"],
+        "peak_date": peak_mean_entry["date"],
+        "trend_value": trend_value,
+        "trend_class": trend_class,
+        "trend_desc": trend_desc,
+        "top_dim_key": top_dim_key,
+        "top_dim_name": ONTOLOGY_DIMENSIONS.get(top_dim_key, top_dim_key),
+        "top_dim_avg": top_dim_avg,
+        "top_dim_max": top_dim_max,
+    }
+    
+    # --- Cohort Heatmap Rows (server-rendered) ---
+    heatmap_dims = []
+    for i in range(1, 21):
+        dim_key = str(i)
+        max_size = (3 if dim_key == "16" else 2) * 4
+        cells = []
+        has_score = False
+        for entry in timeline:
+            mean_score = entry["mean_dimensions"].get(dim_key, 0.0)
+            median_score = entry["median_dimensions"].get(dim_key, 0.0)
+            if mean_score > 0:
+                has_score = True
+            
+            # Severity mapping (0 to 4 based on max size)
+            severity = min(4, round((mean_score / max_size) * 4)) if mean_score > 0 else 0
+            cells.append({
+                "mean_score": mean_score,
+                "median_score": median_score,
+                "max": max_size,
+                "severity": severity,
+                "date": entry["date"],
+                "session_name": entry["session_name"]
+            })
+        heatmap_dims.append({
+            "key": dim_key,
+            "name": ONTOLOGY_DIMENSIONS.get(dim_key, dim_key),
+            "cells": cells,
+            "is_active": has_score
+        })
+        
+    # --- Critical Sessions Detection ---
+    # We flag a session as critical if:
+    # 1. The total mean score increased by > 20% compared to the previous session, OR
+    # 2. A specific dimension score increased dramatically (> 25% of its max scale) collectively.
+    critical_sessions = []
+    for i in range(1, len(timeline)):
+        prev = timeline[i-1]
+        curr = timeline[i]
+        
+        reasons = []
+        
+        # Check general increase
+        pct_increase = 0
+        if prev["mean_total"] > 0:
+            pct_increase = ((curr["mean_total"] - prev["mean_total"]) / prev["mean_total"]) * 100
+            
+        if pct_increase >= 20:
+            reasons.append(f"Aumento repentino de {pct_increase:.1f}% na gravidade geral do grupo.")
+            
+        # Check specific dimensions spikes
+        for d in range(1, 21):
+            d_str = str(d)
+            max_size = (3 if d_str == "16" else 2) * 4
+            curr_score = curr["mean_dimensions"].get(d_str, 0.0)
+            prev_score = prev["mean_dimensions"].get(d_str, 0.0)
+            
+            # If a symptom spiked significantly
+            diff = curr_score - prev_score
+            if diff >= (max_size * 0.25):  # Spiked by more than 25% of maximum scale
+                dim_name = ONTOLOGY_DIMENSIONS.get(d_str, d_str)
+                reasons.append(f"Pico agudo na dimensão '{dim_name}' (+{diff:.1f} pts).")
+                
+        if reasons:
+            critical_sessions.append({
+                "session_id": curr["session_id"],
+                "session_name": curr["session_name"],
+                "date": curr["date"],
+                "mean_total": curr["mean_total"],
+                "prev_mean_total": prev["mean_total"],
+                "reasons": reasons
+            })
+            
+    # --- Chart Data JSON Serialisation ---
+    chart_labels = json.dumps([e["date"] for e in timeline])
+    chart_mean_totals = json.dumps([e["mean_total"] for e in timeline])
+    chart_median_totals = json.dumps([e["median_total"] for e in timeline])
+    
+    # Pre-computed multi-line datasets for dimensions
+    dim_datasets = []
+    for i in range(1, 21):
+        dim_key = str(i)
+        max_size = (3 if dim_key == "16" else 2) * 4
+        dim_datasets.append({
+            "key": dim_key,
+            "name": f"{dim_key}. {ONTOLOGY_DIMENSIONS.get(dim_key, dim_key)}",
+            "maxSize": max_size,
+            "mean_data": [e["mean_dimensions"].get(dim_key, 0.0) for e in timeline],
+            "median_data": [e["median_dimensions"].get(dim_key, 0.0) for e in timeline],
+        })
+    chart_dimensions = json.dumps(dim_datasets)
+    
+    return {
+        "timeline": timeline,
+        "kpis": kpis,
+        "heatmap_dims": heatmap_dims,
+        "critical_sessions": critical_sessions,
+        "chart_labels": chart_labels,
+        "chart_mean_totals": chart_mean_totals,
+        "chart_median_totals": chart_median_totals,
+        "chart_dimensions": chart_dimensions
+    }
+

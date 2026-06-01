@@ -1,0 +1,215 @@
+import pytest
+import sqlite3
+import json
+from pathlib import Path
+from unittest import mock
+from bs4 import BeautifulSoup
+from symptoms_analyser.app import app
+from symptoms_analyser.controllers.admin import get_cohort_evolution_data
+
+@pytest.fixture
+def schema_sql():
+    schema_path = Path(__file__).resolve().parents[1] / "src" / "symptoms_analyser" / "db" / "schema.sql"
+    return schema_path.read_text(encoding="utf-8")
+
+@pytest.fixture
+def seeded_db_path(tmp_path, schema_sql):
+    db_file = tmp_path / "test_cohort.db"
+    
+    conn = sqlite3.connect(db_file)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.executescript(schema_sql)
+    
+    cursor = conn.cursor()
+    # 1. Seed Clinician
+    cursor.execute("""
+        INSERT INTO users (id, username, email, name, role, password_hash)
+        VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'hash')
+    """)
+    
+    # 2. Seed Patients
+    cursor.execute("""
+        INSERT INTO patients (id, real_name, pseudonym)
+        VALUES (1, 'John Doe', 'Paciente1'), (2, 'Jane Doe', 'Paciente2')
+    """)
+    
+    # 3. Seed Therapy Sessions
+    cursor.execute("""
+        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration)
+        VALUES 
+        (1, 'Sessão 1', 1, '2026-05-20 14:00:00', 3600),
+        (2, 'Sessão 2', 1, '2026-05-27 14:00:00', 3600)
+    """)
+    
+    # 4. Seed Transcripts
+    cursor.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, raw_text, sanitized_text, status)
+        VALUES 
+        (1, 1, 'session_1.txt', 'Texto 1', 'Texto limpo 1', 'completed'),
+        (2, 2, 'session_2.txt', 'Texto 2', 'Texto limpo 2', 'completed')
+    """)
+    
+    # 5. Seed TDPM evaluations
+    cursor.execute("""
+        INSERT INTO tdpm_evaluations (id, transcript_id, evaluator_id, evaluation_type, therapy_session_id, created_at)
+        VALUES 
+        (1, 1, 1, 'automated', 1, '2026-05-20 14:15:00'),
+        (2, 2, 1, 'automated', 2, '2026-05-27 14:15:00')
+    """)
+    
+    # 6. Seed evaluation telemetry with raw payloads
+    payload_1 = {
+        "aggregated": {
+            "patients": {
+                "Paciente1": {
+                    "dimensions": {
+                        "1": {"dimension_sum": 4},
+                        "16": {"dimension_sum": 2}
+                    }
+                },
+                "Paciente2": {
+                    "dimensions": {
+                        "1": {"dimension_sum": 2},
+                        "16": {"dimension_sum": 4}
+                    }
+                }
+            }
+        }
+    }
+    
+    payload_2 = {
+        "aggregated": {
+            "patients": {
+                "Paciente1": {
+                    "dimensions": {
+                        "1": {"dimension_sum": 6},
+                        "16": {"dimension_sum": 8}  # Ansiedade spiked from 2 -> 8 (which is critical!)
+                    }
+                },
+                "Paciente2": {
+                    "dimensions": {
+                        "1": {"dimension_sum": 4},
+                        "16": {"dimension_sum": 6}
+                    }
+                }
+            }
+        }
+    }
+    
+    cursor.execute("""
+        INSERT INTO evaluation_telemetry (evaluation_id, model, chunks_analyzed, status, raw_payload, created_at)
+        VALUES 
+        (1, 'model-a', 2, 'success', ?, '2026-05-20 14:15:00'),
+        (2, 'model-a', 2, 'success', ?, '2026-05-27 14:15:00')
+    """, (json.dumps(payload_1), json.dumps(payload_2)))
+    
+    conn.commit()
+    conn.close()
+    
+    return db_file
+
+@pytest.fixture
+def mock_get_db(seeded_db_path):
+    from contextlib import contextmanager
+    
+    @contextmanager
+    def _get_db():
+        conn = sqlite3.connect(seeded_db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        try:
+            yield conn
+        finally:
+            conn.close()
+            
+    return _get_db
+
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
+
+def test_get_cohort_evolution_data(mock_get_db):
+    with mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+        data = get_cohort_evolution_data()
+        
+        # Verify structure
+        assert "timeline" in data
+        assert "kpis" in data
+        assert "heatmap_dims" in data
+        assert "critical_sessions" in data
+        
+        timeline = data["timeline"]
+        assert len(timeline) == 2
+        
+        # Verify Session 1 scores (means and medians)
+        # Paciente1 Dim1 = 4, Dim16 = 2
+        # Paciente2 Dim1 = 2, Dim16 = 4
+        # Total scores: Paciente 1 = 6, Paciente 2 = 6
+        # Mean Total: 6.0, Median Total: 6.0
+        assert timeline[0]["mean_total"] == 6.0
+        assert timeline[0]["median_total"] == 6.0
+        assert timeline[0]["mean_dimensions"]["1"] == 3.0
+        assert timeline[0]["median_dimensions"]["1"] == 3.0
+        assert timeline[0]["mean_dimensions"]["16"] == 3.0
+        assert timeline[0]["median_dimensions"]["16"] == 3.0
+        
+        # Verify Session 2 scores
+        # Paciente1 Dim1 = 6, Dim16 = 8
+        # Paciente2 Dim1 = 4, Dim16 = 6
+        # Total scores: Paciente 1 = 14, Paciente 2 = 10
+        # Mean Total: 12.0, Median Total: 12.0
+        assert timeline[1]["mean_total"] == 12.0
+        assert timeline[1]["median_total"] == 12.0
+        assert timeline[1]["mean_dimensions"]["1"] == 5.0
+        assert timeline[1]["mean_dimensions"]["16"] == 7.0
+        
+        # Verify KPIs
+        kpis = data["kpis"]
+        assert kpis["total_sessions"] == 2
+        assert kpis["peak_score"] == 12.0
+        assert "piora clínica coletiva" in kpis["trend_desc"].lower()
+        
+        # Verify critical sessions detection
+        critical = data["critical_sessions"]
+        assert len(critical) == 1
+        reasons_concat = " ".join(critical[0]["reasons"]).lower()
+        assert "aumento repentino" in reasons_concat
+        assert "pico agudo na dimensão" in reasons_concat
+
+def test_cohort_analytics_page_route(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         
+        resp = client.get("/cohort_analytics")
+        assert resp.status_code == 200
+        
+        soup = BeautifulSoup(resp.data, "html.parser")
+        
+        # Check active class in navigation
+        active_nav = soup.find("a", class_="sidebar-btn active")
+        assert active_nav is not None
+        assert "grupo" in active_nav.text.lower()
+        
+        # Check title and descriptions
+        h2 = soup.find("h2", class_="patient-id-title")
+        assert h2 is not None
+        assert "grupo" in h2.text.lower()
+        
+        # Check KPI cards rendering
+        metric_values = [v.text.strip() for v in soup.find_all(class_="metric-value")]
+        assert "2" in metric_values  # Total sessions
+        assert "12" in metric_values or "12.0" in metric_values  # Peak severity
+        
+        # Check heatmap and table rendering
+        table = soup.find("table", {"id": "heatmapTable"})
+        assert table is not None
+        
+        # Check script island is present with data
+        script_island = soup.find("script", {"id": "page-data"})
+        assert script_island is not None
+        script_data = json.loads(script_island.string)
+        assert "chartMeanTotals" in script_data

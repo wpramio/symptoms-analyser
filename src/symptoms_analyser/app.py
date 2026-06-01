@@ -12,6 +12,7 @@ from symptoms_analyser.controllers.admin import (
     get_transcripts,
     get_patients_list_with_stats,
     get_patient_evolution_data,
+    get_cohort_evolution_data,
     update_patient,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
@@ -237,6 +238,26 @@ def patient_detail(patient_id):
         )
     except Exception as e:
         print(f"Error serving patient detail: {e}")
+        return str(e), 500
+
+
+@app.route("/cohort_analytics")
+def cohort_analytics():
+    try:
+        data = get_cohort_evolution_data()
+        return render_template(
+            "cohort_analytics.html",
+            timeline=data["timeline"],
+            kpis=data["kpis"],
+            heatmap_dims=data["heatmap_dims"],
+            critical_sessions=data["critical_sessions"],
+            chart_labels=data["chart_labels"],
+            chart_mean_totals=data["chart_mean_totals"],
+            chart_median_totals=data["chart_median_totals"],
+            chart_dimensions=data["chart_dimensions"],
+        )
+    except Exception as e:
+        print(f"Error serving cohort analytics: {e}")
         return str(e), 500
 
 

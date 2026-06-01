@@ -4085,3 +4085,179 @@ select:focus {
     color: var(--text-muted);
     white-space: nowrap;
 }
+
+/* =========================================================================
+   Cohort Dashboard Specific Styles
+   ========================================================================= */
+.cohort-welcome-btn {
+    margin-top: 1rem;
+    display: inline-block;
+}
+
+.cohort-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.metric-value-dimension {
+    font-size: 1.15rem;
+    word-break: break-all;
+}
+
+.cohort-chart-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.cohort-checkbox-grid {
+    display: none;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: var(--bg-card-header);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+}
+
+.cohort-header-flex {
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.cohort-heatmap-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.cohort-heatmap-legend {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.cohort-legend-box {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+}
+
+.cohort-th-date {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.cohort-patient-count {
+    color: var(--text-muted);
+    font-weight: normal;
+}
+
+.cohort-dim-key {
+    font-weight: 600;
+}
+
+.cohort-heatmap-cell {
+    text-align: center;
+    font-weight: 500;
+}
+
+.cohort-cell-max {
+    font-size: 0.8em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.cohort-card-title-compact {
+    margin-bottom: 0.25rem;
+}
+
+.cohort-card-subtitle-spaced {
+    margin-bottom: 1.5rem;
+}
+
+.cohort-vertical-timeline {
+    margin-top: 1rem;
+}
+
+.cohort-timeline-badge {
+    background-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
+
+.cohort-timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.cohort-timeline-date {
+    font-weight: 700;
+    color: var(--danger);
+}
+
+.cohort-timeline-name {
+    margin-left: 0.5rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.cohort-score-badge {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.cohort-timeline-cards-container {
+    margin-top: 0.75rem;
+    width: 100%;
+}
+
+.cohort-timeline-card {
+    border-left: 4px solid var(--danger);
+    background: var(--bg-card);
+    width: 100%;
+    box-shadow: var(--shadow-sm);
+}
+
+.cohort-timeline-card-header {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.cohort-timeline-card-quotes {
+    margin-top: 0.5rem;
+    padding-left: 0;
+    list-style: none;
+}
+
+.cohort-timeline-quote-item {
+    color: var(--text);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    list-style-type: none;
+}
+
+.cohort-welcome-message-card {
+    padding: 2.5rem;
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.cohort-welcome-message-title {
+    margin-top: 0.5rem;
+    color: var(--text-success);
+}
+
+.cohort-welcome-message-desc {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}

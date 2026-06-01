@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% set active_page = 'cohort_analytics' %}
+
+{% block title %}Evolução Coletiva (Visão de Coorte) - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Cohort Header Card -->
+    <div class="analysis-selector-card">
+        <div>
+            <div class="patient-title-group">
+                <h2 class="patient-id-title">Evolução coletiva do grupo</h2>
+            </div>
+            <p class="patient-meta-desc">
+                Análise agregada da severidade de sintomas do grupo terapêutico sessão por sessão.
+            </p>
+        </div>
+    </div>
+
+    {% if not kpis %}
+    <!-- No clinical data state -->
+    <div class="welcome-message">
+        <span style="font-size: 3rem;">📁</span>
+        <h3>Sem dados de coorte</h3>
+        <p>Ainda não há sessões de terapia com avaliações clínicas processadas para gerar a análise coletiva do grupo.
+        </p>
+        <a href="/therapy_sessions" class="btn btn-primary cohort-welcome-btn">Ver Sessões</a>
+    </div>
+
+    {% else %}
+    <!-- Evolution Dashboard -->
+    <div class="evolution-dashboard cohort-dashboard">
+
+        <!-- KPI Cards -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Sessões do grupo</span>
+                <span class="metric-value">{{ kpis.total_sessions }}</span>
+                <span class="metric-desc">Sessões avaliadas</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Pico de severidade média</span>
+                <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
+                <span class="metric-desc">Na sessão de: {{ kpis.peak_date }}</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Tendência sistêmica</span>
+                <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
+                <span class="metric-desc">{{ kpis.trend_desc }}</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Dimensão mais crítica</span>
+                <span class="metric-value text-primary metric-value-dimension">
+                    {{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}
+                </span>
+                <span class="metric-desc">Média geral: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
+            </div>
+        </div>
+
+        <!-- Interactive Chart Card (Chart.js rendered client-side) -->
+        <div class="evolution-card chart-container-card">
+            <div class="card-header-flex">
+                <div>
+                    <h3 class="card-title">Trajetória temporal do grupo</h3>
+                    <p class="card-subtitle">Visualize a evolução média ou mediana das dimensões sintomáticas do TDPM-20
+                        de forma combinada.</p>
+                </div>
+                <div class="chart-controls cohort-chart-controls">
+                    <div class="control-group">
+                        <label for="chartMetricSelect">Visualizar:</label>
+                        <select id="chartMetricSelect" class="selector-dropdown compact-select">
+                            <option value="total">Gravidade geral (soma)</option>
+                            <option value="dimensions">Por dimensão clínica (comparativa)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="chartMethodSelect">Métrica:</label>
+                        <select id="chartMethodSelect" class="selector-dropdown compact-select">
+                            <option value="mean">Média dos participantes</option>
+                            <option value="median">Mediana dos participantes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dimensionCheckboxContainer" class="dimension-checkbox-grid cohort-checkbox-grid">
+                <!-- Populated by JS when "dimensions" mode is selected -->
+            </div>
+
+            <div class="chart-wrapper">
+                <canvas id="evolutionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Heatmap (fully server-rendered with dynamic toggle) -->
+        <div class="evolution-card heatmap-card">
+            <div class="card-header-flex cohort-header-flex">
+                <div>
+                    <h3 class="card-title">Matriz de monitoramento coletivo</h3>
+                    <p class="card-subtitle">Acompanhe a severidade média de todas as dimensões de sintomas sessão a
+                        sessão.</p>
+                </div>
+                <div class="heatmap-header-controls cohort-heatmap-controls">
+                    <button type="button" id="btnToggleEmptyDimensions" class="btn btn-secondary btn-heatmap-toggle">
+                        Mostrar dimensões sem sintomas
+                    </button>
+                    <div class="heatmap-legend cohort-heatmap-legend">
+                        <span class="legend-box cohort-legend-box" data-severity="0">0 (ausente)</span>
+                        <span class="legend-box cohort-legend-box" data-severity="1">1 (leve)</span>
+                        <span class="legend-box cohort-legend-box" data-severity="2">2 (moderada)</span>
+                        <span class="legend-box cohort-legend-box" data-severity="3">3 (alta)</span>
+                        <span class="legend-box cohort-legend-box" data-severity="4">4 (grave)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="heatmap-table-container">
+                <table class="heatmap-table" id="heatmapTable">
+                    <thead>
+                        <tr>
+                            <th>Dimensão clínica</th>
+                            {% for entry in timeline %}
+                            <th class="cohort-th-date">
+                                {{ entry.date }}<br>
+                                <small class="cohort-patient-count">({{ entry.patient_count }} pt.)</small>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dim in heatmap_dims %}
+                        <tr class="heatmap-row {% if not dim.is_active %}inactive-row display-none{% endif %}">
+                            <td class="cohort-dim-key"><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
+                            {% for cell in dim.cells %}
+                            <td class="heatmap-cell cohort-heatmap-cell" data-severity="{{ cell.severity }}"
+                                title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Média: {{ cell.mean_score }}/{{ cell.max }} | Mediana: {{ cell.median_score }}/{{ cell.max }}">
+                                {{ cell.mean_score }}<span class="cohort-cell-max">/{{ cell.max }}</span>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Critical Sessions Panel -->
+        <div class="evolution-card evidence-timeline-card">
+            <h3 class="card-title cohort-card-title-compact">🔍 Detecção de anomalias e sessões críticas</h3>
+            <p class="card-subtitle cohort-card-subtitle-spaced">Picos agudos ou aumentos significativos de sintomas
+                coletivos.</p>
+
+            {% if critical_sessions %}
+            <div class="vertical-timeline cohort-vertical-timeline">
+                {% for cs in critical_sessions %}
+                <div class="timeline-entry">
+                    <div class="timeline-badge cohort-timeline-badge"></div>
+                    <div class="timeline-header cohort-timeline-header">
+                        <div>
+                            <span class="timeline-date cohort-timeline-date">{{ cs.date }}</span>
+                            <span class="cohort-timeline-name">{{ cs.session_name }}</span>
+                        </div>
+                        <span class="score-badge cohort-score-badge" data-severity="4">Score Médio: {{ cs.mean_total
+                            }}</span>
+                    </div>
+
+                    <div class="timeline-cards-container cohort-timeline-cards-container">
+                        <div class="timeline-card cohort-timeline-card">
+                            <div class="timeline-card-header cohort-timeline-card-header">
+                                Gatilhos / Indicadores de desregulação coletiva
+                            </div>
+                            <ul class="timeline-card-quotes cohort-timeline-card-quotes">
+                                {% for reason in cs.reasons %}
+                                <li class="timeline-quote-item cohort-timeline-quote-item">
+                                    {{ reason }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="welcome-message cohort-welcome-message-card">
+                <span style="font-size: 2rem;">🛡️</span>
+                <h4 class="cohort-welcome-message-title">Estabilidade coletiva mantida</h4>
+                <p class="cohort-welcome-message-desc">Nenhuma oscilação ou pico sintomático crítico
+                    foi detectado pelo analisador de coorte até o momento.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div><!-- /evolution-dashboard -->
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if kpis %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="page-data" type="application/json">
+{
+    "chartLabels": {{ chart_labels | safe }},
+    "chartMeanTotals": {{ chart_mean_totals | safe }},
+    "chartMedianTotals": {{ chart_median_totals | safe }},
+    "chartDimensions": {{ chart_dimensions | safe }}
+}
+</script>
+<script src="/static/js/cohort_analytics.js"></script>
+{% endif %}
+{% endblock %}
