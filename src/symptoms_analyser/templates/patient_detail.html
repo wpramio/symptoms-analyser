@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% set active_page = 'patients' %}
 
-{% block title %}Evolução clínica de {{ patient.pseudonym }} - Symptoms Analyser{% endblock %}
+{% block title %}{{ patient.pseudonym }} (Evolução clínica) - Symptoms Analyser{% endblock %}
 
 {% block content %}
 <div class="main-container">
@@ -21,7 +21,8 @@
                 <span class="hipaa-pill">🔒 HIPAA</span>
             </div>
             <p class="patient-meta-desc">
-                Nome real: <strong>{{ patient.real_name }}</strong> | Cadastro: <strong>{{ patient.created_at }}</strong>
+                Nome real: <strong>{{ patient.real_name }}</strong> | Cadastro: <strong>{{ patient.created_at
+                    }}</strong>
             </p>
         </div>
 

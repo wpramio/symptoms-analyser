@@ -2843,6 +2843,12 @@ select:focus {
     color: inherit;
 }
 
+.patient-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
 /* Modern Session Grid Styles */
 .session-grid-container {
     width: 100%;

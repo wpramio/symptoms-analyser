@@ -50,14 +50,6 @@
                         <strong class="footer-value-primary">{{ patient.total_sessions }}</strong> {% if
                         patient.total_sessions == 1 %}sessão{% else %}sessões{% endif %}
                     </div>
-                    <div class="view-evolution-action">
-                        Ver evolução clínica
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                            <polyline points="12 5 19 12 12 19"></polyline>
-                        </svg>
-                    </div>
                 </div>
             </a>
             {% endfor %}
@@ -66,22 +58,10 @@
                 <span>👥</span>
                 <h4>Nenhum paciente cadastrado</h4>
                 <p>Faça a ingestão de transcrições com marcações de pacientes ou adicione manualmente em
-                    "Configurar pacientes".</p>
+                     "Configurar pacientes".</p>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
-
-<style>
-    .patient-card-hover:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
-        border-color: rgba(59, 130, 246, 0.3) !important;
-    }
-
-    .patient-card-hover:hover .view-evolution-action {
-        gap: 0.5rem !important;
-    }
-</style>
 {% endblock %}
