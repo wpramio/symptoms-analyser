@@ -46,9 +46,58 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
-        {% if evaluation_id and evaluation and evaluation.synthesis %}
+    <!-- MAIN INTERACTIVE STATE AREA -->
+    {% if evaluation_id %}
+    <!-- STATE 1: SESSION IS FULLY ANALYZED -->
+
+    <!-- TAB NAVIGATION -->
+    <div class="session-tabs-container">
+        <div class="session-main-tabs">
+            <button class="session-tab-btn active" data-target="tab-synthesis">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Minuta de evolução
+            </button>
+            <button class="session-tab-btn" data-target="tab-dynamics">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Dinâmica do grupo
+            </button>
+            <button class="session-tab-btn" data-target="tab-evaluation">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+                Avaliação TDPM-20
+            </button>
+            <button class="session-tab-btn" data-target="tab-transcript">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Transcrição completa
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB PANELS CONTENT -->
+    <div class="session-tab-content">
+        <!-- TAB PANEL 1: Clinical Synthesis -->
+        <div class="session-tab-panel active" id="tab-synthesis">
+            <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
+            {% if evaluation and evaluation.synthesis %}
         <div class="dashboard-card synthesis-card mb-4" id="synthesis-section">
             <div class="synthesis-card-header">
                 <div class="synthesis-title-container">
@@ -92,7 +141,10 @@
             </div>
         </div>
         {% endif %}
+    </div>
 
+    <!-- TAB PANEL 2: Group Dynamics -->
+    <div class="session-tab-panel" id="tab-dynamics">
         <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
             <!-- CARD 1.7: Rede de Apoio e Coesão do Grupo (IA) -->
             {% if evaluation_id and evaluation and evaluation.synthesis %}
@@ -214,9 +266,8 @@
         </div>
     </div>
 
-    <!-- MAIN INTERACTIVE STATE AREA -->
-    {% if evaluation_id %}
-    <!-- STATE 1: SESSION IS FULLY ANALYZED -->
+    <!-- PANEL 2: Clinical Workstation -->
+    <div class="session-tab-panel" id="tab-evaluation">
 
     <!-- CARD 2: TDPM Analysis -->
     <div class="dashboard-card tdpm-analysis-card">
@@ -433,19 +484,25 @@
     </section>
 </div>
 </div>
+</div> <!-- Closes tab-evaluation panel -->
 
-<!-- CARD 3: Full Transcript -->
-{% if transcript %}
-<div class="dashboard-card transcript-card">
-    <div class="dimension-item">
-        <div class="dimension-header" id="toggleTranscriptHeader">
+<!-- PANEL 3: Full Transcript -->
+<div class="session-tab-panel" id="tab-transcript">
+    <!-- CARD 3: Full Transcript -->
+    {% if transcript %}
+    <div class="dashboard-card transcript-card">
+        <div class="transcript-header-row mb-4">
             <div class="flex-align-center-gap-sm">
-                <span class="transcript-icon">📄</span>
-                <span class="transcript-title">Transcrição completa da sessão</span>
+                <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                <h3 class="synthesis-card-title mb-0">Transcrição completa da sessão</h3>
             </div>
-            <span class="transcript-toggle-indicator" id="transcriptToggleIndicator">Expandir ▼</span>
         </div>
-        <div class="transcript-body-scroll" id="transcriptBodyContainer">
+        <div class="transcript-body-scroll-custom">
             <div class="transcript-tab-row">
                 <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowSanitized">
                     Texto sanitizado</button>
@@ -457,8 +514,9 @@
                 data-raw="{{ transcript.raw_text or '' }}">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endif %}
+</div> <!-- Closes session-tab-content wrapper -->
 
 {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
 <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->

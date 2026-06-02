@@ -484,8 +484,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', (e) => {
             const header = e.target.closest('.dimension-header');
             if (!header) return;
-            // Skip transcript accordion, which is handled separately
-            if (header.id === 'toggleTranscriptHeader') return;
 
             const dimensionItem = header.closest('.dimension-item');
             if (!dimensionItem) return;
@@ -493,17 +491,30 @@ document.addEventListener('DOMContentLoaded', () => {
             dimensionItem.classList.toggle('open');
         });
 
-        // Collapsible Transcript Handler
-        const toggleTranscriptHeader = document.getElementById('toggleTranscriptHeader');
-        const transcriptCard = document.querySelector('.transcript-card');
-        const transcriptToggleIndicator = document.getElementById('transcriptToggleIndicator');
+        // Main session detail tabs navigation switcher
+        const tabButtons = document.querySelectorAll('.session-tab-btn');
+        const tabPanels = document.querySelectorAll('.session-tab-panel');
 
-        if (toggleTranscriptHeader && transcriptCard) {
-            toggleTranscriptHeader.addEventListener('click', () => {
-                const isOpen = transcriptCard.classList.toggle('open');
-                transcriptToggleIndicator.textContent = isOpen ? 'Recolher ▲' : 'Expandir ▼';
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                if (!targetId) return;
+
+                // Deactivate all tab buttons and panels
+                tabButtons.forEach(b => b.classList.remove('active'));
+                tabPanels.forEach(p => p.classList.remove('active'));
+
+                // Activate selected tab button and panel
+                btn.classList.add('active');
+                const targetPanel = document.getElementById(targetId);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+
+                // Force a resize event to ensure Chart.js scales dynamically when its container becomes visible
+                window.dispatchEvent(new Event('resize'));
             });
-        }
+        });
 
         // Transcript Tab Switcher (Sanitized vs Raw)
         const btnShowSanitized = document.getElementById('btnShowSanitized');

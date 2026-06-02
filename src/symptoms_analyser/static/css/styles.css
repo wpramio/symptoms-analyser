@@ -3314,7 +3314,7 @@ select:focus {
 
 /* Card 3: full transcript */
 .transcript-card {
-    padding: 0;
+    padding: 1.5rem;
     margin-bottom: 1.5rem;
     overflow: hidden;
 }
@@ -4830,4 +4830,120 @@ select:focus {
 .interaction-evidence-text {
     font-style: italic;
     color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Premium Session Workstation Tabs & Animations
+   ========================================================================== */
+
+.session-tabs-container {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25rem;
+}
+
+.session-main-tabs {
+    display: flex;
+    gap: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+
+.session-main-tabs::-webkit-scrollbar {
+    display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.session-tab-btn {
+    background: none;
+    border: none;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+    outline: none;
+    font-family: inherit;
+}
+
+.session-tab-btn .tab-icon {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2px;
+    transition: transform 0.25s ease, stroke 0.25s ease;
+}
+
+.session-tab-btn:hover {
+    color: var(--text-main);
+}
+
+.session-tab-btn:hover .tab-icon {
+    transform: translateY(-1.5px);
+    stroke: var(--text-main);
+}
+
+.session-tab-btn.active {
+    color: var(--primary);
+}
+
+.session-tab-btn.active .tab-icon {
+    stroke: var(--primary);
+}
+
+.session-tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -0.25rem;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--primary);
+    border-radius: 999px;
+    transform: scaleX(0);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.session-tab-btn.active::after {
+    transform: scaleX(1);
+}
+
+/* Tab Panels & Transition Animations */
+.session-tab-panel {
+    display: none;
+    animation: tabFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.session-tab-panel.active {
+    display: block;
+}
+
+@keyframes tabFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Premium Transcript Card Layout */
+.transcript-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+}
+
+.transcript-body-scroll-custom {
+    padding: 1rem 0 0 0;
+    max-height: 550px;
+    overflow-y: auto;
 }
