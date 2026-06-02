@@ -187,44 +187,146 @@ def anonymize_transcript(
     """
     Step 3b: Anonymization & patient creation mapping.
     Identifies real names in raw transcript and replaces them with pseudonyms.
+    Reuses existing pseudonyms if patients are already registered in the DB.
     
     Returns:
         List of tuples: [(real_name, pseudonym)]
     """
-    # 1. Get raw text from DB
-    cursor = db_conn.cursor() if db_conn else None
-    if cursor:
-        cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
-        row = cursor.fetchone()
+    if db_conn:
+        return _anonymize_with_conn(transcript_id, db_conn)
     else:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
-            row = cursor.fetchone()
+            return _anonymize_with_conn(transcript_id, conn)
 
+
+def _anonymize_with_conn(transcript_id: int, conn: sqlite3.Connection) -> List[Tuple[str, str]]:
+    cursor = conn.cursor()
+    cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
+    row = cursor.fetchone()
     if not row or not row["raw_text"]:
         raise ValueError(f"Transcript ID {transcript_id} has no raw_text to anonymize.")
 
     raw_text = row["raw_text"]
 
-    # TODO: Scan raw_text, detect actual real names and map/replace them with pseudonyms.
-    # For now, we will perform a basic fallback and return a provisional tuple if any names are spotted
-    # (e.g. mapping names mentioned in speaker tags to 'Paciente1', etc.)
+    # 1. Fetch all pseudonyms currently registered in the database to prevent collisions
+    cursor.execute("SELECT pseudonym FROM patients")
+    db_pseudonyms = [r["pseudonym"] for r in cursor.fetchall()]
     
-    anonymized_text = raw_text
-    mappings: List[Tuple[str, str]] = []
+    used_numbers = set()
+    for ps in db_pseudonyms:
+        if re.match(r"^paciente\d+$", ps, re.IGNORECASE):
+            num = re.findall(r"\d+", ps)[0]
+            used_numbers.add(int(num))
 
-    # Simple placeholder: find "Paciente" in the speaker tag or text
-    # e.g., if there's no pre-existing registration, return empty mappings
-    # If the database has registered patients, we can automatically align
-    # (Leaving TO-DO: replace all real names with pseudonyms)
+    # Scan raw_text to detect all unique speaker labels representing patients.
+    speaker_prefix_re = re.compile(r"^([^:!?.,\n]{1,40}):")
+    timestamp_re = re.compile(r"^(\[)?\d{1,2}:\d{2}(:\d{2})?(\])?$")
+    leading_timestamp_re = re.compile(r"^(\[)?\d{1,2}:\d{2}(:\d{2})?(\])?\s*")
+
+    all_speakers = set()
+    for line in raw_text.splitlines():
+        line = line.strip()
+        if not line or timestamp_re.match(line):
+            continue
+        line = leading_timestamp_re.sub("", line).strip()
+        if not line:
+            continue
+        match = speaker_prefix_re.match(line)
+        if match:
+            speaker = match.group(1).strip()
+            speaker_lower = speaker.lower()
+            # Ignore system warnings or automated footnotes (e.g., Teams/Zoom transcript footers)
+            is_system_msg = any(kw in speaker_lower for kw in [
+                "transcrição", "encerrada", "gerada", "editável", "sistema", 
+                "chamada", "áudio", "gravação", "gravada", "aviso", "nota"
+            ])
+            if is_system_msg:
+                continue
+            if speaker_lower not in ["terapeuta", "clinico", "clínico", "clinician", "dr.", "dra.", "dr", "dra"]:
+                all_speakers.add(speaker)
+
+    # Sort the detected speaker names for deterministic pseudonym assignment
+    sorted_speakers = sorted(list(all_speakers))
+
+    already_pseudo = {}  # pseudonym (e.g., "Paciente1") -> original speaker name
+    real_names = []
+
+    for sp in sorted_speakers:
+        if re.match(r"^paciente\d+$", sp, re.IGNORECASE):
+            num = re.findall(r"\d+", sp)[0]
+            standardized = f"Paciente{num}"
+            already_pseudo[standardized] = sp
+            used_numbers.add(int(num))
+        else:
+            # Check DB for existing real name match to reuse their pseudonym
+            cursor.execute("SELECT pseudonym FROM patients WHERE real_name = ? COLLATE NOCASE", (sp,))
+            db_row = cursor.fetchone()
+            if db_row:
+                ps = db_row["pseudonym"]
+                already_pseudo[ps] = sp
+                if re.match(r"^paciente\d+$", ps, re.IGNORECASE):
+                    num = re.findall(r"\d+", ps)[0]
+                    used_numbers.add(int(num))
+            else:
+                real_names.append(sp)
+
+    mappings: List[Tuple[str, str]] = []
+    mapping_dict = {}  # original speaker name -> assigned pseudonym
+
+    # First, handle already-pseudonymized or previously-registered patients
+    for ps, orig in already_pseudo.items():
+        if re.match(r"^paciente\d+$", orig, re.IGNORECASE):
+            mappings.append((f"Nome Real de {ps}", ps))
+        else:
+            mappings.append((orig, ps))
+        mapping_dict[orig] = ps
+
+    # Next, map new real names to available PacienteN pseudonyms
+    next_num = 1
+    for name in real_names:
+        while next_num in used_numbers:
+            next_num += 1
+        ps = f"Paciente{next_num}"
+        used_numbers.add(next_num)
+        mappings.append((name, ps))
+        mapping_dict[name] = ps
+        next_num += 1
+
+    # Gather first names of multi-word names to replace them as well,
+    # provided they are unique among all mapped patient names.
+    first_names = {}
+    for orig in list(mapping_dict.keys()):
+        words = orig.split()
+        if len(words) > 1:
+            first_name = words[0]
+            first_names.setdefault(first_name.lower(), []).append(orig)
+
+    for fn_lower, orig_list in first_names.items():
+        if len(orig_list) == 1:
+            orig = orig_list[0]
+            first_name = orig.split()[0]
+            if first_name not in mapping_dict:
+                mapping_dict[first_name] = mapping_dict[orig]
+
+    # Perform text replacements to anonymize the transcript.
+    # Sort keys by length descending to replace longer names first.
+    anonymized_text = raw_text
+    for orig in sorted(mapping_dict.keys(), key=len, reverse=True):
+        ps = mapping_dict[orig]
+        # Replace occurrences of the name in speaker tags and text
+        anonymized_text = re.sub(
+            r"\b" + re.escape(orig) + r"\b",
+            ps,
+            anonymized_text,
+            flags=re.IGNORECASE
+        )
     
     # 2. Update sanitized_text column with the initial locally anonymized text
     orm.update_transcript(
         transcript_id=transcript_id,
         sanitized_text=anonymized_text,
-        db_conn=db_conn
+        db_conn=conn
     )
 
     return mappings

@@ -43,7 +43,7 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
     # 3. Patient registration and linking
     patient_ids_str = form_data.get("patient_ids") or ""
     if patient_ids_str:
-        patient_ids = [p.strip() for p in patient_ids_str.split(",") if p.strip()]
+        patient_ids = [p.strip() for p in patient_ids_str.split(",") if p.strip() and p.strip() != "Auto-detectado"]
         for pid in patient_ids:
             # Self-healing patient registry check
             orm.find_or_create_patient(patient_id=pid)

@@ -177,3 +177,183 @@ def test_anonymize_transcript_no_text(test_db_path):
     with pytest.raises(ValueError, match="has no raw_text to anonymize"):
         anonymize_transcript(1, db_conn=conn)
     conn.close()
+
+def test_anonymize_transcript_extract_speakers(test_db_path):
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+    
+    raw_text = (
+        "00:00:00\n"
+        "Paciente1: Olá\n"
+        "Terapeuta: Como vai?\n"
+        "Paciente3: Tudo bem por aqui\n"
+        "Paciente2: Olá doutor\n"
+    )
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
+    """, (raw_text,))
+    conn.commit()
+    
+    mappings = anonymize_transcript(1, db_conn=conn)
+    assert len(mappings) == 3
+    assert mappings == [
+        ("Nome Real de Paciente1", "Paciente1"),
+        ("Nome Real de Paciente2", "Paciente2"),
+        ("Nome Real de Paciente3", "Paciente3"),
+    ]
+    conn.close()
+
+def test_anonymize_transcript_real_names(test_db_path):
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+    
+    raw_text = (
+        "00:00:00\n"
+        "João da Silva: me deu uma vontade de chorar\n"
+        "Terapeuta: Como você se sentiu, João da Silva?\n"
+        "Maria de Souza: Eu também fiquei triste.\n"
+        "João da Silva: Pois é.\n"
+    )
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
+    """, (raw_text,))
+    conn.commit()
+    
+    mappings = anonymize_transcript(1, db_conn=conn)
+    assert len(mappings) == 2
+    assert mappings == [
+        ("João da Silva", "Paciente1"),
+        ("Maria de Souza", "Paciente2"),
+    ]
+    
+    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
+    expected_text = (
+        "00:00:00\n"
+        "Paciente1: me deu uma vontade de chorar\n"
+        "Terapeuta: Como você se sentiu, Paciente1?\n"
+        "Paciente2: Eu também fiquei triste.\n"
+        "Paciente1: Pois é.\n"
+    )
+    assert row["sanitized_text"] == expected_text
+    conn.close()
+
+def test_anonymize_transcript_reuse_existing(test_db_path):
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+    
+    # Pre-seed one patient "Maria de Souza" under pseudonym Paciente5 to verify collision-avoidance and matching
+    conn.execute("""
+        INSERT INTO patients (real_name, pseudonym, metadata)
+        VALUES ('Maria de Souza', 'Paciente5', '{}')
+    """)
+    conn.commit()
+    
+    raw_text = (
+        "00:00:00\n"
+        "João da Silva: me deu uma vontade de chorar\n"
+        "Maria de Souza: Eu também fiquei triste.\n"
+        "Carlos Santos: Pois é.\n"
+    )
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
+    """, (raw_text,))
+    conn.commit()
+    
+    mappings = anonymize_transcript(1, db_conn=conn)
+    
+    # Maria de Souza is mapped to her existing Paciente5.
+    # Carlos Santos gets Paciente1 (as it is sorted first alphabetically).
+    # João da Silva gets Paciente2.
+    assert len(mappings) == 3
+    assert mappings == [
+        ("Maria de Souza", "Paciente5"),
+        ("Carlos Santos", "Paciente1"),
+        ("João da Silva", "Paciente2"),
+    ]
+    
+    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
+    expected_text = (
+        "00:00:00\n"
+        "Paciente2: me deu uma vontade de chorar\n"
+        "Paciente5: Eu também fiquei triste.\n"
+        "Paciente1: Pois é.\n"
+    )
+    assert row["sanitized_text"] == expected_text
+    conn.close()
+
+def test_anonymize_transcript_first_name_mapping(test_db_path):
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+    
+    raw_text = (
+        "00:00:00\n"
+        "João da Silva: me deu uma vontade de chorar\n"
+        "Terapeuta: Como você se sentiu, João?\n"
+        "Maria de Souza: Eu também fiquei triste.\n"
+        "João da Silva: Pois é.\n"
+    )
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
+    """, (raw_text,))
+    conn.commit()
+    
+    mappings = anonymize_transcript(1, db_conn=conn)
+    
+    assert len(mappings) == 2
+    assert mappings == [
+        ("João da Silva", "Paciente1"),
+        ("Maria de Souza", "Paciente2"),
+    ]
+    
+    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
+    expected_text = (
+        "00:00:00\n"
+        "Paciente1: me deu uma vontade de chorar\n"
+        "Terapeuta: Como você se sentiu, Paciente1?\n"
+        "Paciente2: Eu também fiquei triste.\n"
+        "Paciente1: Pois é.\n"
+    )
+    assert row["sanitized_text"] == expected_text
+    conn.close()
+
+def test_anonymize_transcript_ignore_footnotes(test_db_path):
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+    
+    raw_text = (
+        "00:00:00\n"
+        "João da Silva: Olá\n"
+        "A transcrição foi encerrada após 01:05:42\n"
+        "Esta transcrição editável foi gerada por computador e pode conter erros.\n"
+    )
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
+        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
+    """, (raw_text,))
+    conn.commit()
+    
+    mappings = anonymize_transcript(1, db_conn=conn)
+    
+    assert len(mappings) == 1
+    assert mappings == [
+        ("João da Silva", "Paciente1"),
+    ]
+    
+    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
+    expected_text = (
+        "00:00:00\n"
+        "Paciente1: Olá\n"
+        "A transcrição foi encerrada após 01:05:42\n"
+        "Esta transcrição editável foi gerada por computador e pode conter erros.\n"
+    )
+    assert row["sanitized_text"] == expected_text
+    conn.close()
