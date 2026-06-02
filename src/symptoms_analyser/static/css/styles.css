@@ -1964,7 +1964,6 @@ select:focus {
 .evolution-dashboard {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
     width: 100%;
 }
 
@@ -4128,7 +4127,6 @@ select:focus {
 .cohort-dashboard {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
 }
 
 .metric-value-dimension {

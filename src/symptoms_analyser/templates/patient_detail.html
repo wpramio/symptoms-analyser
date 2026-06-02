@@ -58,32 +58,6 @@
     <!-- Evolution Dashboard (server-rendered, immediately visible) -->
     <div class="evolution-dashboard" style="display: flex;">
 
-        <!-- KPI Cards -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <span class="metric-label">Sessões analisadas</span>
-                <span class="metric-value">{{ kpis.total_sessions }}</span>
-                <span class="metric-desc">Total de participações do paciente</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Pico de gravidade</span>
-                <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
-                <span class="metric-desc">Na sessão: {{ kpis.peak_date }}</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Tendência geral</span>
-                <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
-                <span class="metric-desc">{{ kpis.trend_desc }}</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Dimensão mais ativa</span>
-                <span class="metric-value text-primary metric-value-dimension">
-                    {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{% endif %}
-                </span>
-                <span class="metric-desc">Média: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
-            </div>
-        </div>
-
         <!-- TAB NAVIGATION -->
         <div class="session-tabs-container">
             <div class="session-main-tabs">
@@ -113,6 +87,13 @@
                         <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Linha do tempo de evidências
+                </button>
+                <button class="session-tab-btn" data-target="tab-kpis">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Indicadores-chave
                 </button>
             </div>
         </div>
@@ -275,6 +256,35 @@
                             Nenhuma evidência clínica disponível.
                         </p>
                         {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 4: Key Indicators -->
+            <div class="session-tab-panel" id="tab-kpis">
+                <!-- KPI Cards -->
+                <div class="metrics-grid" style="margin-top: 0.5rem;">
+                    <div class="metric-card">
+                        <span class="metric-label">Sessões analisadas</span>
+                        <span class="metric-value">{{ kpis.total_sessions }}</span>
+                        <span class="metric-desc">Total de participações do paciente</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Pico de gravidade</span>
+                        <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
+                        <span class="metric-desc">Na sessão: {{ kpis.peak_date }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Tendência geral</span>
+                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
+                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Dimensão mais ativa</span>
+                        <span class="metric-value text-primary metric-value-dimension">
+                            {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{% endif %}
+                        </span>
+                        <span class="metric-desc">Média: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
                     </div>
                 </div>
             </div>

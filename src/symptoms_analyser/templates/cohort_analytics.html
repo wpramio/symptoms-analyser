@@ -31,32 +31,6 @@
     <!-- Evolution Dashboard -->
     <div class="evolution-dashboard cohort-dashboard">
 
-        <!-- KPI Cards -->
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <span class="metric-label">Sessões do grupo</span>
-                <span class="metric-value">{{ kpis.total_sessions }}</span>
-                <span class="metric-desc">Sessões avaliadas</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Pico de severidade média</span>
-                <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
-                <span class="metric-desc">Na sessão de: {{ kpis.peak_date }}</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Tendência sistêmica</span>
-                <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
-                <span class="metric-desc">{{ kpis.trend_desc }}</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Dimensão mais crítica</span>
-                <span class="metric-value text-primary metric-value-dimension">
-                    {{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}
-                </span>
-                <span class="metric-desc">Média geral: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
-            </div>
-        </div>
-
         <!-- TAB NAVIGATION -->
         <div class="session-tabs-container">
             <div class="session-main-tabs">
@@ -90,6 +64,13 @@
                         <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                     Sessões críticas
+                </button>
+                <button class="session-tab-btn" data-target="tab-kpis">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Indicadores-chave
                 </button>
             </div>
         </div>
@@ -241,6 +222,35 @@
                             foi detectado pelo analisador de coorte até o momento.</p>
                     </div>
                     {% endif %}
+                </div>
+            </div>
+
+            <!-- PANEL 4: Key Indicators -->
+            <div class="session-tab-panel" id="tab-kpis">
+                <!-- KPI Cards -->
+                <div class="metrics-grid" style="margin-top: 0.5rem;">
+                    <div class="metric-card">
+                        <span class="metric-label">Sessões do grupo</span>
+                        <span class="metric-value">{{ kpis.total_sessions }}</span>
+                        <span class="metric-desc">Sessões avaliadas</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Pico de severidade média</span>
+                        <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
+                        <span class="metric-desc">Na sessão de: {{ kpis.peak_date }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Tendência sistêmica</span>
+                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
+                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Dimensão mais crítica</span>
+                        <span class="metric-value text-primary metric-value-dimension">
+                            {{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}
+                        </span>
+                        <span class="metric-desc">Média geral: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
+                    </div>
                 </div>
             </div>
         </div>
