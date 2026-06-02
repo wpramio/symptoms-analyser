@@ -5,39 +5,43 @@
 
 {% block content %}
 <div class="main-container">
-    <!-- Back to patients link -->
-    <a href="/patients" class="back-link">
-        <svg width="16" height="16" aria-hidden="true">
-            <use href="#icon-arrow-left"></use>
-        </svg>
-        Voltar para pacientes
-    </a>
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumbs">
+        <a href="/patients">Pacientes</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">{{ patient.pseudonym }}</span>
+    </nav>
 
-    <!-- Patient Header Card -->
-    <div class="analysis-selector-card">
-        <div>
-            <div class="patient-title-group">
-                <h2 class="patient-id-title">{{ patient.pseudonym }}</h2>
-                <span class="hipaa-pill">🔒 HIPAA</span>
+    <!-- Compact Page Header -->
+    <div class="compact-page-header">
+        <div class="compact-header-left">
+            <div class="compact-header-title-container">
+                <div class="patient-title-group" style="margin-bottom: 0;">
+                    <h2 class="compact-header-title">{{ patient.pseudonym }}</h2>
+                    <span class="hipaa-pill">🔒 HIPAA</span>
+                </div>
+                <div class="compact-header-meta">
+                    <span class="meta-item">Nome real: <strong>{{ patient.real_name }}</strong></span>
+                    <span class="meta-dot"></span>
+                    <span class="meta-item">Cadastro: <strong>{{ patient.created_at }}</strong></span>
+                </div>
             </div>
-            <p class="patient-meta-desc">
-                Nome real: <strong>{{ patient.real_name }}</strong> | Cadastro: <strong>{{ patient.created_at
-                    }}</strong>
-            </p>
         </div>
 
-        <div class="patient-sessions-row">
-            <span class="patient-sessions-label">Sessões vinculadas:</span>
-            <div class="flex-gap-xs">
-                {% if sessions %}
-                {% for sess in sessions %}
-                <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link" title="Data: {{ sess.start_at }}">
-                    {{ sess.name }}
-                </a>
-                {% endfor %}
-                {% else %}
-                <span class="patient-no-sessions">Nenhuma sessão vinculada</span>
-                {% endif %}
+        <div class="compact-header-right">
+            <div class="compact-participants-panel">
+                <span class="compact-participants-label">Sessões vinculadas:</span>
+                <div class="flex-wrap-gap-xs" style="margin-top: 0.25rem;">
+                    {% if sessions %}
+                    {% for sess in sessions %}
+                    <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link" title="Data: {{ sess.start_at }}">
+                        {{ sess.name }}
+                    </a>
+                    {% endfor %}
+                    {% else %}
+                    <span class="patient-no-sessions">Nenhuma sessão vinculada</span>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
