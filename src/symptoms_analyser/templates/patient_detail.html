@@ -80,149 +80,199 @@
             </div>
         </div>
 
-        <!-- Interactive Chart Card (Chart.js rendered client-side) -->
-        <div class="evolution-card chart-container-card">
-            <div class="card-header-flex">
-                <div>
-                    <h3 class="card-title">Trajetória temporal de sintomas</h3>
-                    <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões específicas do
-                        TDPM-20.</p>
-                </div>
-                <div class="chart-controls">
-                    <label for="chartMetricSelect">Visualizar:</label>
-                    <select id="chartMetricSelect" class="selector-dropdown compact-select">
-                        <option value="total">Gravidade geral (soma)</option>
-                        <option value="dimensions">Por dimensão clínica (comparativa)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="dimensionCheckboxContainer" class="dimension-checkbox-grid" style="display: none;">
-                <!-- Populated by JS when "dimensions" mode is selected -->
-            </div>
-
-            <div class="chart-wrapper">
-                <canvas id="evolutionChart"></canvas>
+        <!-- TAB NAVIGATION -->
+        <div class="session-tabs-container">
+            <div class="session-main-tabs">
+                <button class="session-tab-btn active" data-target="tab-trajectory">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    Gráficos temporais
+                </button>
+                <button class="session-tab-btn" data-target="tab-heatmap">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                    </svg>
+                    Matriz TDPM-20
+                </button>
+                <button class="session-tab-btn" data-target="tab-evidence">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Linha do tempo de evidências
+                </button>
             </div>
         </div>
 
-        <!-- Heatmap (fully server-rendered) -->
-        <div class="evolution-card heatmap-card">
-            <div class="card-header-flex">
-                <div>
-                    <h3 class="card-title">Matriz de monitoramento (TDPM-20)</h3>
-                    <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão
-                        realizada.</p>
-                </div>
-                <div class="heatmap-header-controls">
-                    <button type="button" id="btnToggleEmptyDimensions" class="btn btn-secondary btn-heatmap-toggle">
-                        Mostrar dimensões sem sintomas
-                    </button>
-                    <div class="heatmap-legend">
-                        <span class="legend-box" data-severity="0">0 (ausente)</span>
-                        <span class="legend-box" data-severity="1">1 (leve)</span>
-                        <span class="legend-box" data-severity="2">2 (moderada)</span>
-                        <span class="legend-box" data-severity="3">3 (alta)</span>
-                        <span class="legend-box" data-severity="4">4 (grave)</span>
+        <!-- TAB PANELS CONTENT -->
+        <div class="session-tab-content">
+            <!-- PANEL 1: Severity Trajectory -->
+            <div class="session-tab-panel active" id="tab-trajectory">
+                <!-- Interactive Chart Card (Chart.js rendered client-side) -->
+                <div class="evolution-card chart-container-card">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3 class="card-title">Trajetória temporal de sintomas</h3>
+                            <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões
+                                específicas do
+                                TDPM-20.</p>
+                        </div>
+                        <div class="chart-controls">
+                            <label for="chartMetricSelect">Visualizar:</label>
+                            <select id="chartMetricSelect" class="selector-dropdown compact-select">
+                                <option value="total">Gravidade geral (soma)</option>
+                                <option value="dimensions">Por dimensão clínica (comparativa)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="dimensionCheckboxContainer" class="dimension-checkbox-grid" style="display: none;">
+                        <!-- Populated by JS when "dimensions" mode is selected -->
+                    </div>
+
+                    <div class="chart-wrapper">
+                        <canvas id="evolutionChart"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div class="heatmap-table-container">
-                <table class="heatmap-table" id="heatmapTable">
-                    <thead>
-                        <tr>
-                            <th>Dimensão clínica</th>
-                            {% for entry in timeline %}
-                            <th style="text-align: center;">{{ entry.date }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for dim in heatmap_dims %}
-                        <tr class="heatmap-row {% if not dim.is_active %}inactive-row display-none{% endif %}">
-                            <td><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
-                            {% for cell in dim.cells %}
-                            <td class="heatmap-cell" data-severity="{{ cell.severity }}"
-                                title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Pontuação: {{ cell.score }}/{{ cell.max }}">
-                                {{ cell.score }}/{{ cell.max }}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+            <!-- PANEL 2: Heatmap Matrix -->
+            <div class="session-tab-panel" id="tab-heatmap">
+                <!-- Heatmap (fully server-rendered) -->
+                <div class="evolution-card heatmap-card">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3 class="card-title">Matriz de monitoramento (TDPM-20)</h3>
+                            <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão
+                                realizada.</p>
+                        </div>
+                        <div class="heatmap-header-controls">
+                            <button type="button" id="btnToggleEmptyDimensions"
+                                class="btn btn-secondary btn-heatmap-toggle">
+                                Mostrar dimensões sem sintomas
+                            </button>
+                            <div class="heatmap-legend">
+                                <span class="legend-box" data-severity="0">0 (ausente)</span>
+                                <span class="legend-box" data-severity="1">1 (leve)</span>
+                                <span class="legend-box" data-severity="2">2 (moderada)</span>
+                                <span class="legend-box" data-severity="3">3 (alta)</span>
+                                <span class="legend-box" data-severity="4">4 (grave)</span>
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Evidence Timeline (fully server-rendered) -->
-        <div class="evolution-card evidence-timeline-card">
-            <div class="card-header-flex">
-                <div>
-                    <h3 class="card-title">Linha do tempo de evidências clínicas</h3>
-                    <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas diagnósticas de
-                        sintomas.</p>
+                    <div class="heatmap-table-container">
+                        <table class="heatmap-table" id="heatmapTable">
+                            <thead>
+                                <tr>
+                                    <th>Dimensão clínica</th>
+                                    {% for entry in timeline %}
+                                    <th style="text-align: center;">{{ entry.date }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dim in heatmap_dims %}
+                                <tr class="heatmap-row {% if not dim.is_active %}inactive-row display-none{% endif %}">
+                                    <td><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
+                                    {% for cell in dim.cells %}
+                                    <td class="heatmap-cell" data-severity="{{ cell.severity }}"
+                                        title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Pontuação: {{ cell.score }}/{{ cell.max }}">
+                                        {{ cell.score }}/{{ cell.max }}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="timeline-filters">
-                    <select id="timelineDimensionFilter" class="selector-dropdown compact-select">
-                        <option value="all">Todas as dimensões</option>
-                        {% set active_dims = namespace(seen=[]) %}
+            </div>
+
+            <!-- PANEL 3: Clinical Evidence Timeline -->
+            <div class="session-tab-panel" id="tab-evidence">
+                <!-- Evidence Timeline (fully server-rendered) -->
+                <div class="evolution-card evidence-timeline-card">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3 class="card-title">Linha do tempo de evidências clínicas</h3>
+                            <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas
+                                diagnósticas de
+                                sintomas.</p>
+                        </div>
+                        <div class="timeline-filters">
+                            <select id="timelineDimensionFilter" class="selector-dropdown compact-select">
+                                <option value="all">Todas as dimensões</option>
+                                {% set active_dims = namespace(seen=[]) %}
+                                {% for entry in timeline %}
+                                {% for item_id, item in entry.clinical_items.items() %}
+                                {% set dim_key = item_id.split('.')[0] %}
+                                {% if dim_key not in active_dims.seen %}
+                                {% set active_dims.seen = active_dims.seen + [dim_key] %}
+                                <option value="{{ dim_key }}">{{ dim_key }}. {{ item.name.split(' - ')[0] if ' - ' in
+                                    item.name
+                                    else item.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="vertical-timeline" id="evidenceTimeline">
                         {% for entry in timeline %}
-                        {% for item_id, item in entry.clinical_items.items() %}
-                        {% set dim_key = item_id.split('.')[0] %}
-                        {% if dim_key not in active_dims.seen %}
-                        {% set active_dims.seen = active_dims.seen + [dim_key] %}
-                        <option value="{{ dim_key }}">{{ dim_key }}. {{ item.name.split(' - ')[0] if ' - ' in item.name
-                            else item.name }}</option>
-                        {% endif %}
-                        {% endfor %}
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div class="vertical-timeline" id="evidenceTimeline">
-                {% for entry in timeline %}
-                {% set session_has_evidence = namespace(found=false) %}
-                {% for item_id, item in entry.clinical_items.items() %}
-                {% if item.evidence and item.evidence | length > 0 %}
-                {% set session_has_evidence.found = true %}
-                {% endif %}
-                {% endfor %}
-
-                {% if session_has_evidence.found %}
-                <div class="timeline-entry" data-date="{{ entry.date }}">
-                    <div class="timeline-badge"></div>
-                    <div class="timeline-header">
-                        <span class="timeline-date">{{ entry.date }}</span>
-                    </div>
-                    <div class="timeline-cards-container">
+                        {% set session_has_evidence = namespace(found=false) %}
                         {% for item_id, item in entry.clinical_items.items() %}
                         {% if item.evidence and item.evidence | length > 0 %}
-                        <div class="timeline-card" data-dim="{{ item_id.split('.')[0] }}">
-                            <div class="timeline-card-header">
-                                <span class="timeline-card-title">{{ item_id }} - {{ item.name }}</span>
-                                <span class="score-badge" data-severity="{{ item.score }}">Score: {{ item.score
-                                    }}</span>
+                        {% set session_has_evidence.found = true %}
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if session_has_evidence.found %}
+                        <div class="timeline-entry" data-date="{{ entry.date }}">
+                            <div class="timeline-badge"></div>
+                            <div class="timeline-header">
+                                <span class="timeline-date">{{ entry.date }}</span>
                             </div>
-                            <ul class="timeline-card-quotes">
-                                {% for ev in item.evidence %}
-                                <li class="timeline-quote-item">"{{ ev }}"</li>
+                            <div class="timeline-cards-container">
+                                {% for item_id, item in entry.clinical_items.items() %}
+                                {% if item.evidence and item.evidence | length > 0 %}
+                                <div class="timeline-card" data-dim="{{ item_id.split('.')[0] }}">
+                                    <div class="timeline-card-header">
+                                        <span class="timeline-card-title">{{ item_id }} - {{ item.name }}</span>
+                                        <span class="score-badge" data-severity="{{ item.score }}">Score: {{ item.score
+                                            }}</span>
+                                    </div>
+                                    <ul class="timeline-card-quotes">
+                                        {% for ev in item.evidence %}
+                                        <li class="timeline-quote-item">"{{ ev }}"</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
                                 {% endfor %}
-                            </ul>
+                            </div>
                         </div>
                         {% endif %}
                         {% endfor %}
+
+                        {% if not timeline %}
+                        <p class="no-evidence-timeline"
+                            style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            Nenhuma evidência clínica disponível.
+                        </p>
+                        {% endif %}
                     </div>
                 </div>
-                {% endif %}
-                {% endfor %}
-
-                {% if not timeline %}
-                <p class="no-evidence-timeline" style="color: var(--text-muted); text-align: center; padding: 2rem;">
-                    Nenhuma evidência clínica disponível.
-                </p>
-                {% endif %}
             </div>
         </div>
 
