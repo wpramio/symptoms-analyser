@@ -2,7 +2,7 @@
 pipeline/synthesis.py
 ---------------------
 STEP 6 of the symptoms-analyser pipeline:
-  - Generates a qualitative clinical synthesis (minuta de evolução clínica) of the therapy session
+  - Generates a qualitative clinical synthesis of the therapy session
     using a full-text LLM prompt.
   - Saves the generated synthesis to the 'session_syntheses' table in SQLite.
 """

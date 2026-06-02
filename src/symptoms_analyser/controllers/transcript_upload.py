@@ -104,7 +104,7 @@ def process_transcript_pipeline(
             db_conn=db_conn
         )
 
-        # STEP 6: Clinical Synthesis (Minuta de evolução clínica do grupo)
+        # STEP 6: Clinical Synthesis
         add_log("Iniciando síntese clínica qualitativa da sessão com IA (LLM)")
         generate_clinical_synthesis(
             transcript_id=transcript_id,
@@ -118,7 +118,7 @@ def process_transcript_pipeline(
         task["status"] = "error"
         task["error"] = str(e)
         add_log(f"Erro no pipeline: {str(e)}")
-        
+
         if db_conn and transcript_id:
             try:
                 import traceback

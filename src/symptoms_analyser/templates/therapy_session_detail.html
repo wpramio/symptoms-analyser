@@ -64,7 +64,7 @@
                     <line x1="16" y1="17" x2="8" y2="17"></line>
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
-                Minuta de evolução
+                Minuta da sessão
             </button>
             <button class="session-tab-btn" data-target="tab-dynamics">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -100,9 +100,9 @@
     <div class="session-tab-content">
         <!-- TAB PANEL 1: Clinical Synthesis -->
         <div class="session-tab-panel active" id="tab-synthesis">
-            <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
+            <!-- CARD 1.5: Minuta da sessão (IA) -->
             {% if evaluation and evaluation.synthesis %}
-            <div class="dashboard-card synthesis-card mb-4" id="synthesis-section">
+            <div class="dashboard-card synthesis-card" id="synthesis-section">
                 <div class="synthesis-card-header">
                     <div class="synthesis-title-container">
                         <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -114,7 +114,7 @@
                             <polyline points="10 9 9 9 8 9"></polyline>
                         </svg>
                         <div class="synthesis-title-text-group">
-                            <h3 class="synthesis-card-title">Minuta de evolução clínica (IA)</h3>
+                            <h3 class="synthesis-card-title">Minuta da sessão (IA)</h3>
                             <span class="info-tooltip-container" onclick="event.preventDefault();">
                                 <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
                                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -175,29 +175,14 @@
                                     </svg>
                                     <span class="info-tooltip-text">Mapeamento dinâmico das interações de apoio mútuo,
                                         validação e confrontação construtiva extraídas da transcrição pela IA para
-                                        avaliar a
-                                        união do grupo e prever evasões.</span>
+                                        avaliar a união do grupo e prever evasões.</span>
                                 </span>
                             </div>
                         </div>
                     </div>
 
                     <div class="social-cohesion-body">
-                        <!-- Top: Cohesion Score Banner (Full Width) -->
-                        <div class="cohesion-score-banner mb-4">
-                            <div class="cohesion-circular-score" id="cohesionScoreRing" data-score="0">
-                                <span class="score-number" id="cohesionScoreValue">-</span>
-                                <span class="score-label">Coesão</span>
-                            </div>
-                            <div class="cohesion-analysis-box">
-                                <h4 class="cohesion-sub-title">Análise de coesão</h4>
-                                <p class="cohesion-analysis-text" id="cohesionAnalysisText">Mapeando rede social do
-                                    grupo...
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="cohesion-split-grid">
+                        <div class="cohesion-split-grid mb-4">
                             <!-- Left Side: SVG Network Graph -->
                             <div class="cohesion-graph-container">
                                 <div class="graph-legend">
@@ -238,6 +223,20 @@
                                 <div class="interaction-scroll-list" id="interactionScrollList">
                                     <p class="text-muted text-medium">Nenhuma interação identificada nesta sessão.</p>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- bottom: Cohesion Score Banner (Full Width) -->
+                        <div class="cohesion-score-banner">
+                            <div class="cohesion-circular-score" id="cohesionScoreRing" data-score="0">
+                                <span class="score-number" id="cohesionScoreValue">-</span>
+                                <span class="score-label">Coesão</span>
+                            </div>
+                            <div class="cohesion-analysis-box">
+                                <h4 class="cohesion-sub-title">Análise de coesão</h4>
+                                <p class="cohesion-analysis-text" id="cohesionAnalysisText">Mapeando rede social do
+                                    grupo...
+                                </p>
                             </div>
                         </div>
                     </div>

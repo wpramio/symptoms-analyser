@@ -682,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // =========================================================================
-        // CLINICAL SYNTHESIS / MINUTA DE EVOLUÇÃO CLÍNICA HANDLERS
+        // CLINICAL SYNTHESIS HANDLERS
         // =========================================================================
         const btnCopySynthesis = document.getElementById('btn-copy-synthesis');
         const progressNoteTextarea = document.getElementById('group-progress-note-textarea');

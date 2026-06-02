@@ -4294,7 +4294,7 @@ select:focus {
 }
 
 /* ==========================================================================
-   Clinical Synthesis / Minuta de evolução clínica (Sentence case)
+   Clinical Synthesis
    ========================================================================== */
 
 .synthesis-card {
@@ -4303,7 +4303,6 @@ select:focus {
     border-radius: var(--radius, 12px);
     padding: 2rem;
     box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03));
-    margin-bottom: 2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
