@@ -262,4 +262,31 @@ document.addEventListener('DOMContentLoaded', () => {
             btnToggle.classList.toggle('btn-secondary', isShowingEmpty);
         });
     }
+
+    // =========================================================================
+    // 4. Main cohort detail tabs navigation switcher
+    // =========================================================================
+    const tabButtons = document.querySelectorAll('.session-tab-btn');
+    const tabPanels = document.querySelectorAll('.session-tab-panel');
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetId = btn.dataset.target;
+            if (!targetId) return;
+
+            // Deactivate all tab buttons and panels
+            tabButtons.forEach(b => b.classList.remove('active'));
+            tabPanels.forEach(p => p.classList.remove('active'));
+
+            // Activate selected tab button and panel
+            btn.classList.add('active');
+            const targetPanel = document.getElementById(targetId);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+
+            // Force a resize event to ensure Chart.js scales dynamically when its container becomes visible
+            window.dispatchEvent(new Event('resize'));
+        });
+    });
 });
