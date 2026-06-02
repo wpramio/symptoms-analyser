@@ -114,13 +114,20 @@ Transcrição da Sessão:
 
     # 4. Invoke LLM API
     client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
-    response_content, _ = call_model(client, system_prompt, user_text)
     
-    # 5. Parse and persist LLM qualitative synthesis results
-    try:
-        synthesis_data = json.loads(response_content)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse LLM response as JSON: {e}. Raw response: {response_content}")
+    max_json_retries = 3
+    synthesis_data = None
+    
+    for parse_attempt in range(1, max_json_retries + 1):
+        response_content, _ = call_model(client, system_prompt, user_text)
+        try:
+            synthesis_data = json.loads(response_content)
+            break
+        except json.JSONDecodeError as e:
+            if parse_attempt == max_json_retries:
+                raise ValueError(f"Failed to parse LLM response as JSON after {max_json_retries} attempts: {e}. Raw response: {response_content}")
+            print(f"\n  ⚠ Failed to parse LLM response as JSON (attempt {parse_attempt}/{max_json_retries}). Retrying...", flush=True)
+            time.sleep(2)
         
     group_note_draft = synthesis_data.get("group_clinical_progress_note_draft")
     

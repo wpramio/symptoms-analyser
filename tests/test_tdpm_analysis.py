@@ -308,3 +308,67 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     
     conn.close()
 
+
+@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
+    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
+    
+    # First call returns invalid JSON, second call returns valid JSON
+    mock_synthesis_json = {
+        "group_clinical_progress_note_draft": "Evolução do grupo com sucesso.",
+        "mutual_support_mapping": {"nodes": [], "edges": []},
+        "cohesion_metrics": {"score": 5, "analysis": "Coeso"}
+    }
+    mock_call_model.side_effect = [
+        ("{invalid_json", {"prompt_tokens": 100}),
+        (json.dumps(mock_synthesis_json), {"prompt_tokens": 100})
+    ]
+    
+    conn = sqlite3.connect(test_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        VALUES (20, 1, 'test_retry.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
+    """)
+    conn.commit()
+    
+    # Run the clinical synthesis pipeline - should succeed after retrying
+    generate_clinical_synthesis(transcript_id=20, db_conn=conn)
+    
+    # Should have called model twice
+    assert mock_call_model.call_count == 2
+    
+    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 20").fetchone()
+    assert row is not None
+    assert row["group_progress_note_draft"] == "Evolução do grupo com sucesso."
+    
+    conn.close()
+
+
+@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db_path):
+    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
+    
+    # All 3 calls return invalid JSON
+    mock_call_model.return_value = ("{invalid_json", {"prompt_tokens": 100})
+    
+    conn = sqlite3.connect(test_db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.row_factory = sqlite3.Row
+    
+    conn.execute("""
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        VALUES (30, 1, 'test_fail.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
+    """)
+    conn.commit()
+    
+    # Run the clinical synthesis pipeline - should fail after 3 attempts
+    with pytest.raises(ValueError, match="Failed to parse LLM response as JSON after 3 attempts"):
+        generate_clinical_synthesis(transcript_id=30, db_conn=conn)
+        
+    assert mock_call_model.call_count == 3
+    
+    conn.close()
+
