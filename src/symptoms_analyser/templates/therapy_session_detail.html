@@ -47,22 +47,67 @@
             </div>
         </div>
 
+        <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
+        {% if evaluation_id and evaluation and evaluation.synthesis %}
+        <div class="dashboard-card synthesis-card mb-4" id="synthesis-section">
+            <div class="synthesis-card-header">
+                <div class="synthesis-title-container">
+                    <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <div class="synthesis-title-text-group">
+                        <h3 class="synthesis-card-title">Minuta de evolução clínica (IA)</h3>
+                        <span class="info-tooltip-container" onclick="event.preventDefault();">
+                            <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            <span class="info-tooltip-text">Esta é uma sugestão automatizada baseada nas falas mais
+                                significativas, temas transversais e técnicas terapêuticas observadas na
+                                sessão.</span>
+                        </span>
+                    </div>
+                </div>
+                <button id="btn-copy-synthesis" class="btn btn-secondary btn-icon-flex-start" type="button">
+                    <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    <span id="btn-copy-text">Copiar</span>
+                </button>
+            </div>
+            <div class="synthesis-card-body">
+                <div class="synthesis-textarea-wrapper">
+                    <div id="group-progress-note-textarea" class="synthesis-text-container">{{
+                        evaluation.synthesis.group_clinical_progress_note_draft or '' }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
-            <!-- CARD 1.5: Minuta de evolução clínica (IA) -->
+            <!-- CARD 1.7: Rede de Apoio e Coesão do Grupo (IA) -->
             {% if evaluation_id and evaluation and evaluation.synthesis %}
-            <div class="dashboard-card synthesis-card" id="synthesis-section">
-                <div class="synthesis-card-header">
+            <div class="dashboard-card social-cohesion-card" id="social-cohesion-section">
+                <div class="social-cohesion-header">
                     <div class="synthesis-title-container">
                         <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                         </svg>
                         <div class="synthesis-title-text-group">
-                            <h3 class="synthesis-card-title">Minuta de evolução clínica (IA)</h3>
+                            <h3 class="synthesis-card-title">Rede de apoio e coesão interpessoal (IA)</h3>
                             <span class="info-tooltip-container" onclick="event.preventDefault();">
                                 <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
                                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -71,24 +116,69 @@
                                     <line x1="12" y1="16" x2="12" y2="12"></line>
                                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                                 </svg>
-                                <span class="info-tooltip-text">Esta é uma sugestão automatizada baseada nas falas mais
-                                    significativas, temas transversais e técnicas terapêuticas observadas na
-                                    sessão.</span>
+                                <span class="info-tooltip-text">Mapeamento dinâmico das interações de apoio mútuo,
+                                    validação e confrontação construtiva extraídas da transcrição pela IA para avaliar a
+                                    união do grupo e prever evasões.</span>
                             </span>
                         </div>
                     </div>
-                    <button id="btn-copy-synthesis" class="btn btn-secondary btn-icon-flex-start" type="button">
-                        <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        <span id="btn-copy-text">Copiar</span>
-                    </button>
                 </div>
-                <div class="synthesis-card-body">
-                    <div class="synthesis-textarea-wrapper">
-                        <div id="group-progress-note-textarea" class="synthesis-text-container">{{ evaluation.synthesis.group_clinical_progress_note_draft or '' }}</div>
+
+                <div class="social-cohesion-body">
+                    <!-- Top: Cohesion Score Banner (Full Width) -->
+                    <div class="cohesion-score-banner mb-4">
+                        <div class="cohesion-circular-score" id="cohesionScoreRing" data-score="0">
+                            <span class="score-number" id="cohesionScoreValue">-</span>
+                            <span class="score-label">Coesão</span>
+                        </div>
+                        <div class="cohesion-analysis-box">
+                            <h4 class="cohesion-sub-title">Análise de coesão</h4>
+                            <p class="cohesion-analysis-text" id="cohesionAnalysisText">Mapeando rede social do grupo...
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="cohesion-split-grid">
+                        <!-- Left Side: SVG Network Graph -->
+                        <div class="cohesion-graph-container">
+                            <div class="graph-legend">
+                                <span class="legend-item"><span class="legend-line line-apoio"></span> Apoio</span>
+                                <span class="legend-item"><span class="legend-line line-validacao"></span>
+                                    Validação</span>
+                                <span class="legend-item"><span class="legend-line line-confronto"></span>
+                                    Confronto</span>
+                            </div>
+                            <div class="svg-graph-wrapper">
+                                <svg id="socialNetworkGraph" viewBox="0 0 320 320" width="100%" height="100%">
+                                    <defs>
+                                        <marker id="arrow-apoio" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6"
+                                            markerHeight="6" orient="auto-start-reverse">
+                                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                                        </marker>
+                                        <marker id="arrow-validacao" viewBox="0 0 10 10" refX="22" refY="5"
+                                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6" />
+                                        </marker>
+                                        <marker id="arrow-confronto" viewBox="0 0 10 10" refX="22" refY="5"
+                                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                            <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                                        </marker>
+                                    </defs>
+                                    <g id="graphEdges"></g>
+                                    <g id="graphNodes"></g>
+                                </svg>
+                                <div id="graphTooltip" class="graph-tooltip" style="opacity: 0; pointer-events: none;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Interactions Scroll List -->
+                        <div class="interaction-list-box">
+                            <h4 class="cohesion-sub-title">Registro de interações sociais</h4>
+                            <div class="interaction-scroll-list" id="interactionScrollList">
+                                <p class="text-muted text-medium">Nenhuma interação identificada nesta sessão.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -482,7 +572,8 @@
     "evaluationId": {{ evaluation_id if evaluation_id else 'null' }},
     "evaluationPath": {{ ('/api/evaluations/' ~ evaluation_id) | tojson if evaluation_id else 'null' }},
     "transcriptStatus": {{ transcript.status | tojson if transcript else 'null' }},
-    "airtime": {{ airtime | tojson if airtime else 'null' }}
+    "airtime": {{ airtime | tojson if airtime else 'null' }},
+    "synthesis": {{ evaluation.synthesis | tojson if (evaluation and evaluation.synthesis) else 'null' }}
 }
 </script>
 <script src="/static/js/therapy_session_detail.js"></script>

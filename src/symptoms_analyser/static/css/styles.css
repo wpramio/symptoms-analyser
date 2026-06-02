@@ -2541,10 +2541,12 @@ select:focus {
 .info-tooltip-text {
     visibility: hidden;
     position: absolute;
-    bottom: 135%; /* Position above the trigger */
+    bottom: 135%;
+    /* Position above the trigger */
     left: 50%;
     transform: translateX(-50%);
-    background-color: #1e293b; /* Sleek dark slate background */
+    background-color: #1e293b;
+    /* Sleek dark slate background */
     color: #f8fafc;
     text-align: left;
     padding: 0.65rem 0.85rem;
@@ -2566,7 +2568,8 @@ select:focus {
 .info-tooltip-text::after {
     content: "";
     position: absolute;
-    top: 100%; /* At the bottom of the tooltip */
+    top: 100%;
+    /* At the bottom of the tooltip */
     left: 50%;
     margin-left: -5px;
     border-width: 5px;
@@ -2871,8 +2874,8 @@ select:focus {
     text-transform: uppercase;
 }
 
-.session-grid-header > div,
-.session-grid-row > div {
+.session-grid-header>div,
+.session-grid-row>div {
     flex-shrink: 0;
     padding-right: 0.5rem;
 }
@@ -2911,13 +2914,15 @@ select:focus {
     .session-grid-header {
         display: none;
     }
+
     .session-grid-row {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
         padding: 1.5rem;
     }
-    .session-grid-row > div {
+
+    .session-grid-row>div {
         width: 100% !important;
         padding-right: 0;
     }
@@ -3243,6 +3248,18 @@ select:focus {
 
 .mb-1 {
     margin-bottom: 0.25rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 0.75rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
 }
 
 /* ==========================================================================
@@ -3812,21 +3829,25 @@ select:focus {
     color: var(--text-muted);
     border-color: rgba(148, 163, 184, 0.2);
 }
+
 .score-select-compact[data-score="1"] {
     background-color: rgba(34, 197, 94, 0.1);
     color: #22c55e;
     border-color: rgba(34, 197, 94, 0.2);
 }
+
 .score-select-compact[data-score="2"] {
     background-color: rgba(234, 179, 8, 0.1);
     color: #eab308;
     border-color: rgba(234, 179, 8, 0.2);
 }
+
 .score-select-compact[data-score="3"] {
     background-color: rgba(249, 115, 22, 0.1);
     color: #f97316;
     border-color: rgba(249, 115, 22, 0.2);
 }
+
 .score-select-compact[data-score="4"] {
     background-color: rgba(239, 68, 68, 0.1);
     color: #ef4444;
@@ -3991,8 +4012,9 @@ select:focus {
     }
 }
 
-.session-detail-grid > .dashboard-card {
-    height: 100%;
+.session-detail-grid>.dashboard-card {
+    min-height: 100%;
+    height: auto;
     margin-bottom: 0;
     box-sizing: border-box;
 }
@@ -4311,7 +4333,8 @@ select:focus {
 .synthesis-title-text-group {
     display: flex;
     align-items: center;
-    gap: 0.35rem; /* Tight, visually cohesive spacing */
+    gap: 0.35rem;
+    /* Tight, visually cohesive spacing */
 }
 
 .synthesis-title-text-group .info-tooltip-container {
@@ -4455,9 +4478,17 @@ select:focus {
 
 /* Animations & Visual states for Copy and Save */
 @keyframes successPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .btn-success-animated {
@@ -4465,4 +4496,338 @@ select:focus {
     border-color: #10b981 !important;
     color: #ffffff !important;
     animation: successPulse 0.35s ease-in-out;
+}
+
+/* ==========================================================================
+   Social Cohesion & Mutual Support Network Styles
+   ========================================================================== */
+
+.social-cohesion-card {
+    background-color: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius, 12px);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.social-cohesion-header {
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.cohesion-split-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+@media (min-width: 992px) {
+    .cohesion-split-grid {
+        grid-template-columns: 1.15fr 0.85fr;
+    }
+}
+
+.cohesion-graph-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    position: relative;
+}
+
+.graph-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legend-line {
+    display: inline-block;
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+}
+
+.line-apoio {
+    background-color: #10b981;
+}
+
+.line-validacao {
+    background-color: #3b82f6;
+}
+
+.line-confronto {
+    background-color: #f59e0b;
+}
+
+.svg-graph-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 320px;
+    aspect-ratio: 1;
+}
+
+/* SVG Elements Styling */
+.node-circle {
+    stroke: var(--card-bg);
+    stroke-width: 2px;
+    cursor: pointer;
+    transition: stroke-width 0.2s, filter 0.2s;
+}
+
+.node-circle:hover {
+    stroke-width: 3px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+}
+
+.node-label {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    fill: var(--text-main);
+    text-anchor: middle;
+    pointer-events: none;
+    user-select: none;
+}
+
+.edge-path {
+    stroke-linecap: round;
+    cursor: pointer;
+    transition: stroke-width 0.2s, opacity 0.2s;
+}
+
+.edge-path:hover {
+    stroke-width: 4.5px !important;
+    opacity: 1 !important;
+}
+
+/* Tooltip overlay styling */
+.graph-tooltip {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: #f8fafc;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    max-width: 240px;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.tooltip-title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.tooltip-body {
+    font-style: italic;
+    color: #cbd5e1;
+}
+
+/* Right side details layout */
+.cohesion-details-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .cohesion-details-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.cohesion-score-banner {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.cohesion-circular-score {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--card-bg);
+    border: 3.5px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.cohesion-circular-score[data-score="0"] {
+    border-color: var(--border);
+}
+
+.cohesion-circular-score[data-score="1"],
+.cohesion-circular-score[data-score="2"],
+.cohesion-circular-score[data-score="3"],
+.cohesion-circular-score[data-score="4"] {
+    border-color: #ef4444;
+    /* Low Cohesion */
+}
+
+.cohesion-circular-score[data-score="5"],
+.cohesion-circular-score[data-score="6"],
+.cohesion-circular-score[data-score="7"] {
+    border-color: #f59e0b;
+    /* Moderate Cohesion */
+}
+
+.cohesion-circular-score[data-score="8"],
+.cohesion-circular-score[data-score="9"],
+.cohesion-circular-score[data-score="10"] {
+    border-color: #10b981;
+    /* High Cohesion */
+}
+
+.cohesion-circular-score .score-number {
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-main);
+}
+
+.cohesion-circular-score .score-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+.cohesion-analysis-box {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.cohesion-sub-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.cohesion-analysis-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.interaction-list-box {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.interaction-scroll-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-right: 0.25rem;
+}
+
+.interaction-item-card {
+    border-left: 3.5px solid var(--border);
+    background: #f8fafc;
+    padding: 0.6rem 0.8rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    transition: transform 0.15s ease, background-color 0.15s;
+}
+
+.interaction-item-card:hover {
+    transform: translateX(2px);
+    background-color: #f1f5f9;
+}
+
+.interaction-item-card.apoio {
+    border-left-color: #10b981;
+}
+
+.interaction-item-card.validacao {
+    border-left-color: #3b82f6;
+}
+
+.interaction-item-card.confronto {
+    border-left-color: #f59e0b;
+}
+
+.interaction-meta-line {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.interaction-type-badge {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+}
+
+.interaction-type-badge.apoio {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.interaction-type-badge.validacao {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.interaction-type-badge.confronto {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.interaction-evidence-text {
+    font-style: italic;
+    color: var(--text-muted);
 }

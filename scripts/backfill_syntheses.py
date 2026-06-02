@@ -57,10 +57,16 @@ def backfill():
         cursor.execute("SELECT 1 FROM session_syntheses WHERE transcript_id = ?", (t_id,))
         exists = cursor.fetchone()
         
-        if exists:
+        force_regen = "--force" in sys.argv or "-f" in sys.argv
+        if exists and not force_regen:
             skipped_count += 1
-            print(f"[~] Ignorando Transcrição #{t_id} ({filename}) - Síntese já existe.")
+            print(f"[~] Ignorando Transcrição #{t_id} ({filename}) - Síntese já existe. Use '--force' para regerar.")
             continue
+            
+        if exists and force_regen:
+            print(f"[~] Forçando regeneração da Transcrição #{t_id} ({filename}). Deletando antiga...")
+            cursor.execute("DELETE FROM session_syntheses WHERE transcript_id = ?", (t_id,))
+            conn.commit()
             
         print(f"[*] Processando Transcrição #{t_id} ({filename}) para a Sessão #{session_id}...")
         try:
