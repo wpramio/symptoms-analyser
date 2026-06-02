@@ -26,7 +26,8 @@
                     <div class="compact-header-meta">
                         <span class="meta-item">Clínico: <strong>{{ session.clinician_name }}</strong></span>
                         <span class="meta-dot"></span>
-                        <span class="meta-item">Data: <strong>{{ session.start_at | format_datetime_dmyy }}</strong></span>
+                        <span class="meta-item">Data: <strong>{{ session.start_at |
+                                format_datetime_dmyy }}</strong></span>
                         <span class="meta-dot"></span>
                         <span class="meta-item">Duração: <strong>{{ session.duration }} minutos</strong></span>
                     </div>
@@ -248,10 +249,9 @@
                 {% if airtime %}
                 <div class="dashboard-card airtime-card">
                     <div class="airtime-card-header">
-                        <h3 class="airtime-title">Divisão do Tempo de Fala</h3>
+                        <h3 class="airtime-title">Divisão do tempo de fala</h3>
                         <p class="airtime-subtitle">Participação verbal relativa calculada a partir do número de
-                            palavras
-                            faladas.</p>
+                            palavras faladas.</p>
                     </div>
                     <div class="airtime-body">
                         <div class="airtime-chart-wrapper">

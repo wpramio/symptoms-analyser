@@ -3222,7 +3222,7 @@ select:focus {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
-    max-height: 550px;
+    max-height: 50vh;
     overflow-y: auto;
 }
 
@@ -3309,14 +3309,12 @@ select:focus {
     margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
     color: var(--text-muted);
 }
 
 /* Card 3: full transcript */
 .transcript-card {
     padding: 2rem;
-    margin-bottom: 1.5rem;
     overflow: hidden;
 }
 
@@ -4042,8 +4040,6 @@ select:focus {
 .airtime-title {
     font-size: 1rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--text-muted);
     margin: 0;
 }
@@ -4768,6 +4764,7 @@ select:focus {
 
 .interaction-scroll-list {
     overflow-y: auto;
+    max-height: 350px;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -5028,6 +5025,7 @@ select:focus {
 .meta-item {
     display: inline-flex;
     align-items: center;
+    gap: 4px;
 }
 
 .meta-dot {
