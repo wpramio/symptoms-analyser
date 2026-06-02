@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let selectedFile = null;
     let taskId = null;
+    let createdSessionId = null;
 
     // 1. Initialize default date to local timezone
     const now = new Date();
@@ -177,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 if (data.task_id) {
                     taskId = data.task_id;
+                    createdSessionId = data.session_id;
                     pollStatus();
                 } else {
                     // Successful manual creation without file
@@ -240,6 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusTitle.style.color = '#10b981';
                 statusDesc.textContent = 'A transcrição foi processada, os dados relacionais salvos e o laudo de sintomas está disponível.';
                 addLog('Sessão registrada e pontuação clínica TDPM-20 finalizada com sucesso.', 'success');
+                if (createdSessionId) {
+                    viewResultsBtn.href = `/therapy_sessions/${createdSessionId}`;
+                    viewResultsBtn.textContent = 'Visualizar detalhes da sessão';
+                }
                 viewResultsBtn.style.display = 'inline-flex';
             } else if (data.status === 'error') {
                 handleError(data.error || 'Falha durante o processamento.');
