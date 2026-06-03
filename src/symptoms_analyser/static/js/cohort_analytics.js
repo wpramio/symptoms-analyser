@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
         
         // Dynamic colors depending on Mean vs Median
-        const primaryColor = currentMethod === 'mean' ? 'var(--primary)' : 'hsl(280, 87%, 60%)';
+        const primaryColor = currentMethod === 'mean' ? '#3b82f6' : 'hsl(280, 87%, 60%)';
         const fillStart = currentMethod === 'mean' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(168, 85, 247, 0.25)';
         
         gradient.addColorStop(0, fillStart);
