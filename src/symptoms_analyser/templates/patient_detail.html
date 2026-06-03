@@ -18,7 +18,6 @@
             <div class="compact-header-title-container">
                 <div class="patient-title-group" style="margin-bottom: 0;">
                     <h2 class="compact-header-title">{{ patient.pseudonym }}</h2>
-                    <span class="hipaa-pill">🔒 HIPAA</span>
                 </div>
                 <div class="compact-header-meta">
                     <span class="meta-item">Nome real: <strong>{{ patient.real_name }}</strong></span>
@@ -34,7 +33,8 @@
                 <div class="flex-wrap-gap-xs" style="margin-top: 0.25rem;">
                     {% if sessions %}
                     {% for sess in sessions %}
-                    <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link" title="Data: {{ sess.start_at }}">
+                    <a href="/therapy_sessions/{{ sess.id }}" class="session-pill-link"
+                        title="Data: {{ sess.start_at }}">
                         {{ sess.name }}
                     </a>
                     {% endfor %}
@@ -282,7 +282,8 @@
                     <div class="metric-card">
                         <span class="metric-label">Dimensão mais ativa</span>
                         <span class="metric-value text-primary metric-value-dimension">
-                            {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{% endif %}
+                            {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{%
+                            endif %}
                         </span>
                         <span class="metric-desc">Média: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
                     </div>
