@@ -175,3 +175,22 @@ def test_admin_calculator_page_dom(client):
     
     # Asserts that form input elements are loaded
     assert len(inputs) > 0
+
+def test_tdpm_table_page_dom(client):
+    resp = client.get("/tdpm_table")
+    assert resp.status_code == 200
+    
+    soup = BeautifulSoup(resp.data, "html.parser")
+    
+    # Check header exists
+    header = soup.find("h2")
+    assert header is not None
+    assert "ontologia" in header.text.lower() or "tdpm-20" in header.text.lower()
+    
+    # Check for search input
+    search_input = soup.find("input", {"id": "tdpmSearchInput"})
+    assert search_input is not None
+    
+    # Check dimensions are loaded
+    cards = soup.find_all(class_="tdpm-card")
+    assert len(cards) == 20

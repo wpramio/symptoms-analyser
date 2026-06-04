@@ -14,6 +14,7 @@ from symptoms_analyser.controllers.admin import (
     get_patient_evolution_data,
     get_cohort_evolution_data,
     update_patient,
+    get_tdpm_table_data,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.revisions import save_revision_logic
@@ -258,6 +259,19 @@ def cohort_analytics():
         )
     except Exception as e:
         print(f"Error serving cohort analytics: {e}")
+        return str(e), 500
+
+
+@app.route("/tdpm_table")
+def tdpm_table():
+    try:
+        grouped_dimensions = get_tdpm_table_data()
+        return render_template(
+            "tdpm_table.html",
+            grouped_dimensions=grouped_dimensions
+        )
+    except Exception as e:
+        print(f"Error serving tdpm_table: {e}")
         return str(e), 500
 
 

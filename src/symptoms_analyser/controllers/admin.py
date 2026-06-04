@@ -769,3 +769,58 @@ def get_cohort_evolution_data() -> dict:
         "chart_dimensions": chart_dimensions
     }
 
+
+def get_tdpm_table_data() -> list[dict]:
+    """
+    Load the TDPM ontology, group items by their dimension key,
+    classify them into clinical categories, and return the sorted list.
+    """
+    from pathlib import Path
+    project_root = Path(__file__).resolve().parents[3]
+    ontology_path = project_root / "data" / "tdpm_ontology.json"
+    with open(ontology_path, "r", encoding="utf-8") as f:
+        ontology = json.load(f)
+
+    dimensions = ontology.get("TDPM_DIMENSIONS", {})
+    items = ontology.get("TDPM_ITEMS", {})
+    items_detailed = ontology.get("TDPM_ITEMS_DETAILED", {})
+
+    # Group items by their dimension key
+    grouped_dimensions = []
+    for dim_key, dim_name in dimensions.items():
+        dim_items = []
+        for item_key, item_name in items.items():
+            if item_key.split(".")[0] == dim_key:
+                dim_items.append({
+                    "key": item_key,
+                    "name": item_name,
+                    "detailed": items_detailed.get(item_key, item_name)
+                })
+
+        # Determine grouping category based on dimension number
+        dim_num = int(dim_key)
+        if 1 <= dim_num <= 5:
+            category_name = "Desregulações Neurofisiológicas"
+            category_class = "physio"
+        elif 6 <= dim_num <= 10:
+            category_name = "Desregulações Neuropsicológicas"
+            category_class = "cognitive"
+        elif 11 <= dim_num <= 15:
+            category_name = "Desregulação da Busca"
+            category_class = "behavioral"
+        else:
+            category_name = "Desregulação do Alarme"
+            category_class = "affective"
+
+        grouped_dimensions.append({
+            "key": dim_key,
+            "name": dim_name,
+            "dim_items": dim_items,
+            "category_name": category_name,
+            "category_class": category_class
+        })
+
+    # Sort grouped_dimensions by key numerically
+    grouped_dimensions.sort(key=lambda x: int(x["key"]))
+    return grouped_dimensions
+

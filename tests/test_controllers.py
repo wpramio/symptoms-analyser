@@ -18,3 +18,21 @@ def test_allowed_file_invalid_extensions():
 def test_allowed_file_empty_filename():
     assert allowed_file("") is False
     assert allowed_file(".") is False
+
+def test_get_tdpm_table_data():
+    from symptoms_analyser.controllers.admin import get_tdpm_table_data
+    data = get_tdpm_table_data()
+    assert len(data) == 20
+    
+    # Check the structure of the first dimension
+    first_dim = data[0]
+    assert first_dim["key"] == "1"
+    assert first_dim["name"] == "Desregulação do Apetite"
+    assert first_dim["category_class"] == "physio"
+    assert len(first_dim["dim_items"]) > 0
+    
+    # Check the structure of an item
+    first_item = first_dim["dim_items"][0]
+    assert first_item["key"].startswith("1.")
+    assert "name" in first_item
+    assert "detailed" in first_item

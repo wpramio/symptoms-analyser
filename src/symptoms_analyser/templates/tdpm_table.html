@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% set active_page = 'tdpm_table' %}
+
+{% block title %}Tabela de Referência TDPM-20 - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="tdpm-table-view">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h2>Tabela de Referência TDPM-20</h2>
+        <p>Consulte e explore a taxonomia transdiagnóstica de desregulação (TDPM-20) com suas 20 dimensões de sintomas e
+            itens diagnósticos detalhados.</p>
+    </div>
+
+    <!-- Toolbar controls: Search & Category Filter -->
+    <div class="tdpm-toolbar">
+        <div class="search-box-wrapper">
+            <input type="text" id="tdpmSearchInput" placeholder="Pesquisar por dimensão, código ou sintoma..."
+                autocomplete="off">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Category Filter Tabs -->
+    <div class="category-filters-container">
+        <button class="filter-pill active" data-category="all">
+            <span class="pill-dot" style="background-color: var(--primary);"></span>
+            Todos (20)
+        </button>
+        <button class="filter-pill" data-category="physio">
+            <span class="pill-dot" style="background-color: #0284c7;"></span>
+            Desreg. Neurofisiológicas (5)
+        </button>
+        <button class="filter-pill" data-category="cognitive">
+            <span class="pill-dot" style="background-color: #4f46e5;"></span>
+            Desreg. Neuropsicológicas (5)
+        </button>
+        <button class="filter-pill" data-category="behavioral">
+            <span class="pill-dot" style="background-color: #d97706;"></span>
+            Desreg. da Busca (5)
+        </button>
+        <button class="filter-pill" data-category="affective">
+            <span class="pill-dot" style="background-color: #db2777;"></span>
+            Desreg. do Alarme (5)
+        </button>
+    </div>
+
+    <!-- Empty State for Search -->
+    <div id="tdpmEmptyState" class="tdpm-empty-state hidden">
+        <div class="empty-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M16 16l6 6"></path>
+                <path d="M8 11h6"></path>
+            </svg>
+        </div>
+        <h3>Nenhum resultado encontrado</h3>
+        <p>Tente ajustar os termos de pesquisa ou remover os filtros de categoria.</p>
+    </div>
+
+    <!-- Dimensions Grid -->
+    <div class="dimensions-grid" id="dimensionsGrid">
+        {% for dim in grouped_dimensions %}
+        <div class="tdpm-card category-{{ dim.category_class }}" data-dim-key="{{ dim.key }}"
+            data-category="{{ dim.category_class }}">
+            <div class="tdpm-card-header">
+                <div class="dim-badge-circle">{{ dim.key }}</div>
+                <div class="dim-header-titles">
+                    <span class="dim-category-label">{{ dim.category_name }}</span>
+                    <h3 class="dim-title-name">{{ dim.name }}</h3>
+                </div>
+            </div>
+            <div class="tdpm-card-body">
+                <div class="tdpm-items-list">
+                    {% for item in dim.dim_items %}
+                    <div class="tdpm-item-row" data-item-key="{{ item.key }}">
+                        <div class="tdpm-item-header">
+                            <span class="tdpm-item-code-badge">{{ item.key }}</span>
+                            <span class="tdpm-item-title-text">{{ item.name }}</span>
+                        </div>
+                        <div class="tdpm-item-details">
+                            <div class="tdpm-item-details-inner">
+                                <span class="clinical-desc-label">Descrição clínica detalhada:</span>
+                                <p class="clinical-desc-content">{{ item.detailed }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("tdpmSearchInput");
+        const cards = document.querySelectorAll(".tdpm-card");
+        const filterPills = document.querySelectorAll(".filter-pill");
+        const emptyState = document.getElementById("tdpmEmptyState");
+
+        let activeCategory = "all";
+        let searchQuery = "";
+
+        // Filter Function
+        function applyFilters() {
+            let visibleCardsCount = 0;
+            const query = searchQuery.trim().toLowerCase();
+
+            cards.forEach(card => {
+                const cardCategory = card.getAttribute("data-category");
+                const dimKey = card.getAttribute("data-dim-key");
+                const dimName = card.querySelector(".dim-title-name").textContent.toLowerCase();
+
+                // Matches dimension meta
+                const matchesCategory = (activeCategory === "all" || cardCategory === activeCategory);
+
+                let matchesSearch = false;
+                if (!query) {
+                    matchesSearch = true;
+                } else {
+                    // Check dimension key or name
+                    if (dimKey.includes(query) || dimName.includes(query)) {
+                        matchesSearch = true;
+                    }
+
+                    // Check items inside this card
+                    const items = card.querySelectorAll(".tdpm-item-row");
+                    items.forEach(item => {
+                        const itemKey = item.getAttribute("data-item-key");
+                        const itemTitle = item.querySelector(".tdpm-item-title-text").textContent.toLowerCase();
+                        const itemDetail = item.querySelector(".clinical-desc-content").textContent.toLowerCase();
+
+                        if (itemKey.includes(query) || itemTitle.includes(query) || itemDetail.includes(query)) {
+                            matchesSearch = true;
+                        }
+                    });
+                }
+
+                if (matchesCategory && matchesSearch) {
+                    card.classList.remove("hidden-by-filter");
+                    visibleCardsCount++;
+                } else {
+                    card.classList.add("hidden-by-filter");
+                }
+            });
+
+            // Handle empty state visibility
+            if (visibleCardsCount === 0) {
+                emptyState.classList.remove("hidden");
+            } else {
+                emptyState.classList.add("hidden");
+            }
+        }
+
+        // Search Input handler
+        searchInput.addEventListener("input", function (e) {
+            searchQuery = e.target.value;
+            applyFilters();
+        });
+
+        // Category Filter Pill handler
+        filterPills.forEach(pill => {
+            pill.addEventListener("click", function () {
+                filterPills.forEach(p => p.classList.remove("active"));
+                this.classList.add("active");
+                activeCategory = this.getAttribute("data-category");
+                applyFilters();
+            });
+        });
+    });
+</script>
+{% endblock %}
