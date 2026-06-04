@@ -129,7 +129,7 @@ Transcrição da Sessão:
             print(f"\n  ⚠ Failed to parse LLM response as JSON (attempt {parse_attempt}/{max_json_retries}). Retrying...", flush=True)
             time.sleep(2)
         
-    group_note_draft = synthesis_data.get("group_clinical_progress_note_draft")
+    group_note = synthesis_data.get("group_clinical_progress_note")
     
     # Safely serialize mutual support network and cohesion metrics placeholders
     mutual_support = synthesis_data.get("mutual_support_mapping")
@@ -142,7 +142,7 @@ Transcrição da Sessão:
     orm.create_session_synthesis(
         transcript_id=transcript_id,
         therapy_session_id=therapy_session_id,
-        group_progress_note_draft=group_note_draft,
+        group_progress_note=group_note,
         mutual_support_mapping=mutual_support_str,
         cohesion_metrics=cohesion_str,
         db_conn=db_conn

@@ -155,7 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization
 CREATE TABLE IF NOT EXISTS session_syntheses (
     transcript_id INTEGER PRIMARY KEY,
     therapy_session_id INTEGER NOT NULL,
-    group_progress_note_draft TEXT,
+    group_progress_note TEXT,
     mutual_support_mapping TEXT,       -- JSON text representing mutual support network (future-proofing)
     cohesion_metrics TEXT,             -- JSON text representing cohesion metrics (future-proofing)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

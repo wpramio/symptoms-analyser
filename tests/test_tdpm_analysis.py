@@ -245,7 +245,7 @@ def test_session_synthesis_orm(test_db_path):
     orm.create_session_synthesis(
         transcript_id=42,
         therapy_session_id=1,
-        group_progress_note_draft="Minuta inicial sugerida pela IA.",
+        group_progress_note="Minuta inicial sugerida pela IA.",
         mutual_support_mapping='{"cohesion": 0.9}',
         cohesion_metrics='{"level": "high"}',
         db_conn=conn
@@ -253,20 +253,20 @@ def test_session_synthesis_orm(test_db_path):
     
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
     assert row is not None
-    assert row["group_progress_note_draft"] == "Minuta inicial sugerida pela IA."
+    assert row["group_progress_note"] == "Minuta inicial sugerida pela IA."
     assert row["mutual_support_mapping"] == '{"cohesion": 0.9}'
     assert row["cohesion_metrics"] == '{"level": "high"}'
 
     # 3. Test update_session_synthesis (simulating clinician edit)
     orm.update_session_synthesis(
         transcript_id=42,
-        group_progress_note_draft="Minuta editada pelo clínico.",
+        group_progress_note="Minuta editada pelo clínico.",
         db_conn=conn
     )
     
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
     assert row is not None
-    assert row["group_progress_note_draft"] == "Minuta editada pelo clínico."
+    assert row["group_progress_note"] == "Minuta editada pelo clínico."
     assert row["mutual_support_mapping"] == '{"cohesion": 0.9}'  # Kept intact!
     
     conn.close()
@@ -278,7 +278,7 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     
     # Mock LLM return value
     mock_synthesis_json = {
-        "group_clinical_progress_note_draft": "Esta é a evolução do grupo da sessão 1.",
+        "group_clinical_progress_note": "Esta é a evolução do grupo da sessão 1.",
         "mutual_support_mapping": {"nodes": [], "edges": []},
         "cohesion_metrics": {"score": 5, "analysis": "Grupo coeso"}
     }
@@ -302,7 +302,7 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 10").fetchone()
     assert row is not None
     assert row["therapy_session_id"] == 1
-    assert row["group_progress_note_draft"] == "Esta é a evolução do grupo da sessão 1."
+    assert row["group_progress_note"] == "Esta é a evolução do grupo da sessão 1."
     assert json.loads(row["mutual_support_mapping"]) == {"nodes": [], "edges": []}
     assert json.loads(row["cohesion_metrics"]) == {"score": 5, "analysis": "Grupo coeso"}
     
@@ -315,7 +315,7 @@ def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
     
     # First call returns invalid JSON, second call returns valid JSON
     mock_synthesis_json = {
-        "group_clinical_progress_note_draft": "Evolução do grupo com sucesso.",
+        "group_clinical_progress_note": "Evolução do grupo com sucesso.",
         "mutual_support_mapping": {"nodes": [], "edges": []},
         "cohesion_metrics": {"score": 5, "analysis": "Coeso"}
     }
@@ -342,7 +342,7 @@ def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
     
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 20").fetchone()
     assert row is not None
-    assert row["group_progress_note_draft"] == "Evolução do grupo com sucesso."
+    assert row["group_progress_note"] == "Evolução do grupo com sucesso."
     
     conn.close()
 

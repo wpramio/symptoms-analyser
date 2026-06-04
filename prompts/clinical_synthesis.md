@@ -7,8 +7,8 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
 
 ## Diretrizes de Síntese
 
-1. **Minuta de evolução clínica do grupo (`group_clinical_progress_note_draft`):**
-   Escreva uma proposta formal, objetiva e profissional de evolução clínica do grupo sob a chave `group_clinical_progress_note_draft`.
+1. **Minuta de evolução clínica do grupo (`group_clinical_progress_note`):**
+   Escreva uma proposta formal, objetiva e profissional de evolução clínica do grupo sob a chave `group_clinical_progress_note`.
    - **Foco Central:** Sintetize o tema ou objetivo central trabalhado na sessão (ex: manejo de fissura, prevenção de recaída, gatilhos de fim de semana, conflitos de relacionamento).
    - **Temas Transversais:** Destaque os temas mais abordados e discutidos pelo grupo durante o encontro (ex: "conflitos familiares", "ansiedade social", "fissura").
    - **Dinâmica do Grupo:** Relate de forma sucinta as interações marcantes, suporte mútuo e comportamentos dos pacientes. Exemplo: "Paciente1 demonstrou alta volição e engajamento, recebendo validação e suporte ativo do grupo (Paciente3 e Paciente4) ao relatar estratégias de enfrentamento bem-sucedidas."
@@ -39,7 +39,7 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
 
 ## Output Schema (Example)
 {
-  "group_clinical_progress_note_draft": "Sessão focada em manejo de fissura frente a gatilhos familiares e estresse interpessoal. Paciente1 relatou desejo de uso após desentendimento familiar, demonstrando alta volição e capacidade de enfrentamento ao aplicar as estratégias do grupo. Recebeu suporte ativo e validação de Paciente2, que compartilhou técnicas de distanciamento estratégico e respiração. Terapeuta reforçou as condutas cognitivo-comportamentais de manejo de fissura.",
+  "group_clinical_progress_note": "Sessão focada em manejo de fissura frente a gatilhos familiares e estresse interpessoal. Paciente1 relatou desejo de uso após desentendimento familiar, demonstrando alta volição e capacidade de enfrentamento ao aplicar as estratégias do grupo. Recebeu suporte ativo e validação de Paciente2, que compartilhou técnicas de distanciamento estratégico e respiração. Terapeuta reforçou as condutas cognitivo-comportamentais de manejo de fissura.",
   "mutual_support_mapping": {
     "nodes": [
       {"id": "Paciente1", "label": "Paciente1"},
