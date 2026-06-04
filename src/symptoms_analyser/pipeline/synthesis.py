@@ -131,19 +131,15 @@ Transcrição da Sessão:
         
     group_note = synthesis_data.get("group_clinical_progress_note")
     
-    # Safely serialize mutual support network and cohesion metrics placeholders
-    mutual_support = synthesis_data.get("mutual_support_mapping")
-    mutual_support_str = json.dumps(mutual_support, ensure_ascii=False) if mutual_support else None
-    
-    cohesion = synthesis_data.get("cohesion_metrics")
-    cohesion_str = json.dumps(cohesion, ensure_ascii=False) if cohesion else None
+    # Safely serialize interactions network mapping placeholder
+    interactions = synthesis_data.get("interactions_mapping")
+    interactions_str = json.dumps(interactions, ensure_ascii=False) if interactions else None
     
     # Persist in DB using ORM
     orm.create_session_synthesis(
         transcript_id=transcript_id,
         therapy_session_id=therapy_session_id,
         group_progress_note=group_note,
-        mutual_support_mapping=mutual_support_str,
-        cohesion_metrics=cohesion_str,
+        interactions_mapping=interactions_str,
         db_conn=db_conn
     )

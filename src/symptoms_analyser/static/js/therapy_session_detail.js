@@ -108,8 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Social Cohesion & Mutual Support Network Visualization
     // =========================================================================
     const synthesisData = _page.synthesis;
-    if (synthesisData && (synthesisData.mutual_support_mapping || synthesisData.cohesion_metrics)) {
-        const supportMapping = synthesisData.mutual_support_mapping || { nodes: [], edges: [] };
+    if (synthesisData && synthesisData.interactions_mapping) {
+        const supportMapping = synthesisData.interactions_mapping || { nodes: [], edges: [] };
         if (supportMapping.edges) {
             supportMapping.edges.forEach(edge => {
                 if (edge.type) {
@@ -123,21 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
-        }
-        const cohesionMetrics = synthesisData.cohesion_metrics || { score: 0, analysis: "Nenhum dado de coesão disponível para esta sessão." };
-
-        // 1. Populate Cohesion Score Ring & Analysis Text
-        const scoreRing = document.getElementById('cohesionScoreRing');
-        const scoreValue = document.getElementById('cohesionScoreValue');
-        const analysisText = document.getElementById('cohesionAnalysisText');
-
-        if (scoreRing && scoreValue) {
-            const scoreVal = cohesionMetrics.score || 0;
-            scoreRing.dataset.score = scoreVal.toString();
-            scoreValue.textContent = scoreVal > 0 ? `${scoreVal}/10` : '-';
-        }
-        if (analysisText) {
-            analysisText.textContent = cohesionMetrics.analysis || "Nenhuma análise qualitativa de coesão disponível.";
         }
 
         // 2. Populate Interactions Scroll List

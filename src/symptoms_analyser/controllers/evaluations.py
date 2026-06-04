@@ -66,7 +66,7 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
         if row:
             cursor.execute(
                 """
-                SELECT group_progress_note, mutual_support_mapping, cohesion_metrics
+                SELECT group_progress_note, interactions_mapping
                 FROM session_syntheses
                 WHERE transcript_id = (SELECT transcript_id FROM tdpm_evaluations WHERE id = ?)
                 """,
@@ -82,8 +82,7 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
         if synthesis_row:
             payload["synthesis"] = {
                 "group_clinical_progress_note": synthesis_row["group_progress_note"],
-                "mutual_support_mapping": json.loads(synthesis_row["mutual_support_mapping"]) if synthesis_row["mutual_support_mapping"] else None,
-                "cohesion_metrics": json.loads(synthesis_row["cohesion_metrics"]) if synthesis_row["cohesion_metrics"] else None
+                "interactions_mapping": json.loads(synthesis_row["interactions_mapping"]) if synthesis_row["interactions_mapping"] else None
             }
         else:
             payload["synthesis"] = None

@@ -15,8 +15,8 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
    - **Intervenção Terapêutica:** Descreva brevemente as técnicas clínicas, psicoeducação ou conduções realizadas pelo terapeuta/clinico durante o encontro (ex: condução de técnica de reestruturação de pensamentos automáticos, psicoeducação sobre fissura).
    - **Tom Clínico:** Utilize estilo técnico, formal, impessoal e direto, perfeitamente adequado para inclusão em prontuários médicos/psicológicos oficiais.
 
-2. **Mapeamento de Suporte Mútuo e Métricas de Coesão (`mutual_support_mapping` e `cohesion_metrics`):**
-   - **`mutual_support_mapping`**: Identifique interações sociais explícitas em que um paciente apoia, valida ou confronta construtivamente a fala de outro.
+2. **Mapeamento de Interações Sociais (`interactions_mapping`):**
+   - **`interactions_mapping`**: Identifique interações sociais explícitas em que um paciente apoia, valida ou confronta construtivamente a fala de outro.
      Estruture este campo como um objeto JSON contendo:
      - `nodes`: Uma lista contendo um objeto para cada paciente participante na sessão no formato `{"id": "Pseudonimo", "label": "Pseudonimo"}`.
      - `edges`: Uma lista de interações direcionadas entre pacientes. Cada objeto na lista deve seguir o formato:
@@ -24,10 +24,6 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
        * *Apoio*: Quando um paciente oferece consolo, encorajamento, ou compartilha uma experiência similar para ajudar.
        * *Validação*: Quando um paciente valida o sentimento, esforço, progresso ou ponto de vista de outro (ex: "eu te entendo", "você fez muito bem").
        * *Confronto*: Quando um paciente confronta construtivamente ou questiona produtivamente o ponto de vista de outro para gerar reflexão (ex: questionar desculpas para recaída).
-   - **`cohesion_metrics`**: Avalie a coesão social do grupo na sessão.
-     Estruture este campo como um objeto JSON contendo:
-     - `score`: Um número inteiro de 1 a 10 representando o nível de coesão do grupo (onde 1 é extremamente fragmentado/isolado e 10 é excelente engajamento, apoio mútuo e unidade).
-     - `analysis`: Uma justificativa clínica sucinta explicando a pontuação atribuída, destacando se há subgrupos (cliques), cooperação generalizada ou pacientes isolados que correm risco de evasão (dropout).
 
 ## Exemplo de Transcrição de Entrada
 """
@@ -40,7 +36,7 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
 ## Output Schema (Example)
 {
   "group_clinical_progress_note": "Sessão focada em manejo de fissura frente a gatilhos familiares e estresse interpessoal. Paciente1 relatou desejo de uso após desentendimento familiar, demonstrando alta volição e capacidade de enfrentamento ao aplicar as estratégias do grupo. Recebeu suporte ativo e validação de Paciente2, que compartilhou técnicas de distanciamento estratégico e respiração. Terapeuta reforçou as condutas cognitivo-comportamentais de manejo de fissura.",
-  "mutual_support_mapping": {
+  "interactions_mapping": {
     "nodes": [
       {"id": "Paciente1", "label": "Paciente1"},
       {"id": "Paciente2", "label": "Paciente2"}
@@ -53,9 +49,5 @@ Sua resposta deve ser estruturada em JSON estrito contendo os campos listados no
         "evidence": "Cara, eu te entendo. Mas tu conseguiu segurar a onda? Eu passei por isso e fiz aquilo..."
       }
     ]
-  },
-  "cohesion_metrics": {
-    "score": 8,
-    "analysis": "O grupo demonstrou alto nível de coesão e suporte mútuo, com Paciente2 validando ativamente a vivência de Paciente1. Não foram observados subgrupos ou pacientes isolados nesta sessão."
   }
 }
