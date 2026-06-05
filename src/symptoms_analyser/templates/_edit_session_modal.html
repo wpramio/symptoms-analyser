@@ -1,0 +1,69 @@
+{% from 'macros.html' import modal %}
+
+{% call modal(id='editSessionModal', title='Editar sessão de terapia', form_id='editSessionForm',
+action='/admin/sessions', size='medium') %}
+<input type="hidden" id="editSessionId" name="session_id">
+
+<div class="input-group">
+    <label for="editSessionName">Nome da sessão:</label>
+    <input type="text" id="editSessionName" name="name" placeholder="Ex: Sessão 28/05/2026" required>
+</div>
+
+<div class="input-group">
+    <label for="editSessionStartAt">Data e hora de início:</label>
+    <input type="datetime-local" id="editSessionStartAt" name="start_at" required>
+</div>
+
+<div class="input-group">
+    <label for="editSessionDuration">Duração (minutos):</label>
+    <input type="number" id="editSessionDuration" name="duration" min="1" max="480" placeholder="60">
+</div>
+
+<div class="input-group">
+    <label for="editSessionGroup">Grupo de terapia:</label>
+    <select id="editSessionGroup" name="therapy_group_id">
+        <option value="">Sem grupo</option>
+        {% for group in therapy_groups %}
+        <option value="{{ group.id }}">{{ group.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="modal-actions">
+    <button type="button" class="btn btn-secondary" data-close="editSessionModal">Cancelar</button>
+    <button type="submit" class="btn">Salvar</button>
+</div>
+{% endcall %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const editModal = document.getElementById("editSessionModal");
+        if (!editModal) return;
+
+        const editSessionId = document.getElementById("editSessionId");
+        const editSessionName = document.getElementById("editSessionName");
+        const editSessionStartAt = document.getElementById("editSessionStartAt");
+        const editSessionDuration = document.getElementById("editSessionDuration");
+        const editSessionGroup = document.getElementById("editSessionGroup");
+
+        editModal.addEventListener("modal:open", function (e) {
+            const trigger = e.detail.trigger;
+            const id = trigger.getAttribute("data-id");
+            const name = trigger.getAttribute("data-name");
+            const startAt = trigger.getAttribute("data-startat") || "";
+            const duration = trigger.getAttribute("data-duration") || "";
+            const groupId = trigger.getAttribute("data-groupid") || "";
+
+            if (editSessionId) editSessionId.value = id;
+            if (editSessionName) editSessionName.value = name;
+            if (editSessionDuration) editSessionDuration.value = duration;
+            if (editSessionGroup) editSessionGroup.value = groupId;
+
+            // Convert "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM" for datetime-local input
+            if (editSessionStartAt && startAt) {
+                const normalized = startAt.replace(" ", "T").slice(0, 16);
+                editSessionStartAt.value = normalized;
+            }
+        });
+    });
+</script>

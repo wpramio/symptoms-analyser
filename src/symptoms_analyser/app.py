@@ -20,6 +20,8 @@ from symptoms_analyser.controllers.admin import (
     create_therapy_group,
     update_therapy_group,
     get_clinicians,
+    get_sessions_admin,
+    update_session_admin,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.revisions import save_revision_logic
@@ -577,6 +579,57 @@ def admin_patients():
         return render_template("admin_patients.html", patients=patients, therapy_groups=therapy_groups)
     except Exception as e:
         print(f"Error serving admin patients: {e}")
+        return str(e), 500
+
+
+@app.route("/admin/therapy_sessions", methods=["GET", "POST", "PATCH"])
+def admin_therapy_sessions():
+    try:
+        from flask import flash, redirect, url_for
+
+        if request.method == "PATCH":
+            data = request.get_json() or {}
+            result, status = update_session_admin(
+                data.get("session_id"),
+                data.get("name"),
+                data.get("start_at"),
+                data.get("duration"),
+                data.get("therapy_group_id"),
+            )
+            return jsonify(result), status
+
+        if request.method == "POST":
+            result, status = update_session_admin(
+                request.form.get("session_id"),
+                request.form.get("name"),
+                request.form.get("start_at"),
+                request.form.get("duration"),
+                request.form.get("therapy_group_id"),
+            )
+            if status == 200:
+                flash("✓ Sessão atualizada com sucesso!", "success")
+            else:
+                flash(f"Erro ao salvar sessão: {result.get('error', 'Erro desconhecido')}", "error")
+            return redirect(url_for("admin_therapy_sessions"))
+
+        # Fetch therapy groups for filter dropdown and modal
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            therapy_groups = [dict(r) for r in cursor.fetchall()]
+
+        group_id = request.args.get("group_id")
+        sessions = get_sessions_admin(group_id)
+
+        return render_template(
+            "admin_therapy_sessions.html",
+            sessions=sessions,
+            therapy_groups=therapy_groups,
+            selected_group_id=group_id,
+        )
+    except Exception as e:
+        print(f"Error serving admin sessions: {e}")
         return str(e), 500
 
 

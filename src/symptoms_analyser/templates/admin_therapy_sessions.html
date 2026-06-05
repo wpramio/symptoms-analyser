@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% set active_page = 'admin_therapy_sessions' %}
+
+{% block title %}Gestão de sessões de terapia - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="page-header page-header-flex">
+        <div>
+            <h2>Gestão de sessões de terapia</h2>
+            <p>Listagem e edição de sessões clínicas vinculadas aos grupos de terapia.</p>
+        </div>
+        <a href="/therapy_sessions/new" class="btn btn-primary btn-with-icon">
+            <span>+</span> Nova sessão
+        </a>
+    </div>
+
+    <div class="results-container margin-bottom-none">
+        <!-- Group filter -->
+        <div class="meta-item-group-selector margin-bottom-medium">
+            <strong>Grupo:</strong>
+            <select onchange="window.location.href='/admin/therapy_sessions?group_id=' + this.value"
+                class="group-filter-select">
+                <option value="">Todos os grupos</option>
+                {% for g in therapy_groups %}
+                <option value="{{ g.id }}" {% if selected_group_id | string==g.id | string %}selected{% endif %}>{{
+                    g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-25">Sessão</th>
+                        <th class="col-width-20">Grupo</th>
+                        <th class="col-width-15">Clínico</th>
+                        <th class="col-width-15">Data</th>
+                        <th class="col-width-10">Duração</th>
+                        <th class="col-width-10">Análise</th>
+                        <th class="col-width-5 text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="adminSessionsTableBody">
+                    {% if sessions %}
+                    {% for session in sessions %}
+                    <tr>
+                        <td>
+                            <a href="/therapy_sessions/{{ session.id }}" class="text-primary text-medium font-semibold">
+                                {{ session.name }}
+                            </a>
+                            <br>
+                            <span class="text-muted text-small">{{ session.patients }}</span>
+                        </td>
+                        <td><span class="text-medium">{{ session.therapy_group_name }}</span></td>
+                        <td><span class="text-medium">{{ session.clinician_name }}</span></td>
+                        <td>
+                            <span class="text-medium">{{ session.start_at | format_datetime_dmyy }}</span>
+                        </td>
+                        <td>
+                            <span class="text-muted text-small">{{ session.duration }} min</span>
+                        </td>
+                        <td>
+                            {% if session.transcript_status == 'completed' %}
+                            <span class="status-badge" data-status="completed">Disponível</span>
+                            {% elif session.transcript_status in ['preprocessing', 'analyzing'] %}
+                            <span class="status-badge" data-status="preprocessing">Em processamento</span>
+                            {% elif session.transcript_status == 'failed' %}
+                            <span class="status-badge" data-status="failed">Erro</span>
+                            {% else %}
+                            <span class="status-badge" data-status="queued">Sem transcrição</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-secondary edit-session-btn" data-open="editSessionModal"
+                                data-id="{{ session.id }}" data-name="{{ session.name }}"
+                                data-startat="{{ session.start_at }}" data-duration="{{ session.duration }}"
+                                data-groupid="{{ session.therapy_group_id or '' }}">
+                                Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted padding-large">
+                            Nenhuma sessão registrada.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% include '_edit_session_modal.html' %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

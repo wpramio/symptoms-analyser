@@ -1123,3 +1123,87 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
             "synthesis": synthesis_payload
         }
 
+
+def get_sessions_admin(group_id: int | str | None = None) -> list[dict]:
+    """Retrieve all therapy sessions with key metadata for the admin management page."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        query = """
+            SELECT s.id, s.name, s.start_at, s.duration, s.therapy_group_id,
+                   u.name as clinician_name,
+                   g.name as therapy_group_name,
+                   (SELECT group_concat(p.pseudonym, ', ')
+                    FROM therapy_session_patients tsp
+                    JOIN patients p ON tsp.patient_id = p.id
+                    WHERE tsp.therapy_session_id = s.id) as patients,
+                   (SELECT status FROM transcripts
+                    WHERE therapy_session_id = s.id
+                    ORDER BY created_at DESC LIMIT 1) as transcript_status
+            FROM therapy_sessions s
+            LEFT JOIN users u ON s.clinician_id = u.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
+        """
+        params = []
+        if group_id is not None and str(group_id).strip() not in ("", "None"):
+            query += " WHERE s.therapy_group_id = ?"
+            params.append(int(group_id))
+        query += " ORDER BY s.start_at DESC, s.created_at DESC"
+        cursor.execute(query, params)
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "start_at": r["start_at"],
+                "duration": r["duration"] or 60,
+                "therapy_group_id": r["therapy_group_id"],
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
+                "clinician_name": r["clinician_name"] or "Sem clínico",
+                "patients": r["patients"] or "Nenhum paciente",
+                "transcript_status": r["transcript_status"],
+            }
+            for r in cursor.fetchall()
+        ]
+
+
+def update_session_admin(
+    session_id: int | str | None,
+    name: str | None,
+    start_at: str | None,
+    duration: int | str | None,
+    therapy_group_id: int | str | None = None,
+) -> tuple[dict, int]:
+    """Validate and update an existing therapy session's editable fields."""
+    if not session_id or not name or not start_at:
+        return {"error": "Dados inválidos ou incompletos"}, 400
+
+    name = name.strip()
+    start_at = start_at.strip().replace("T", " ")
+
+    try:
+        session_id = int(session_id)
+    except (ValueError, TypeError):
+        return {"error": "ID de sessão inválido"}, 400
+
+    try:
+        duration = int(duration) if duration and str(duration).strip() else 60
+    except (ValueError, TypeError):
+        duration = 60
+
+    try:
+        therapy_group_id = int(therapy_group_id) if therapy_group_id and str(therapy_group_id).strip() not in ("", "None") else None
+    except (ValueError, TypeError):
+        therapy_group_id = None
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM therapy_sessions WHERE id = ?", (session_id,))
+        if not cursor.fetchone():
+            return {"error": "Sessão não encontrada"}, 404
+
+    from symptoms_analyser.db import update_therapy_session as orm_update_session
+    try:
+        orm_update_session(session_id, name, start_at, duration, therapy_group_id)
+    except Exception as e:
+        return {"error": f"Erro de banco de dados: {str(e)}"}, 500
+
+    return {"message": "Sessão atualizada com sucesso"}, 200
