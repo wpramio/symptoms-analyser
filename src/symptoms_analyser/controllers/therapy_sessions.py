@@ -84,12 +84,12 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
 
 
 
-def get_therapy_sessions() -> list[dict]:
+def get_therapy_sessions(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all therapy sessions with calculated clinician details, patients, transcript status, and evaluation IDs."""
     from symptoms_analyser.db import get_db
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT s.id, s.name, s.start_at, s.duration,
                    u.name as clinician_name,
                    g.name as therapy_group_name,
@@ -100,8 +100,14 @@ def get_therapy_sessions() -> list[dict]:
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-            ORDER BY s.start_at DESC, s.created_at DESC
-        """)
+        """
+        params = []
+        if group_id is not None and str(group_id).strip() not in ("", "None"):
+            query += " WHERE s.therapy_group_id = ?"
+            params.append(int(group_id))
+            
+        query += " ORDER BY s.start_at DESC, s.created_at DESC"
+        cursor.execute(query, params)
         return [
             {
                 "id": r["id"],

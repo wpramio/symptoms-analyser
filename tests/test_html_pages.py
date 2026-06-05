@@ -143,7 +143,7 @@ def test_patients_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
-        resp = client.get("/patients")
+        resp = client.get("/patients?group_id=")
         assert resp.status_code == 200
         
         soup = BeautifulSoup(resp.data, "html.parser")
@@ -166,7 +166,7 @@ def test_therapy_sessions_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
-        resp = client.get("/therapy_sessions")
+        resp = client.get("/therapy_sessions?group_id=")
         assert resp.status_code == 200
         
         soup = BeautifulSoup(resp.data, "html.parser")

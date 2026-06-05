@@ -249,17 +249,23 @@ def update_patient(
 
 
 
-def get_patients_list_with_stats() -> list[dict]:
+def get_patients_list_with_stats(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all patients with aggregated clinical session participation counts."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name,
                    (SELECT count(*) FROM therapy_session_patients WHERE patient_id = p.id) as total_sessions
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
-            ORDER BY p.id ASC
-        """)
+        """
+        params = []
+        if group_id is not None and str(group_id).strip() not in ("", "None"):
+            query += " WHERE p.therapy_group_id = ?"
+            params.append(int(group_id))
+            
+        query += " ORDER BY p.id ASC"
+        cursor.execute(query, params)
         return [
             {
                 "id": r["id"],

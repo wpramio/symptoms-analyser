@@ -18,6 +18,15 @@
     <!-- Patients Grid Card Layout -->
     <div class="results-container">
         <h3>Lista de prontuários</h3>
+        <div class="meta-item-group-selector margin-bottom-medium">
+            <strong>Grupo:</strong>
+            <select onchange="window.location.href='/patients?group_id=' + this.value" class="group-filter-select">
+                <option value="">Todos os grupos</option>
+                {% for g in therapy_groups %}
+                <option value="{{ g.id }}" {% if selected_group_id | string == g.id | string %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
         <div class="patients-grid">
             {% if patients %}

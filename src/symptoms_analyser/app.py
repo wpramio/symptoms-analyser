@@ -187,8 +187,25 @@ def new_therapy_session():
 @app.route("/therapy_sessions")
 def therapy_sessions():
     try:
-        sessions = get_therapy_sessions()
-        return render_template("therapy_sessions.html", sessions=sessions)
+        # Fetch therapy groups for filtering select option dropdown
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            therapy_groups = [dict(r) for r in cursor.fetchall()]
+
+        group_id = request.args.get("group_id")
+        if group_id is None and therapy_groups:
+            group_id = str(therapy_groups[0]["id"])
+
+        sessions = get_therapy_sessions(group_id)
+
+        return render_template(
+            "therapy_sessions.html", 
+            sessions=sessions, 
+            therapy_groups=therapy_groups,
+            selected_group_id=group_id
+        )
     except Exception as e:
         print(f"Error serving therapy sessions list: {e}")
         return str(e), 500
@@ -254,8 +271,25 @@ def get_session_status(session_id):
 @app.route("/patients")
 def patients():
     try:
-        patient_list = get_patients_list_with_stats()
-        return render_template("patients.html", patients=patient_list)
+        # Fetch therapy groups for filtering select option dropdown
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            therapy_groups = [dict(r) for r in cursor.fetchall()]
+
+        group_id = request.args.get("group_id")
+        if group_id is None and therapy_groups:
+            group_id = str(therapy_groups[0]["id"])
+
+        patient_list = get_patients_list_with_stats(group_id)
+
+        return render_template(
+            "patients.html", 
+            patients=patient_list, 
+            therapy_groups=therapy_groups,
+            selected_group_id=group_id
+        )
     except Exception as e:
         print(f"Error serving patients list: {e}")
         return str(e), 500

@@ -18,6 +18,15 @@
     <!-- Sessions List -->
     <div class="results-container">
         <h3>Histórico de sessões</h3>
+        <div class="meta-item-group-selector margin-bottom-medium">
+            <strong>Grupo:</strong>
+            <select onchange="window.location.href='/therapy_sessions?group_id=' + this.value" class="group-filter-select">
+                <option value="">Todos os grupos</option>
+                {% for g in therapy_groups %}
+                <option value="{{ g.id }}" {% if selected_group_id | string == g.id | string %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
         <div class="session-grid-container">
             <div class="session-grid-header">
