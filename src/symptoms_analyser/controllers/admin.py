@@ -891,3 +891,133 @@ def get_tdpm_table_data() -> list[dict]:
     grouped_dimensions.sort(key=lambda x: int(x["key"]))
     return grouped_dimensions
 
+
+def get_group_dynamics_data(group_id: int | str) -> dict:
+    """
+    Retrieve and aggregate historically-aggregated airtime and interactions mapping data
+    for all sessions belonging to a therapy group.
+    """
+    from symptoms_analyser.controllers.therapy_sessions import calculate_airtime
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        
+        # 1. Fetch all sessions in the group
+        cursor.execute(
+            "SELECT id, name FROM therapy_sessions WHERE therapy_group_id = ?",
+            (int(group_id),)
+        )
+        sessions = [dict(row) for row in cursor.fetchall()]
+
+        # 2. Accumulate airtime speakers
+        aggregated_speakers = {}
+        total_words = 0
+        total_turns = 0
+
+        # 3. Accumulate interactions mapping edges
+        aggregated_edges = []
+
+        for session in sessions:
+            session_id = session["id"]
+            session_name = session["name"]
+
+            # Query participating patients pseudonyms for this session
+            cursor.execute(
+                """
+                SELECT p.pseudonym 
+                FROM therapy_session_patients tsp 
+                JOIN patients p ON tsp.patient_id = p.id 
+                WHERE tsp.therapy_session_id = ?
+                """,
+                (session_id,)
+            )
+            patients_list = [r["pseudonym"] for r in cursor.fetchall()]
+
+            # Query latest transcript for this session
+            cursor.execute(
+                """
+                SELECT raw_text, sanitized_text 
+                FROM transcripts 
+                WHERE therapy_session_id = ? 
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                (session_id,)
+            )
+            t_row = cursor.fetchone()
+            if t_row:
+                text = t_row["sanitized_text"] or t_row["raw_text"]
+                if text:
+                    airtime = calculate_airtime(text, patients_list)
+                    if airtime and "speakers" in airtime:
+                        for spk in airtime["speakers"]:
+                            name = spk["speaker"]
+                            if name not in aggregated_speakers:
+                                aggregated_speakers[name] = {"word_count": 0, "turn_count": 0}
+                            aggregated_speakers[name]["word_count"] += spk["word_count"]
+                            aggregated_speakers[name]["turn_count"] += spk["turn_count"]
+                            total_words += spk["word_count"]
+                            total_turns += spk["turn_count"]
+
+            # Query clinical synthesis interactions mapping
+            cursor.execute(
+                """
+                SELECT interactions_mapping
+                FROM session_syntheses
+                WHERE therapy_session_id = ?
+                """,
+                (session_id,)
+            )
+            s_row = cursor.fetchone()
+            if s_row and s_row["interactions_mapping"]:
+                try:
+                    mapping = json.loads(s_row["interactions_mapping"])
+                    edges = mapping.get("edges", [])
+                    for edge in edges:
+                        # Copy edge dict to avoid modifying in-place caches if any, and inject session name
+                        edge_copy = dict(edge)
+                        edge_copy["session_name"] = session_name
+                        aggregated_edges.append(edge_copy)
+                except Exception as e:
+                    print(f"Error parsing interactions_mapping for session {session_id}: {e}")
+
+        # Post-process Airtime data
+        speakers_data = []
+        for name, counts in sorted(aggregated_speakers.items(), key=lambda x: x[1]["word_count"], reverse=True):
+            w_count = counts["word_count"]
+            t_count = counts["turn_count"]
+            w_pct = round((w_count / total_words) * 100, 1) if total_words > 0 else 0
+            t_pct = round((t_count / total_turns) * 100, 1) if total_turns > 0 else 0
+            speakers_data.append({
+                "speaker": name,
+                "word_count": w_count,
+                "word_percentage": w_pct,
+                "turn_count": t_count,
+                "turn_percentage": t_pct
+            })
+
+        airtime_payload = {
+            "speakers": speakers_data,
+            "total_words": total_words,
+            "total_turns": total_turns
+        } if speakers_data else None
+
+        # Post-process Interactions mapping data
+        synthesis_payload = None
+        if aggregated_edges:
+            node_ids = set()
+            for edge in aggregated_edges:
+                node_ids.add(edge["source"])
+                node_ids.add(edge["target"])
+            nodes = [{"id": nid, "label": nid} for nid in sorted(node_ids)]
+            synthesis_payload = {
+                "interactions_mapping": {
+                    "nodes": nodes,
+                    "edges": aggregated_edges
+                }
+            }
+
+        return {
+            "airtime": airtime_payload,
+            "synthesis": synthesis_payload
+        }
+

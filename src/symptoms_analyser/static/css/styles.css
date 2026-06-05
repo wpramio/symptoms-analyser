@@ -4344,6 +4344,11 @@ select:focus {
     /* Tight, visually cohesive spacing */
 }
 
+.synthesis-title-text-group h3 {
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
 .synthesis-title-text-group .info-tooltip-container {
     margin-left: 0;
     display: inline-flex;
@@ -5766,4 +5771,29 @@ select:focus {
 
 .margin-bottom-medium {
     margin-bottom: 1.5rem !important;
+}
+
+/* Group Dynamics Tab specific styles */
+@media (min-width: 992px) {
+    .session-detail-grid.group-dynamics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 768px) {
+    .group-dynamics-grid .airtime-body {
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 4rem;
+    }
+    
+    .group-dynamics-grid .airtime-chart-wrapper {
+        flex-shrink: 0;
+    }
+    
+    .group-dynamics-grid .airtime-legend-grid {
+        flex: 1;
+        margin-top: 0;
+    }
 }

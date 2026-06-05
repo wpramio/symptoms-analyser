@@ -197,7 +197,7 @@ def calculate_airtime(transcript_text: str, patients_list: list[str]) -> dict:
     total_turns = sum(turn_counts.values())
 
     speakers_data = []
-    for speaker in sorted(word_counts.keys()):
+    for speaker in sorted(word_counts.keys(), key=lambda spk: word_counts[spk], reverse=True):
         w_count = word_counts[speaker]
         t_count = turn_counts.get(speaker, 0)
 

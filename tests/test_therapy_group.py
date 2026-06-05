@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 from bs4 import BeautifulSoup
 from symptoms_analyser.app import app
-from symptoms_analyser.controllers.admin import get_cohort_evolution_data
+from symptoms_analyser.controllers.admin import get_cohort_evolution_data, get_group_dynamics_data
 
 @pytest.fixture
 def schema_sql():
@@ -51,8 +51,8 @@ def seeded_db_path(tmp_path, schema_sql):
     cursor.execute("""
         INSERT INTO transcripts (id, therapy_session_id, filename, raw_text, sanitized_text, status)
         VALUES 
-        (1, 1, 'session_1.txt', 'Texto 1', 'Texto limpo 1', 'completed'),
-        (2, 2, 'session_2.txt', 'Texto 2', 'Texto limpo 2', 'completed')
+        (1, 1, 'session_1.txt', 'Paciente1: Olá tudo bem\nTerapeuta: Olá como vai\nPaciente2: Eu estou bem também', 'Paciente1: Olá tudo bem\nTerapeuta: Olá como vai\nPaciente2: Eu estou bem também', 'completed'),
+        (2, 2, 'session_2.txt', 'Paciente1: Oi tudo bem\nTerapeuta: Oi como vai', 'Paciente1: Oi tudo bem\nTerapeuta: Oi como vai', 'completed')
     """)
     
     # 5. Seed TDPM evaluations
@@ -108,6 +108,26 @@ def seeded_db_path(tmp_path, schema_sql):
         (1, 'model-a', 2, 'success', ?, '2026-05-20 14:15:00'),
         (2, 'model-a', 2, 'success', ?, '2026-05-27 14:15:00')
     """, (json.dumps(payload_1), json.dumps(payload_2)))
+
+    # 7. Seed Session Syntheses for Interactions
+    interactions = {
+        "nodes": [
+            {"id": "Paciente1", "label": "Paciente1"},
+            {"id": "Paciente2", "label": "Paciente2"}
+        ],
+        "edges": [
+            {
+                "source": "Paciente1",
+                "target": "Paciente2",
+                "type": "apoio",
+                "evidence": "Gostei do seu relato."
+            }
+        ]
+    }
+    cursor.execute("""
+        INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping)
+        VALUES (1, 1, 'Nota de progresso coletivo 1', ?)
+    """, (json.dumps(interactions),))
     
     conn.commit()
     conn.close()
@@ -209,3 +229,71 @@ def test_cohort_analytics_page_route(client, mock_get_db):
         metric_values = [v.text.strip() for v in soup.find_all(class_="metric-value")]
         assert "2" in metric_values  # Total sessions
         assert "12" in metric_values or "12.0" in metric_values  # Peak severity
+
+
+def test_get_group_dynamics_data(mock_get_db):
+    with mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+        
+        data = get_group_dynamics_data(1)
+        
+        # Verify airtime structure and content
+        assert "airtime" in data
+        airtime = data["airtime"]
+        assert airtime is not None
+        assert airtime["total_words"] > 0
+        assert airtime["total_turns"] > 0
+        
+        speakers = {s["speaker"]: s for s in airtime["speakers"]}
+        assert "Paciente1" in speakers
+        assert "Paciente2" in speakers
+        assert "Terapeuta" in speakers
+        
+        # Verify synthesis/interactions mapping
+        assert "synthesis" in data
+        synthesis = data["synthesis"]
+        assert synthesis is not None
+        assert "interactions_mapping" in synthesis
+        
+        mapping = synthesis["interactions_mapping"]
+        assert len(mapping["nodes"]) >= 2
+        assert len(mapping["edges"]) == 1
+        assert mapping["edges"][0]["source"] == "Paciente1"
+        assert mapping["edges"][0]["target"] == "Paciente2"
+        assert mapping["edges"][0]["type"] == "apoio"
+        assert mapping["edges"][0]["session_name"] == "Sessão 1"
+
+
+def test_group_dynamics_tab_rendering(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         
+        resp = client.get("/therapy_groups/1")
+        assert resp.status_code == 200
+        
+        soup = BeautifulSoup(resp.data, "html.parser")
+        
+        # 1. Verify tab button presence and order
+        tabs = soup.find_all("button", class_="session-tab-btn")
+        tab_targets = [t["data-target"] for t in tabs]
+        assert "tab-dynamics" in tab_targets
+        # Verify it is the second tab (index 1)
+        assert tab_targets[1] == "tab-dynamics"
+        
+        # 2. Verify tab panel presence
+        panel = soup.find("div", id="tab-dynamics")
+        assert panel is not None
+        
+        # 3. Verify presence of social cohesion card & airtime card
+        assert panel.find(class_="social-cohesion-card") is not None
+        assert panel.find(class_="airtime-card") is not None
+        
+        # 4. Verify data island JSON contains correct attributes
+        script_island = soup.find("script", id="page-data")
+        assert script_island is not None
+        page_json = json.loads(script_island.string)
+        assert page_json["groupId"] == 1
+        assert page_json["airtime"] is not None
+        assert page_json["synthesis"] is not None
+

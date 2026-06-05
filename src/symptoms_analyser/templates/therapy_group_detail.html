@@ -3,6 +3,11 @@
 
 {% block title %}{{ group.name }} (Detalhes do grupo) - Symptoms Analyser{% endblock %}
 
+{% block extra_head %}
+<!-- Import Chart.js for group dynamics charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="main-container">
     <!-- Breadcrumb -->
@@ -50,11 +55,22 @@
             <button class="session-tab-btn active" data-target="tab-interventions">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
                     <line x1="12" y1="9" x2="12" y2="13"></line>
                     <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
                 Intervenções e ações recomendadas
+            </button>
+            <button class="session-tab-btn" data-target="tab-dynamics">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Dinâmica do grupo
             </button>
             <button class="session-tab-btn" data-target="tab-sessions">
                 <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -76,19 +92,19 @@
 
     <!-- Tab Panels -->
     <div class="session-tab-content">
-        
+
         <!-- Tab 1: Interventions and Actions -->
         <div class="session-tab-panel active" id="tab-interventions">
             {% if alerts %}
             {% set ns = namespace(critical=0, warning=0, info=0) %}
             {% for alert in alerts %}
-                {% if alert.severity == 'critical' %}
-                    {% set ns.critical = ns.critical + 1 %}
-                {% elif alert.severity == 'warning' %}
-                    {% set ns.warning = ns.warning + 1 %}
-                {% else %}
-                    {% set ns.info = ns.info + 1 %}
-                {% endif %}
+            {% if alert.severity == 'critical' %}
+            {% set ns.critical = ns.critical + 1 %}
+            {% elif alert.severity == 'warning' %}
+            {% set ns.warning = ns.warning + 1 %}
+            {% else %}
+            {% set ns.info = ns.info + 1 %}
+            {% endif %}
             {% endfor %}
 
             <div class="metrics-grid metrics-grid-index" style="margin-bottom: 1.5rem;">
@@ -120,13 +136,16 @@
                     <div class="synthesis-title-container">
                         <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <path
+                                d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                            </path>
                             <line x1="12" y1="9" x2="12" y2="13"></line>
                             <line x1="12" y1="17" x2="12.01" y2="17"></line>
                         </svg>
                         <div class="synthesis-title-text-group">
                             <h3 class="synthesis-card-title">Intervenções e ações recomendadas</h3>
-                            <span class="metadata-subtitle">Alertas ativos consolidados para acompanhamento do grupo</span>
+                            <span class="metadata-subtitle">Alertas ativos consolidados para acompanhamento do
+                                grupo</span>
                         </div>
                     </div>
                 </div>
@@ -136,10 +155,12 @@
                     <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
                         <div class="alert-badge-row">
                             <span class="badge-severity badge-{{ alert.severity }}">
-                                {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity == 'warning' %}⚠️ Alerta{% else %}💡 Sugestão{% endif %}
+                                {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity == 'warning' %}⚠️
+                                Alerta{% else %}💡 Sugestão{% endif %}
                             </span>
                             <span class="badge-type badge-type-{{ alert.type }}">
-                                {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational' %}Interpessoal{% else %}Temático{% endif %}
+                                {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational'
+                                %}Interpessoal{% else %}Temático{% endif %}
                             </span>
                         </div>
                         <h4 class="alert-title">{{ alert.title }}</h4>
@@ -153,7 +174,8 @@
             </div>
             {% else %}
             <div class="no-interventions-placeholder">
-                <svg class="no-interventions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <svg class="no-interventions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.5">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="m9 12 2 2 4-4"></path>
                 </svg>
@@ -166,9 +188,145 @@
             {% endif %}
         </div>
 
-        <!-- Tab 2: Past Sessions -->
+        <!-- Tab 2: Group Dynamics -->
+        <div class="session-tab-panel" id="tab-dynamics">
+            {% if not airtime and not synthesis %}
+            <div class="welcome-message">
+                <span style="font-size: 3rem;">👥</span>
+                <h3>Sem dados de dinâmica do grupo</h3>
+                <p>Ainda não há sessões de terapia com transcrições processadas para gerar a análise de fala e
+                    interações sociais.</p>
+            </div>
+            {% else %}
+            <div class="session-detail-grid group-dynamics-grid {% if airtime %}has-airtime{% endif %}">
+                <!-- CARD: Airtime / Divisão de Tempo de Fala -->
+                {% if airtime %}
+                <div class="dashboard-card airtime-card">
+                    <div class="airtime-card-header">
+                        <div class="synthesis-title-container">
+                            <div class="synthesis-title-text-group">
+                                <h3 class="airtime-title">Divisão do tempo de fala</h3>
+                                <span class="info-tooltip-container" onclick="event.preventDefault();">
+                                    <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span class="info-tooltip-text">Participação verbal relativa calculada a partir do
+                                        número de
+                                        palavras faladas no total das sessões.</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="airtime-body">
+                        <div class="airtime-chart-wrapper">
+                            <canvas id="airtimeChart"></canvas>
+                        </div>
+                        <div class="airtime-legend-grid">
+                            {% for spk in airtime.speakers %}
+                            <div class="airtime-legend-item">
+                                <span class="airtime-legend-color-dot" data-speaker-index="{{ loop.index0 }}"></span>
+                                <div class="airtime-legend-details">
+                                    <span class="airtime-legend-name">{{ spk.speaker }}</span>
+                                    <span class="airtime-legend-stats">{{ spk.word_percentage }}% ({{ spk.word_count |
+                                        number_format }} pal.)</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- CARD: Rede de interações sociais -->
+                {% if synthesis %}
+                <div class="dashboard-card social-cohesion-card" id="social-cohesion-section">
+                    <div class="social-cohesion-header">
+                        <div class="synthesis-title-container">
+                            <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <div class="synthesis-title-text-group">
+                                <h3 class="synthesis-card-title">Rede de interações sociais</h3>
+                                <span class="info-tooltip-container" onclick="event.preventDefault();">
+                                    <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                    </svg>
+                                    <span class="info-tooltip-text">Mapeamento dinâmico acumulado de interações de apoio
+                                        mútuo,
+                                        validação e confrontação construtiva extraídas das transcrições do grupo.</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="social-cohesion-body">
+                        <div class="cohesion-split-grid mb-4">
+                            <!-- Left Side: SVG Network Graph -->
+                            <div class="cohesion-graph-container">
+                                <div class="graph-legend">
+                                    <span class="legend-item"><span class="legend-line line-apoio"></span> Apoio</span>
+                                    <span class="legend-item"><span class="legend-line line-validacao"></span>
+                                        Validação</span>
+                                    <span class="legend-item"><span class="legend-line line-confronto"></span>
+                                        Confronto</span>
+                                </div>
+                                <div class="svg-graph-wrapper">
+                                    <svg id="socialNetworkGraph" viewBox="0 0 320 320" width="100%" height="100%">
+                                        <defs>
+                                            <marker id="arrow-apoio" viewBox="0 0 10 10" refX="22" refY="5"
+                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+                                            </marker>
+                                            <marker id="arrow-validacao" viewBox="0 0 10 10" refX="22" refY="5"
+                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6" />
+                                            </marker>
+                                            <marker id="arrow-confronto" viewBox="0 0 10 10" refX="22" refY="5"
+                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                                            </marker>
+                                        </defs>
+                                        <g id="graphEdges"></g>
+                                        <g id="graphNodes"></g>
+                                    </svg>
+                                    <div id="graphTooltip" class="graph-tooltip"
+                                        style="opacity: 0; pointer-events: none;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Side: Interactions Scroll List -->
+                            <div class="interaction-list-box">
+                                <h4 class="cohesion-sub-title">Registro de interações sociais</h4>
+                                <div class="interaction-scroll-list" id="interactionScrollList">
+                                    <p class="text-muted text-medium">Nenhuma interação identificada para este grupo.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Tab 3: Past Sessions -->
         <div class="session-tab-panel" id="tab-sessions">
-            <div class="results-container" style="padding-top: 0; box-shadow: none; border: none; background: transparent;">
+            <div class="results-container"
+                style="padding-top: 0; box-shadow: none; border: none; background: transparent;">
                 <div class="session-grid-container">
                     <div class="session-grid-header">
                         <div class="col-width-25">Sessão</div>
@@ -192,9 +350,9 @@
                             </div>
                             <div class="col-width-15">
                                 {% if session.patients == 'Nenhum paciente' %}
-                                    {% set count = 0 %}
+                                {% set count = 0 %}
                                 {% else %}
-                                    {% set count = session.patients.split(', ') | length %}
+                                {% set count = session.patients.split(', ') | length %}
                                 {% endif %}
                                 <span class="participant-badge-count" data-count="{{ count }}">
                                     {{ count }} {% if count == 1 %}paciente{% else %}pacientes{% endif %}
@@ -238,12 +396,13 @@
             <div class="welcome-message">
                 <span style="font-size: 3rem;">📁</span>
                 <h3>Sem dados de coorte</h3>
-                <p>Ainda não há sessões de terapia com avaliações clínicas processadas para gerar a análise coletiva do grupo.</p>
+                <p>Ainda não há sessões de terapia com avaliações clínicas processadas para gerar a análise coletiva do
+                    grupo.</p>
             </div>
             {% else %}
             <!-- Evolution Dashboard -->
             <div class="evolution-dashboard cohort-dashboard" style="display: flex; flex-direction: column; gap: 2rem;">
-                
+
                 <!-- KPI Cards Grid -->
                 <div class="metrics-grid" style="margin-top: 0;">
                     <div class="metric-card">
@@ -279,5 +438,12 @@
 {% endblock %}
 
 {% block scripts %}
+<script id="page-data" type="application/json">
+{
+    "groupId": {{ group.id }},
+    "airtime": {{ airtime | tojson if airtime else 'null' }},
+    "synthesis": {{ synthesis | tojson if synthesis else 'null' }}
+}
+</script>
 <script src="/static/js/therapy_group_detail.js"></script>
 {% endblock %}

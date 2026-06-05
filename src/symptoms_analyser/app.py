@@ -15,6 +15,7 @@ from symptoms_analyser.controllers.admin import (
     get_cohort_evolution_data,
     update_patient,
     get_tdpm_table_data,
+    get_group_dynamics_data,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.revisions import save_revision_logic
@@ -371,6 +372,9 @@ def therapy_group_detail(group_id):
         
         # Third tab: Indicadores-chave
         cohort_data = get_cohort_evolution_data(group_id=group_id)
+
+        # Dynamics data (historically aggregated)
+        dynamics_data = get_group_dynamics_data(group_id=group_id)
         
         return render_template(
             "therapy_group_detail.html",
@@ -386,6 +390,8 @@ def therapy_group_detail(group_id):
             chart_mean_totals=cohort_data["chart_mean_totals"],
             chart_median_totals=cohort_data["chart_median_totals"],
             chart_dimensions=cohort_data["chart_dimensions"],
+            airtime=dynamics_data.get("airtime"),
+            synthesis=dynamics_data.get("synthesis"),
         )
     except Exception as e:
         print(f"Error serving therapy group detail: {e}")
