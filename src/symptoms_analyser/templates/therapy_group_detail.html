@@ -277,6 +277,18 @@
                         <div class="cohesion-split-grid mb-4">
                             <!-- Left Side: SVG Network Graph -->
                             <div class="cohesion-graph-container">
+                                <div id="nodeFilterContainer" class="node-filter-container">
+                                    <div class="node-filter-header">
+                                        <span class="node-filter-title">Filtrar Membros</span>
+                                        <div class="node-filter-actions">
+                                            <button id="filterSelectAllBtn" class="node-filter-action-btn btn-primary-link">Todos</button>
+                                            <span class="node-filter-actions-separator">|</span>
+                                            <button id="filterClearAllBtn" class="node-filter-action-btn btn-muted-link">Limpar</button>
+                                        </div>
+                                    </div>
+                                    <div id="nodeFilterList" class="node-filter-list"></div>
+                                </div>
+
                                 <div class="graph-legend">
                                     <span class="legend-item"><span class="legend-line line-apoio"></span> Apoio</span>
                                     <span class="legend-item"><span class="legend-line line-validacao"></span>
@@ -314,13 +326,9 @@
                                         style="opacity: 0; pointer-events: none;">
                                     </div>
                                 </div>
-                                <div id="subgroupsLegend" class="subgroups-legend"
-                                    style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem; width: 100%; font-size: 0.8rem; display: none;">
-                                    <div
-                                        style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">
-                                        Subgrupos Coesivos</div>
-                                    <div id="subgroupsList"
-                                        style="display: flex; flex-direction: column; gap: 0.35rem;"></div>
+                                <div id="subgroupsLegend" class="subgroups-legend">
+                                    <div class="subgroups-legend-title">Subgrupos Coesivos</div>
+                                    <div id="subgroupsList" class="subgroups-list"></div>
                                 </div>
                             </div>
 

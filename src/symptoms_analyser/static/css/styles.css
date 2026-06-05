@@ -4907,6 +4907,145 @@ select:focus {
     color: var(--text-muted);
 }
 
+/* Node filter checkboxes styled as premium interactive pill tags */
+.node-filter-container {
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    width: 100%;
+}
+
+.node-filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.node-filter-title {
+    font-weight: 700;
+    color: var(--text-main);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+.node-filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.7rem;
+}
+
+.node-filter-action-btn {
+    background: none;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+}
+
+.node-filter-action-btn.btn-primary-link {
+    color: var(--primary);
+}
+
+.node-filter-action-btn.btn-muted-link {
+    color: var(--text-muted);
+}
+
+.node-filter-actions-separator {
+    color: var(--text-muted);
+}
+
+.node-filter-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+}
+
+.node-filter-pill-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    border: 1.5px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.node-filter-pill-label:hover {
+    border-color: var(--primary);
+    color: var(--text-main);
+    background: rgba(59, 130, 246, 0.03);
+}
+
+.node-filter-pill-checkbox {
+    display: none; /* Hide real checkbox */
+}
+
+/* Styled indicator dot */
+.node-filter-pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+    transition: transform 0.2s, background-color 0.2s;
+    border: 1px solid white;
+}
+
+/* Checked state styled dynamically in JS using custom property or class */
+.node-filter-pill-label.active {
+    color: var(--text-main);
+    background: var(--card-bg);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Subgroups Legend styles */
+.subgroups-legend {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+    width: 100%;
+    font-size: 0.8rem;
+    display: none;
+}
+
+.subgroups-legend-title {
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+}
+
+.subgroups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.subgroup-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.subgroup-legend-item:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
 /* ==========================================================================
    Premium Session Workstation Tabs & Animations
    ========================================================================== */

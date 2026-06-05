@@ -602,13 +602,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const compInfo = node_meta[comp[0]];
                                 const item = document.createElement('div');
                                 item.className = 'subgroup-legend-item';
-                                item.style.display = 'flex';
-                                item.style.alignItems = 'center';
-                                item.style.gap = '0.5rem';
-                                item.style.cursor = 'pointer';
-                                item.style.padding = '0.25rem 0.5rem';
-                                item.style.borderRadius = '4px';
-                                item.style.transition = 'background-color 0.2s';
 
                                 const sortedMembers = [...comp].sort((a, b) => {
                                     const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
@@ -623,7 +616,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                 `;
 
                                 item.addEventListener('mouseenter', () => {
-                                    item.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
                                     cyInstance.elements().addClass('dimmed');
                                     
                                     comp.forEach(memberId => {
@@ -644,7 +636,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                 });
 
                                 item.addEventListener('mouseleave', () => {
-                                    item.style.backgroundColor = 'transparent';
                                     cyInstance.elements().removeClass('dimmed');
                                     cyInstance.elements().removeClass('highlighted');
                                     comp.forEach(memberId => {
@@ -662,13 +653,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     return numA - numB;
                                 });
                                 const item = document.createElement('div');
-                                item.style.display = 'flex';
-                                item.style.alignItems = 'center';
-                                item.style.gap = '0.5rem';
-                                item.style.cursor = 'pointer';
-                                item.style.padding = '0.25rem 0.5rem';
-                                item.style.borderRadius = '4px';
-                                item.style.transition = 'background-color 0.2s';
+                                item.className = 'subgroup-legend-item';
                                 item.innerHTML = `
                                     <span style="width: 12px; height: 12px; border-radius: 50%; background-color: #94a3b8; display: inline-block; border: 2px solid white; box-shadow: 0 0 0 1px #94a3b8"></span>
                                     <span style="font-weight: 600; color: var(--text-main);">Membros Isolados</span>
@@ -676,7 +661,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                 `;
 
                                 item.addEventListener('mouseenter', () => {
-                                    item.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
                                     cyInstance.elements().addClass('dimmed');
                                     isolated.forEach(memberId => {
                                         const node = cyInstance.getElementById(memberId);
@@ -686,7 +670,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                 });
 
                                 item.addEventListener('mouseleave', () => {
-                                    item.style.backgroundColor = 'transparent';
                                     cyInstance.elements().removeClass('dimmed');
                                     cyInstance.elements().removeClass('highlighted');
                                 });
@@ -695,6 +678,82 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         } else {
                             subgroupsLegendEl.style.display = 'none';
+                        }
+                    }
+
+                    // Generate Node Filter Pills
+                    const nodeFilterListEl = document.getElementById('nodeFilterList');
+                    if (nodeFilterListEl) {
+                        nodeFilterListEl.innerHTML = '';
+                        uniqueNodes.forEach(node => {
+                            const name = node.id;
+                            const color = getSpeakerColor(name);
+
+                            const label = document.createElement('label');
+                            label.className = 'node-filter-pill-label active';
+                            label.style.borderColor = color;
+                            label.style.boxShadow = `0 0 0 1px ${color}`;
+
+                            const checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.checked = true;
+                            checkbox.className = 'node-filter-pill-checkbox';
+                            checkbox.dataset.nodeId = name;
+
+                            const dot = document.createElement('span');
+                            dot.className = 'node-filter-pill-dot';
+                            dot.style.backgroundColor = color;
+
+                            const textNode = document.createTextNode(name);
+
+                            label.appendChild(checkbox);
+                            label.appendChild(dot);
+                            label.appendChild(textNode);
+
+                            checkbox.addEventListener('change', () => {
+                                if (!cyInstance) return;
+                                const cyNode = cyInstance.getElementById(name);
+                                if (checkbox.checked) {
+                                    cyNode.show();
+                                    label.classList.add('active');
+                                    label.style.borderColor = color;
+                                    label.style.boxShadow = `0 0 0 1px ${color}`;
+                                    dot.style.backgroundColor = color;
+                                } else {
+                                    cyNode.hide();
+                                    label.classList.remove('active');
+                                    label.style.borderColor = '';
+                                    label.style.boxShadow = '';
+                                    dot.style.backgroundColor = '';
+                                }
+                            });
+
+                            nodeFilterListEl.appendChild(label);
+                        });
+
+                        const filterSelectAllBtn = document.getElementById('filterSelectAllBtn');
+                        const filterClearAllBtn = document.getElementById('filterClearAllBtn');
+
+                        if (filterSelectAllBtn) {
+                            filterSelectAllBtn.addEventListener('click', () => {
+                                nodeFilterListEl.querySelectorAll('.node-filter-pill-checkbox').forEach(cb => {
+                                    if (!cb.checked) {
+                                        cb.checked = true;
+                                        cb.dispatchEvent(new Event('change'));
+                                    }
+                                });
+                            });
+                        }
+
+                        if (filterClearAllBtn) {
+                            filterClearAllBtn.addEventListener('click', () => {
+                                nodeFilterListEl.querySelectorAll('.node-filter-pill-checkbox').forEach(cb => {
+                                    if (cb.checked) {
+                                        cb.checked = false;
+                                        cb.dispatchEvent(new Event('change'));
+                                    }
+                                });
+                            });
                         }
                     }
 
