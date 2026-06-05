@@ -7,6 +7,7 @@ Each function is independently testable without Flask or HTTP.
 
 import json
 import re
+import unicodedata
 from datetime import datetime
 from symptoms_analyser.db import get_db
 
@@ -21,6 +22,199 @@ def format_date_dmyy(raw_date: str | None) -> str:
         return dt.strftime("%d/%m/%y")
     except Exception:
         return date_part
+
+
+# ---------------------------------------------------------------------------
+# Graph analysis helpers for the social network visualization
+# ---------------------------------------------------------------------------
+
+_SPEAKER_COLORS = [
+    'hsl(142, 71%, 45%)',
+    'hsl(38, 92%, 50%)',
+    'hsl(350, 89%, 60%)',
+    'hsl(280, 87%, 65%)',
+    'hsl(180, 70%, 45%)',
+    'hsl(25, 95%, 55%)',
+    'hsl(320, 80%, 60%)',
+    'hsl(160, 84%, 39%)',
+    'hsl(260, 60%, 50%)',
+    'hsl(45, 90%, 45%)',
+    'hsl(195, 85%, 45%)',
+    'hsl(340, 75%, 55%)',
+    'hsl(120, 50%, 45%)',
+    'hsl(210, 80%, 55%)',
+    'hsl(295, 70%, 50%)',
+    'hsl(15, 85%, 50%)',
+]
+
+_SUBGROUP_PALETTE = ['#a855f7', '#f43f5e', '#ec4899', '#06b6d4', '#eab308']
+
+
+def _get_speaker_color(name: str) -> str:
+    """Deterministic HSL color for a speaker pseudonym — mirrors the JS getSpeakerColor."""
+    lower = name.lower()
+    if lower in ('terapeuta', 'clinico', 'clínico', 'clinician'):
+        return 'hsl(217, 91%, 60%)'
+    m = re.search(r'\d+', name)
+    if m:
+        idx = (int(m.group()) - 1) % len(_SPEAKER_COLORS)
+        return _SPEAKER_COLORS[idx]
+    h = 0
+    for c in name:
+        h = ord(c) + ((h << 5) - h)
+    return _SPEAKER_COLORS[abs(h) % len(_SPEAKER_COLORS)]
+
+
+def _normalize_edge_type(t: str) -> str:
+    """Strip accents and lowercase to canonical edge type key."""
+    t = unicodedata.normalize('NFD', t.strip().lower())
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    if t == 'validacao':
+        return 'validacao'
+    if t == 'apoio':
+        return 'apoio'
+    if t == 'confronto':
+        return 'confronto'
+    return t
+
+
+def _bfs_components(nodes: list, edge_pairs: list) -> list:
+    """BFS connected components. edge_pairs = list of (u, v) tuples (undirected)."""
+    adj: dict[str, list] = {n: [] for n in nodes}
+    for u, v in edge_pairs:
+        if u in adj and v in adj:
+            adj[u].append(v)
+            adj[v].append(u)
+    visited: set = set()
+    components = []
+    for n in nodes:
+        if n not in visited:
+            comp, queue = [], [n]
+            visited.add(n)
+            while queue:
+                curr = queue.pop(0)
+                comp.append(curr)
+                for nb in adj[curr]:
+                    if nb not in visited:
+                        visited.add(nb)
+                        queue.append(nb)
+            components.append(comp)
+    return components
+
+
+def compute_graph_data(raw_edges: list, group_patients: list) -> dict:
+    """
+    Pre-compute all graph analysis needed by the social network SVG visualization.
+    Accepts the raw list of individual interaction edges (each with source, target,
+    type, evidence, session_name) and the group patient pseudonym list.
+    Returns a JSON-serialisable dict consumed directly by the JS renderer.
+    """
+    def _num_sort(name: str) -> int:
+        m = re.search(r'\d+', name)
+        return int(m.group()) if m else 0
+
+    # 1. Normalize edge types in-place
+    for edge in raw_edges:
+        if edge.get('type'):
+            edge['type'] = _normalize_edge_type(edge['type'])
+
+    # 2. Build ordered node set (group patients first, then any extras from edges)
+    node_set: list = list(dict.fromkeys(group_patients))
+    for edge in raw_edges:
+        for key in ('source', 'target'):
+            pid = edge.get(key, '')
+            if pid and pid not in node_set:
+                node_set.append(pid)
+
+    # 3. Unique undirected pairs (skip self-loops)
+    seen: set = set()
+    unique_pairs: list = []
+    for edge in raw_edges:
+        s, t = edge.get('source', ''), edge.get('target', '')
+        if not s or not t or s == t:
+            continue
+        pair = tuple(sorted([s, t]))
+        if pair not in seen:
+            seen.add(pair)
+            unique_pairs.append(pair)
+
+    # 4. Bridge detection (O(E²) — fine for ≤20 nodes)
+    base_count = len(_bfs_components(node_set, unique_pairs))
+    bridge_set: set = set()
+    for pair in unique_pairs:
+        remaining = [p for p in unique_pairs if p != pair]
+        if len(_bfs_components(node_set, remaining)) > base_count:
+            bridge_set.add(pair)
+
+    # 5. Subgroups via non-bridge components
+    non_bridge = [p for p in unique_pairs if p not in bridge_set]
+    components = _bfs_components(node_set, non_bridge)
+    subgroups = sorted(
+        [sorted(c, key=_num_sort) for c in components if len(c) > 1],
+        key=lambda c: len(c), reverse=True
+    )
+    isolated = sorted([c[0] for c in components if len(c) == 1], key=_num_sort)
+
+    # 6. Node metadata (subgroup color, type, speaker color)
+    node_meta: dict = {}
+    for idx, sg in enumerate(subgroups):
+        color = _SUBGROUP_PALETTE[idx % len(_SUBGROUP_PALETTE)]
+        name = f'Subgrupo {chr(65 + idx)}'
+        for pid in sg:
+            node_meta[pid] = {
+                'type': 'subgroup', 'index': idx,
+                'name': name, 'color': color,
+                'speaker_color': _get_speaker_color(pid),
+            }
+    for pid in isolated:
+        node_meta[pid] = {
+            'type': 'isolated', 'name': 'Isolado',
+            'color': '#94a3b8',
+            'speaker_color': _get_speaker_color(pid),
+        }
+
+    # 7. Ordered node list for layout (subgroup members first, then isolated)
+    nodes_ordered: list = []
+    for sg in subgroups:
+        nodes_ordered.extend(sg)
+    nodes_ordered.extend(isolated)
+
+    # 8. Aggregate edges (group source→target→type, count occurrences)
+    edge_index: dict = {}
+    agg_edges: list = []
+    for edge in raw_edges:
+        s, t, typ = edge.get('source', ''), edge.get('target', ''), edge.get('type', '')
+        if not s or not t or s == t:
+            continue
+        key = f'{s}->{t}->{typ}'
+        if key not in edge_index:
+            entry = {
+                'source': s, 'target': t, 'type': typ,
+                'count': 0, 'evidences': [], 'sessions': [],
+                'is_bridge': tuple(sorted([s, t])) in bridge_set,
+            }
+            edge_index[key] = entry
+            agg_edges.append(entry)
+        edge_index[key]['count'] += 1
+        if edge.get('evidence'):
+            edge_index[key]['evidences'].append(edge['evidence'])
+        if edge.get('session_name'):
+            edge_index[key]['sessions'].append(edge['session_name'])
+
+    # 9. Count total aggregated edges per undirected pair (for curve spread)
+    pair_edge_counts: dict = {}
+    for e in agg_edges:
+        pk = '-'.join(sorted([e['source'], e['target']]))
+        pair_edge_counts[pk] = pair_edge_counts.get(pk, 0) + 1
+
+    return {
+        'nodes_ordered': nodes_ordered,
+        'subgroups': subgroups,
+        'isolated': isolated,
+        'node_meta': node_meta,
+        'aggregated_edges': agg_edges,
+        'pair_edge_counts': pair_edge_counts,
+    }
 
 
 def get_stats() -> dict:
@@ -1103,7 +1297,23 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
             "total_turns": total_turns
         } if speakers_data else None
 
-        # Post-process Interactions mapping data
+        # Normalize edge types on all raw edges before building payloads
+        for edge in aggregated_edges:
+            if edge.get('type'):
+                edge['type'] = _normalize_edge_type(edge['type'])
+
+        # Fetch group patients for graph node ordering
+        cursor.execute(
+            """
+            SELECT pseudonym FROM patients
+            WHERE therapy_group_id = ?
+            ORDER BY CAST(SUBSTR(pseudonym, 9) AS INTEGER) ASC
+            """,
+            (int(group_id),)
+        )
+        group_patients = [r["pseudonym"] for r in cursor.fetchall()]
+
+        # Post-process Interactions mapping data (raw edges kept for scroll list)
         synthesis_payload = None
         if aggregated_edges:
             node_ids = set()
@@ -1118,9 +1328,13 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
                 }
             }
 
+        # Pre-compute graph analysis for the JS renderer
+        graph_data = compute_graph_data(aggregated_edges, group_patients) if aggregated_edges else None
+
         return {
             "airtime": airtime_payload,
-            "synthesis": synthesis_payload
+            "synthesis": synthesis_payload,
+            "graph_data": graph_data,
         }
 
 

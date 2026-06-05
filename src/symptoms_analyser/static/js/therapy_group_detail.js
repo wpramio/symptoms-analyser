@@ -130,30 +130,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Social Cohesion & Mutual Support Network Visualization
     // =========================================================================
     const synthesisData = _page.synthesis;
-    if (synthesisData && synthesisData.interactions_mapping) {
-        const supportMapping = synthesisData.interactions_mapping || { nodes: [], edges: [] };
-        if (supportMapping.edges) {
-            supportMapping.edges.forEach(edge => {
-                if (edge.type) {
-                    const normalized = edge.type.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                    if (normalized === 'validacao') {
-                        edge.type = 'validacao';
-                    } else if (normalized === 'apoio') {
-                        edge.type = 'apoio';
-                    } else if (normalized === 'confronto') {
-                        edge.type = 'confronto';
-                    }
-                }
-            });
-        }
+    const graphData     = _page.graphData;
 
-        // 2. Populate Interactions Scroll List
+    // ── Interaction Scroll List (uses raw edges from synthesis) ───────────────
+    if (synthesisData && synthesisData.interactions_mapping) {
         const interactionScrollList = document.getElementById('interactionScrollList');
         if (interactionScrollList) {
-            const edges = supportMapping.edges || [];
-            if (edges.length > 0) {
-                interactionScrollList.innerHTML = ''; // Clear fallback text
-                edges.forEach(edge => {
+            const rawEdges = synthesisData.interactions_mapping.edges || [];
+            if (rawEdges.length > 0) {
+                interactionScrollList.innerHTML = '';
+                rawEdges.forEach(edge => {
                     const card = document.createElement('div');
                     card.className = `interaction-item-card ${edge.type}`;
 
@@ -164,8 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     sourceText.textContent = edge.source;
                     sourceText.style.color = getSpeakerColor(edge.source);
 
-                    const arrowText = document.createTextNode(' ➔ ');
-
                     const targetText = document.createElement('strong');
                     targetText.textContent = edge.target;
                     targetText.style.color = getSpeakerColor(edge.target);
@@ -175,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     badge.textContent = edge.type;
 
                     meta.appendChild(sourceText);
-                    meta.appendChild(arrowText);
+                    meta.appendChild(document.createTextNode(' ➔ '));
                     meta.appendChild(targetText);
                     meta.appendChild(badge);
 
@@ -200,152 +184,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 interactionScrollList.innerHTML = '<p class="text-muted text-medium">Nenhuma interação identificada para este grupo.</p>';
             }
         }
+    }
 
-        // 3. Render Interactive SVG Social Network Graph
+    // ── SVG Social Network Graph (consumes pre-computed graphData) ────────────
+    if (graphData) {
         const graphEdgesG = document.getElementById('graphEdges');
         const graphNodesG = document.getElementById('graphNodes');
-        const tooltipEl = document.getElementById('graphTooltip');
-        const svgEl = document.getElementById('socialNetworkGraph');
+        const tooltipEl   = document.getElementById('graphTooltip');
+        const svgEl       = document.getElementById('socialNetworkGraph');
 
         if (graphEdgesG && graphNodesG && svgEl) {
             graphEdgesG.innerHTML = '';
             graphNodesG.innerHTML = '';
             let hoverTimeout = null;
 
-            const nodes = supportMapping.nodes || [];
-            const edges = supportMapping.edges || [];
+            // All graph analysis is pre-computed server-side
+            const { nodes_ordered, subgroups, isolated, node_meta,
+                    aggregated_edges, pair_edge_counts } = graphData;
 
-            // Build the set of nodes. First, add all group patients if available.
-            let nodeSet = new Set();
-            if (_page.groupPatients && _page.groupPatients.length > 0) {
-                _page.groupPatients.forEach(p => nodeSet.add(p));
-            }
-
-            // Also ensure any node or edge mentioned in the mapping is added
-            nodes.forEach(n => nodeSet.add(n.id));
-            edges.forEach(edge => {
-                nodeSet.add(edge.source);
-                nodeSet.add(edge.target);
-            });
-
-            const rawNodesList = Array.from(nodeSet);
-
-            // Helper function to calculate components for a given set of undirected edges
-            function getComponents(nodesList, activeEdges) {
-                const adjList = {};
-                nodesList.forEach(id => { adjList[id] = []; });
-                activeEdges.forEach(edge => {
-                    if (adjList[edge.source] && adjList[edge.target]) {
-                        adjList[edge.source].push(edge.target);
-                        adjList[edge.target].push(edge.source);
-                    }
-                });
-
-                const vis = new Set();
-                const comps = [];
-                nodesList.forEach(id => {
-                    if (!vis.has(id)) {
-                        const comp = [];
-                        const queue = [id];
-                        vis.add(id);
-                        while (queue.length > 0) {
-                            const curr = queue.shift();
-                            comp.push(curr);
-                            adjList[curr].forEach(neighbor => {
-                                if (!vis.has(neighbor)) {
-                                    vis.add(neighbor);
-                                    queue.push(neighbor);
-                                }
-                            });
-                        }
-                        comps.push(comp);
-                    }
-                });
-                return comps;
-            }
-
-            // Create unique undirected representation of edges to avoid parallel edge noise during bridge detection
-            const uniqueUndirectedEdges = [];
-            const seenPairs = new Set();
-            edges.forEach(e => {
-                if (e.source === e.target) return;
-                const pair = [e.source, e.target].sort().join('-');
-                if (!seenPairs.has(pair)) {
-                    seenPairs.add(pair);
-                    uniqueUndirectedEdges.push({ source: e.source, target: e.target });
-                }
-            });
-
-            // Base components using all unique undirected edges
-            const baseComponents = getComponents(rawNodesList, uniqueUndirectedEdges);
-            const baseCount = baseComponents.length;
-
-            // Find bridges: edges whose removal increases the number of connected components
-            const bridgePairs = new Set();
-            uniqueUndirectedEdges.forEach(edge => {
-                const pair = [edge.source, edge.target].sort().join('-');
-                const remainingEdges = uniqueUndirectedEdges.filter(e => {
-                    const p = [e.source, e.target].sort().join('-');
-                    return p !== pair;
-                });
-                const countWithoutEdge = getComponents(rawNodesList, remainingEdges).length;
-                if (countWithoutEdge > baseCount) {
-                    bridgePairs.add(pair);
-                }
-            });
-
-            // Calculate "true subgroups" using non-bridge edges
-            const nonBridgeEdges = uniqueUndirectedEdges.filter(edge => {
-                const pair = [edge.source, edge.target].sort().join('-');
-                return !bridgePairs.has(pair);
-            });
-            const components = getComponents(rawNodesList, nonBridgeEdges);
-
-            // Separate components into subgroups (size > 1) and isolated (size == 1)
-            const subgroups = components.filter(c => c.length > 1).sort((a, b) => b.length - a.length);
-            const isolated = components.filter(c => c.length === 1).map(c => c[0]);
-
-            // Assign subgroup colors and metadata
-            const nodeComponentMap = {};
-            const subgroupPalette = ['#a855f7', '#f43f5e', '#ec4899', '#06b6d4', '#eab308'];
-            subgroups.forEach((comp, compIdx) => {
-                comp.forEach(pid => {
-                    nodeComponentMap[pid] = {
-                        type: 'subgroup',
-                        index: compIdx,
-                        name: `Subgrupo ${String.fromCharCode(65 + compIdx)}`,
-                        color: subgroupPalette[compIdx % subgroupPalette.length],
-                        members: comp
-                    };
-                });
-            });
-            isolated.forEach(pid => {
-                nodeComponentMap[pid] = {
-                    type: 'isolated',
-                    name: 'Isolado',
-                    color: '#94a3b8',
-                    members: [pid]
-                };
-            });
-
-            // Re-order nodes based on connected components to group them visually on the circle
-            const orderedNodeIds = [];
-            subgroups.forEach(comp => {
-                const sortedComp = [...comp].sort((a, b) => {
-                    const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
-                    const numB = parseInt(b.match(/\d+/)?.[0] || 0, 10);
-                    return numA - numB;
-                });
-                orderedNodeIds.push(...sortedComp);
-            });
-            const sortedIsolated = [...isolated].sort((a, b) => {
-                const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
-                const numB = parseInt(b.match(/\d+/)?.[0] || 0, 10);
-                return numA - numB;
-            });
-            orderedNodeIds.push(...sortedIsolated);
-
-            const uniqueNodes = orderedNodeIds.map(id => ({ id: id, label: id }));
+            const uniqueNodes = nodes_ordered.map(id => ({ id, label: id }));
 
             // Layout coordinates inside a 320x320 viewport
             const nodeCoords = {};
@@ -447,46 +304,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            // Draw directed edges (interaction lines)
+            // Draw directed edges — aggregated and bridge-flagged by the server
             const typeColors = {
-                apoio: '#10b981',      // Green
-                validacao: '#3b82f6',  // Blue
-                confronto: '#f59e0b'   // Orange
+                apoio: '#10b981',
+                validacao: '#3b82f6',
+                confronto: '#f59e0b'
             };
 
-            // Aggregate identical source -> target -> type edges to prevent cluttering across sessions
-            const aggregatedEdges = [];
-            const edgeGroups = {};
-            edges.forEach(edge => {
-                if (edge.source === edge.target) return;
-                const key = `${edge.source}->${edge.target}->${edge.type}`;
-                if (!edgeGroups[key]) {
-                    edgeGroups[key] = {
-                        source: edge.source,
-                        target: edge.target,
-                        type: edge.type,
-                        count: 0,
-                        evidences: [],
-                        sessions: []
-                    };
-                    aggregatedEdges.push(edgeGroups[key]);
-                }
-                edgeGroups[key].count += 1;
-                edgeGroups[key].evidences.push(edge.evidence);
-                if (edge.session_name) {
-                    edgeGroups[key].sessions.push(edge.session_name);
-                }
-            });
-
-            // Count total aggregated edges between each pair of nodes to spread out parallel lines nicely
-            const totalEdgesBetweenPair = {};
-            aggregatedEdges.forEach(edge => {
-                const key = [edge.source, edge.target].sort().join('-');
-                totalEdgesBetweenPair[key] = (totalEdgesBetweenPair[key] || 0) + 1;
-            });
-
             const drawnEdges = {};
-            aggregatedEdges.forEach((edge, idx) => {
+            aggregated_edges.forEach((edge, idx) => {
                 const start = nodeCoords[edge.source];
                 const end = nodeCoords[edge.target];
                 if (!start || !end) return;
@@ -509,18 +335,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 const ny = dx / len;
 
                 // Spread the curves: e.g. -14, 14, -28, 28...
-                const hasMultipleLines = totalEdgesBetweenPair[key] > 1;
+                const hasMultipleLines = pair_edge_counts[key] > 1;
                 let curveDisplacement = 0;
                 if (hasMultipleLines) {
                     const spread = 14;
                     curveDisplacement = (lineIndex % 2 === 0 ? 1 : -1) * Math.ceil(lineIndex / 2) * spread;
-                    if (totalEdgesBetweenPair[key] === 2) {
+                    if (pair_edge_counts[key] === 2) {
                         curveDisplacement = (lineIndex === 0 ? -12 : 12);
                     }
                 }
 
                 // If bidirectional and has 1 line in each direction, apply curves to separate them
-                const isBidirectional = aggregatedEdges.some(e => e.source === edge.target && e.target === edge.source);
+                const isBidirectional = aggregated_edges.some(e => e.source === edge.target && e.target === edge.source);
                 if (!hasMultipleLines && isBidirectional) {
                     curveDisplacement = 12;
                 }
@@ -546,9 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 path.setAttribute('class', 'edge-path');
                 path.setAttribute('opacity', '0.75');
 
-                const edgeKey = [edge.source, edge.target].sort().join('-');
-                const isBridge = bridgePairs.has(edgeKey);
-                if (isBridge) {
+                if (edge.is_bridge) {
                     path.setAttribute('stroke-dasharray', '5,5');
                 }
 
@@ -669,15 +493,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     const mouseY = e.clientY;
                     hoverTimeout = setTimeout(() => {
                         const patientId = node.id;
-                        const sent = edges.filter(e => e.source === patientId).length;
-                        const rec = edges.filter(e => e.target === patientId).length;
+                        const sent = aggregated_edges.filter(e => e.source === patientId).reduce((sum, e) => sum + e.count, 0);
+                        const rec = aggregated_edges.filter(e => e.target === patientId).reduce((sum, e) => sum + e.count, 0);
 
                         const wrapperRect = svgEl.parentNode.getBoundingClientRect();
                         let x = mouseX - wrapperRect.left;
                         let y = mouseY - wrapperRect.top - 10;
 
                         if (tooltipEl) {
-                            const compInfo = nodeComponentMap[patientId];
+                            const compInfo = node_meta[patientId];
                             let subtitleHtml = '';
                             if (compInfo && compInfo.type === 'subgroup') {
                                 subtitleHtml = `<div style="font-weight: 800; color: ${compInfo.color}; font-size: 0.7rem; margin-top: 0.1rem; text-transform: uppercase;">${compInfo.name}</div>`;
@@ -757,7 +581,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (subgroups.length > 0) {
                     subgroupsLegendEl.style.display = 'block';
                     subgroups.forEach((comp, idx) => {
-                        const compInfo = nodeComponentMap[comp[0]];
+                        const compInfo = node_meta[comp[0]];
                         const item = document.createElement('div');
                         item.className = 'subgroup-legend-item';
                         item.style.display = 'flex';

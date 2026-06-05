@@ -398,6 +398,7 @@ def therapy_group_detail(group_id):
             chart_dimensions=cohort_data["chart_dimensions"],
             airtime=dynamics_data.get("airtime"),
             synthesis=dynamics_data.get("synthesis"),
+            graph_data=dynamics_data.get("graph_data"),
         )
     except Exception as e:
         print(f"Error serving therapy group detail: {e}")

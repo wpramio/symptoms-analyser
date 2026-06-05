@@ -477,7 +477,7 @@
     "groupId": {{ group.id }},
     "airtime": {{ airtime | tojson if airtime else 'null' }},
     "synthesis": {{ synthesis | tojson if synthesis else 'null' }},
-    "groupPatients": {{ patients | map(attribute='pseudonym') | list | tojson }}
+    "graphData": {{ graph_data | tojson if graph_data else 'null' }}
 }
 </script>
 <script src="/static/js/therapy_group_detail.js"></script>
