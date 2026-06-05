@@ -6,8 +6,8 @@
 {% block extra_head %}
 <!-- Import Chart.js for group dynamics charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Import svg-pan-zoom for interactive graph navigation -->
-<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+<!-- Import Cytoscape.js for interactive graph visualization -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -285,24 +285,7 @@
                                         Confronto</span>
                                 </div>
                                 <div class="svg-graph-wrapper">
-                                    <svg id="socialNetworkGraph" viewBox="0 0 440 440" width="100%" height="100%">
-                                        <defs>
-                                            <marker id="arrow-apoio" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
-                                            </marker>
-                                            <marker id="arrow-validacao" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6" />
-                                            </marker>
-                                            <marker id="arrow-confronto" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
-                                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
-                                            </marker>
-                                        </defs>
-                                        <g id="graphEdges"></g>
-                                        <g id="graphNodes"></g>
-                                    </svg>
+                                    <div id="socialNetworkGraph" style="width: 100%; height: 100%;"></div>
                                     <!-- Graph navigation controls -->
                                     <div class="graph-nav-controls">
                                         <button id="graphZoomInBtn" class="graph-nav-btn" title="Ampliar">

@@ -170,26 +170,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. Render Interactive SVG Social Network Graph
-        const graphEdgesG = document.getElementById('graphEdges');
-        const graphNodesG = document.getElementById('graphNodes');
+        // 3. Render Interactive Cytoscape Social Network Graph
         const tooltipEl = document.getElementById('graphTooltip');
-        const svgEl = document.getElementById('socialNetworkGraph');
+        const graphContainer = document.getElementById('socialNetworkGraph');
 
-        if (graphEdgesG && graphNodesG && svgEl) {
-            graphEdgesG.innerHTML = '';
-            graphNodesG.innerHTML = '';
-            let hoverTimeout = null;
+        if (graphContainer) {
+            let cyInstance = null;
 
             const nodes = supportMapping.nodes || [];
             const edges = supportMapping.edges || [];
 
-            // If we have edges but no nodes were parsed, auto-generate nodes from speakers
-            let nodeSet = new Set(nodes.map(n => n.id));
-            if (nodeSet.size === 0 && edges.length > 0) {
+            // Build the set of all unique nodes from both the nodes list and the edges to ensure no dangling references
+            let nodeSet = new Set();
+            if (Array.isArray(nodes)) {
+                nodes.forEach(n => {
+                    if (n && n.id) nodeSet.add(n.id);
+                });
+            }
+            if (Array.isArray(edges)) {
                 edges.forEach(edge => {
-                    nodeSet.add(edge.source);
-                    nodeSet.add(edge.target);
+                    if (edge.source) nodeSet.add(edge.source);
+                    if (edge.target) nodeSet.add(edge.target);
                 });
             }
 
@@ -209,197 +210,291 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             });
 
-            // Draw directed edges (interaction lines)
-            const typeColors = {
-                apoio: '#10b981',      // Green
-                validacao: '#3b82f6',  // Blue
-                confronto: '#f59e0b'   // Orange
-            };
-
-            // Count parallel edges to apply offset/curving if multiple interactions exist between same nodes
-            const edgeCounts = {};
+            // Aggregate edges by source, target, and type to avoid cluttering the visual graph
+            const edgeMap = {};
             edges.forEach(edge => {
-                const key = [edge.source, edge.target].sort().join('-');
-                edgeCounts[key] = (edgeCounts[key] || 0) + 1;
-            });
-
-            const drawnEdges = {};
-            edges.forEach((edge, idx) => {
-                const start = nodeCoords[edge.source];
-                const end = nodeCoords[edge.target];
-                if (!start || !end) return;
-
-                const color = typeColors[edge.type] || '#64748b';
-                const key = [edge.source, edge.target].sort().join('-');
-                drawnEdges[key] = (drawnEdges[key] || 0) + 1;
-
-                // If source and target are same, skip self-loop to keep it clean
-                if (edge.source === edge.target) return;
-
-                // Math to draw arrows: curve if there are parallel lines
-                let pathD = '';
-                const midX = (start.x + end.x) / 2;
-                const midY = (start.y + end.y) / 2;
-
-                // Calculate normal vector for displacement
-                const dx = end.x - start.x;
-                const dy = end.y - start.y;
-                const len = Math.sqrt(dx * dx + dy * dy);
-                const nx = -dy / len;
-                const ny = dx / len;
-
-                // Adjust curve depth based on edge index
-                const isBidirectional = (edges.some(e => e.source === edge.target && e.target === edge.source));
-                const curveDisplacement = isBidirectional ? 16 : 0;
-                const ctrlX = midX + nx * curveDisplacement;
-                const ctrlY = midY + ny * curveDisplacement;
-
-                if (isBidirectional) {
-                    pathD = `M ${start.x} ${start.y} Q ${ctrlX} ${ctrlY} ${end.x} ${end.y}`;
-                } else {
-                    pathD = `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+                if (edge.source === edge.target) return; // Skip self-loops
+                const key = `${edge.source}->${edge.target}[${edge.type}]`;
+                if (!edgeMap[key]) {
+                    edgeMap[key] = {
+                        source: edge.source,
+                        target: edge.target,
+                        type: edge.type,
+                        count: 0,
+                        evidences: []
+                    };
                 }
+                edgeMap[key].count++;
+                if (edge.evidence) {
+                    edgeMap[key].evidences.push(edge.evidence);
+                }
+            });
+            const aggregatedEdges = Object.values(edgeMap);
 
-                // Create SVG path element
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('d', pathD);
-                path.setAttribute('fill', 'none');
-                path.setAttribute('stroke', color);
-                path.setAttribute('stroke-width', '3');
-                path.setAttribute('marker-end', `url(#arrow-${edge.type})`);
-                path.setAttribute('class', 'edge-path');
-                path.setAttribute('opacity', '0.75');
+            function initCytoscape() {
+                if (cyInstance || typeof cytoscape === 'undefined') return;
 
-                // Attach tooltip data attributes
-                path.dataset.source = edge.source;
-                path.dataset.target = edge.target;
-                path.dataset.type = edge.type;
-                path.dataset.evidence = edge.evidence;
+                // Resolve text main color dynamically for labels
+                const textMainColor = getComputedStyle(document.documentElement).getPropertyValue('--text-main').trim() || '#1e293b';
 
-                // Hover interaction effects
-                path.addEventListener('mouseenter', (e) => {
-                    if (hoverTimeout) clearTimeout(hoverTimeout);
-                    hoverTimeout = setTimeout(() => {
-                        const wrapperRect = svgEl.parentNode.getBoundingClientRect();
+                requestAnimationFrame(() => {
+                    const elements = [];
 
-                        // Coordinates relative to graph wrapper container
-                        let x = e.clientX - wrapperRect.left;
-                        let y = e.clientY - wrapperRect.top - 10;
-
-                        // Populate tooltip
-                        if (tooltipEl) {
-                            tooltipEl.innerHTML = `
-                                <div class="tooltip-title"><strong>${edge.source}</strong> ➜ <strong>${edge.target}</strong></div>
-                                <div style="font-weight: 800; color: ${color}; text-transform: uppercase; font-size: 0.65rem; margin-bottom: 0.25rem;">${edge.type}</div>
-                                <div class="tooltip-body">"${edge.evidence}"</div>
-                            `;
-                            tooltipEl.style.left = `${x}px`;
-                            tooltipEl.style.top = `${y}px`;
-                            tooltipEl.style.transform = 'translate(-50%, -100%)';
-                            tooltipEl.style.opacity = '1';
-                        }
-
-                        // Dim other paths and nodes
-                        document.querySelectorAll('.edge-path').forEach(p => {
-                            if (p !== path) p.style.opacity = '0.15';
+                    // Add nodes
+                    uniqueNodes.forEach(node => {
+                        const coord = nodeCoords[node.id];
+                        if (!coord) return;
+                        elements.push({
+                            group: 'nodes',
+                            data: {
+                                id: node.id,
+                                label: node.id,
+                                color: getSpeakerColor(node.id)
+                            },
+                            position: { x: coord.x, y: coord.y }
                         });
-                        document.querySelectorAll('.node-circle').forEach(circle => {
-                            const pid = circle.dataset.patientId;
-                            if (pid !== edge.source && pid !== edge.target) {
-                                circle.style.opacity = '0.3';
+                    });
+
+                    // Add edges
+                    const typeColors = {
+                        apoio: '#10b981',      // Green
+                        validacao: '#3b82f6',  // Blue
+                        confronto: '#f59e0b'   // Orange
+                    };
+
+                    aggregatedEdges.forEach((edge, idx) => {
+                        if (!nodeCoords[edge.source] || !nodeCoords[edge.target]) return;
+                        const color = typeColors[edge.type] || '#64748b';
+                        elements.push({
+                            group: 'edges',
+                            data: {
+                                id: `edge-${idx}`,
+                                source: edge.source,
+                                target: edge.target,
+                                type: edge.type,
+                                count: edge.count,
+                                color: color,
+                                evidences: edge.evidences
                             }
                         });
-                    }, 50);
-                });
-
-                path.addEventListener('mouseleave', () => {
-                    if (hoverTimeout) clearTimeout(hoverTimeout);
-                    if (tooltipEl) tooltipEl.style.opacity = '0';
-                    document.querySelectorAll('.edge-path').forEach(p => p.style.opacity = '0.75');
-                    document.querySelectorAll('.node-circle').forEach(c => c.style.opacity = '1');
-                });
-
-                graphEdgesG.appendChild(path);
-            });
-
-            // Draw patient nodes (circles)
-            uniqueNodes.forEach(node => {
-                const coord = nodeCoords[node.id];
-                if (!coord) return;
-
-                const nodeColor = getSpeakerColor(node.id);
-                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-                // SVG Circle
-                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                circle.setAttribute('cx', coord.x.toString());
-                circle.setAttribute('cy', coord.y.toString());
-                circle.setAttribute('r', '15');
-                circle.setAttribute('fill', nodeColor);
-                circle.setAttribute('class', 'node-circle');
-                circle.dataset.patientId = node.id;
-
-                // SVG Text label
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', coord.x.toString());
-                text.setAttribute('y', (coord.y + 22).toString()); // Offset label below the circle node
-                text.setAttribute('class', 'node-label');
-                text.textContent = node.id;
-
-                g.appendChild(circle);
-                g.appendChild(text);
-
-                // Node Hover interaction effects
-                circle.addEventListener('mouseenter', (e) => {
-                    if (hoverTimeout) clearTimeout(hoverTimeout);
-                    hoverTimeout = setTimeout(() => {
-                        const patientId = node.id;
-                        const sent = edges.filter(e => e.source === patientId).length;
-                        const rec = edges.filter(e => e.target === patientId).length;
-
-                        const wrapperRect = svgEl.parentNode.getBoundingClientRect();
-                        let x = coord.x * (wrapperRect.width / 320);
-                        let y = (coord.y - 20) * (wrapperRect.height / 320);
-
-                        if (tooltipEl) {
-                            tooltipEl.innerHTML = `
-                                <div class="tooltip-title" style="margin-bottom: 0px;"><strong>${patientId}</strong></div>
-                                <div style="font-size: 0.7rem; color: #cbd5e1; margin-top: 0.25rem;">
-                                    Ofereceu: <strong>${sent}</strong> interações<br/>
-                                    Recebeu: <strong>${rec}</strong> interações
-                                </div>
-                            `;
-                            tooltipEl.style.left = `${x}px`;
-                            tooltipEl.style.top = `${y}px`;
-                            tooltipEl.style.transform = 'translate(-50%, -100%)';
-                            tooltipEl.style.opacity = '1';
-                        }
-
-                        // Focus/Highlight connected paths
-                        document.querySelectorAll('.edge-path').forEach(p => {
-                            const isConnected = p.dataset.source === patientId || p.dataset.target === patientId;
-                            p.style.opacity = isConnected ? '1' : '0.1';
-                            if (isConnected) p.style.strokeWidth = '4px';
-                        });
-
-                        document.querySelectorAll('.node-circle').forEach(c => {
-                            if (c !== circle) c.style.opacity = '0.3';
-                        });
-                    }, 50);
-                });
-
-                circle.addEventListener('mouseleave', () => {
-                    if (hoverTimeout) clearTimeout(hoverTimeout);
-                    if (tooltipEl) tooltipEl.style.opacity = '0';
-                    document.querySelectorAll('.edge-path').forEach(p => {
-                        p.style.opacity = '0.75';
-                        p.style.strokeWidth = '3';
                     });
-                    document.querySelectorAll('.node-circle').forEach(c => c.style.opacity = '1');
-                });
 
-                graphNodesG.appendChild(g);
-            });
+                    cyInstance = cytoscape({
+                        container: graphContainer,
+                        elements: elements,
+                        style: [
+                            {
+                                selector: 'node',
+                                style: {
+                                    'width': 30,
+                                    'height': 30,
+                                    'background-color': 'data(color)',
+                                    'label': 'data(label)',
+                                    'color': textMainColor,
+                                    'font-family': "'Inter', sans-serif",
+                                    'font-weight': 'bold',
+                                    'font-size': '11px',
+                                    'text-valign': 'bottom',
+                                    'text-margin-y': 6,
+                                    'text-halign': 'center',
+                                    'border-width': 2.5,
+                                    'border-color': '#ffffff',
+                                    'overlay-opacity': 0
+                                }
+                            },
+                            {
+                                selector: 'edge',
+                                style: {
+                                    'width': function(ele) {
+                                        return 1.5 + Math.min(ele.data('count') * 0.4, 3.5);
+                                    },
+                                    'line-color': 'data(color)',
+                                    'target-arrow-color': 'data(color)',
+                                    'target-arrow-shape': 'triangle',
+                                    'arrow-scale': 0.8,
+                                    'curve-style': 'bezier',
+                                    'control-point-step-size': 20,
+                                    'opacity': 0.75,
+                                    'overlay-opacity': 0
+                                }
+                            },
+                            {
+                                selector: '.dimmed',
+                                style: {
+                                    'opacity': 0.15
+                                }
+                            },
+                            {
+                                selector: 'node.highlighted',
+                                style: {
+                                    'border-color': '#ffffff',
+                                    'border-width': 2.5,
+                                    'opacity': 1
+                                }
+                            },
+                            {
+                                selector: 'edge.highlighted',
+                                style: {
+                                    'opacity': 1,
+                                    'width': function(ele) {
+                                        return 2.5 + Math.min(ele.data('count') * 0.4, 3.5);
+                                    }
+                                }
+                            }
+                        ],
+                        layout: {
+                            name: 'preset'
+                        },
+                        userZoomingEnabled: true,
+                        userPanningEnabled: true,
+                        boxSelectionEnabled: false
+                    });
+
+                    // Interactive Tooltips & Highlights (debounced 50ms)
+                    let hoverTimeout = null;
+
+                    cyInstance.on('mouseover', 'node', (e) => {
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        const node = e.target;
+                        const patientId = node.id();
+                        const origEvent = e.originalEvent;
+                        const mouseX = origEvent.clientX;
+                        const mouseY = origEvent.clientY;
+
+                        hoverTimeout = setTimeout(() => {
+                            const sent = edges.filter(e => e.source === patientId).length;
+                            const rec = edges.filter(e => e.target === patientId).length;
+
+                            const wrapperRect = graphContainer.parentNode.getBoundingClientRect();
+                            let x = mouseX - wrapperRect.left;
+                            let y = mouseY - wrapperRect.top - 10;
+
+                            if (tooltipEl) {
+                                tooltipEl.innerHTML = `
+                                    <div class="tooltip-title" style="margin-bottom: 0px;"><strong>${patientId}</strong></div>
+                                    <div style="font-size: 0.7rem; color: #cbd5e1; margin-top: 0.25rem;">
+                                        Ofereceu: <strong>${sent}</strong> interações<br/>
+                                        Recebeu: <strong>${rec}</strong> interações
+                                    </div>
+                                `;
+                                tooltipEl.style.left = `${x}px`;
+                                tooltipEl.style.top = `${y}px`;
+                                tooltipEl.style.transform = 'translate(-50%, -100%)';
+                                tooltipEl.style.opacity = '1';
+                            }
+
+                            cyInstance.elements().addClass('dimmed');
+                            node.removeClass('dimmed');
+                            node.addClass('highlighted');
+                            node.connectedEdges().forEach(edge => {
+                                edge.removeClass('dimmed');
+                                edge.addClass('highlighted');
+                                edge.connectedNodes().removeClass('dimmed');
+                            });
+                        }, 50);
+                    });
+
+                    cyInstance.on('mouseout', 'node', () => {
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        if (tooltipEl) tooltipEl.style.opacity = '0';
+                        cyInstance.elements().removeClass('dimmed');
+                        cyInstance.elements().removeClass('highlighted');
+                    });
+
+                    cyInstance.on('mouseover', 'edge', (e) => {
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        const edge = e.target;
+                        const sourceId = edge.source().id();
+                        const targetId = edge.target().id();
+                        const edgeData = edge.data();
+                        const origEvent = e.originalEvent;
+                        const mouseX = origEvent.clientX;
+                        const mouseY = origEvent.clientY;
+
+                        hoverTimeout = setTimeout(() => {
+                            const wrapperRect = graphContainer.parentNode.getBoundingClientRect();
+                            let x = mouseX - wrapperRect.left;
+                            let y = mouseY - wrapperRect.top - 10;
+
+                            if (tooltipEl) {
+                                const color = edgeData.color;
+                                const interactionLabel = edgeData.count === 1 ? 'interação' : 'interações';
+                                let subtitleHtml = `<div style="font-weight: 800; color: ${color}; text-transform: uppercase; font-size: 0.65rem; margin-bottom: 0.25rem;">${edgeData.type} (${edgeData.count} ${interactionLabel})</div>`;
+
+                                let tooltipHtml = `
+                                    <div class="tooltip-title"><strong>${sourceId}</strong> ➜ <strong>${targetId}</strong></div>
+                                    ${subtitleHtml}
+                                `;
+
+                                const limit = 3;
+                                const displayed = edgeData.evidences.slice(0, limit);
+                                tooltipHtml += `<div class="tooltip-body" style="max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem; margin-top: 0.25rem;">`;
+                                displayed.forEach((ev) => {
+                                    tooltipHtml += `<div style="border-left: 2px solid ${color}; padding-left: 0.25rem; margin-bottom: 0.15rem; font-style: italic;">"${ev}"</div>`;
+                                });
+                                if (edgeData.evidences.length > limit) {
+                                    tooltipHtml += `<div style="font-size: 0.65rem; color: #94a3b8; text-align: right; margin-top: 0.1rem;">+ ${edgeData.evidences.length - limit} interações...</div>`;
+                                }
+                                tooltipHtml += `</div>`;
+
+                                tooltipEl.innerHTML = tooltipHtml;
+                                tooltipEl.style.left = `${x}px`;
+                                tooltipEl.style.top = `${y}px`;
+                                tooltipEl.style.transform = 'translate(-50%, -100%)';
+                                tooltipEl.style.opacity = '1';
+                            }
+
+                            cyInstance.elements().addClass('dimmed');
+                            edge.removeClass('dimmed');
+                            edge.addClass('highlighted');
+                            edge.connectedNodes().removeClass('dimmed');
+                            edge.connectedNodes().addClass('highlighted');
+                        }, 50);
+                    });
+
+                    cyInstance.on('mouseout', 'edge', () => {
+                        if (hoverTimeout) clearTimeout(hoverTimeout);
+                        if (tooltipEl) tooltipEl.style.opacity = '0';
+                        cyInstance.elements().removeClass('dimmed');
+                        cyInstance.elements().removeClass('highlighted');
+                    });
+
+                    // Navigation buttons
+                    const zoomInBtn = document.getElementById('graphZoomInBtn');
+                    const zoomOutBtn = document.getElementById('graphZoomOutBtn');
+                    const resetBtn = document.getElementById('graphResetBtn');
+
+                    if (zoomInBtn) zoomInBtn.addEventListener('click', () => {
+                        if (cyInstance) cyInstance.zoom({
+                            level: cyInstance.zoom() * 1.25,
+                            renderedPosition: { x: graphContainer.clientWidth / 2, y: graphContainer.clientHeight / 2 }
+                        });
+                    });
+                    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => {
+                        if (cyInstance) cyInstance.zoom({
+                            level: cyInstance.zoom() / 1.25,
+                            renderedPosition: { x: graphContainer.clientWidth / 2, y: graphContainer.clientHeight / 2 }
+                        });
+                    });
+                    if (resetBtn) resetBtn.addEventListener('click', () => {
+                        if (cyInstance) {
+                            cyInstance.reset();
+                            cyInstance.center();
+                        }
+                    });
+                });
+            }
+
+            // Hook into the dynamics tab button click
+            const dynamicsTabBtn = document.querySelector('[data-target="tab-dynamics"]');
+            if (dynamicsTabBtn) {
+                dynamicsTabBtn.addEventListener('click', initCytoscape);
+            }
+
+            // Also init immediately if the dynamics tab happens to be active on load
+            if (document.getElementById('tab-dynamics')?.classList.contains('active')) {
+                initCytoscape();
+            }
         }
     }
 
