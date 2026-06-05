@@ -21,29 +21,45 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 
+-- 1.5. Therapy Groups Table
+CREATE TABLE IF NOT EXISTS therapy_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    clinician_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_therapy_groups_clinician ON therapy_groups (clinician_id);
+
 -- 2. Patients Table
 CREATE TABLE IF NOT EXISTS patients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE,
+    therapy_group_id INTEGER,
     real_name TEXT NOT NULL,           -- PHI
     pseudonym TEXT UNIQUE NOT NULL,    -- e.g. "Paciente1"
     metadata TEXT,                     -- JSON metadata
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (therapy_group_id) REFERENCES therapy_groups(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym);
+CREATE INDEX IF NOT EXISTS idx_patients_group ON patients (therapy_group_id);
 
 -- 3. Therapy Sessions Table
 CREATE TABLE IF NOT EXISTS therapy_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,                -- e.g. "Sessão 28/05/2026"
     clinician_id INTEGER NOT NULL,
+    therapy_group_id INTEGER,
     start_at DATETIME,
     duration INTEGER,                  -- in minutes
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (therapy_group_id) REFERENCES therapy_groups(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_clinician ON therapy_sessions (clinician_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_group ON therapy_sessions (therapy_group_id);
 
 -- 4. Therapy Session Patients Join Table
 CREATE TABLE IF NOT EXISTS therapy_session_patients (

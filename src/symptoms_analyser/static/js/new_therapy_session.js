@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Form Inputs
     const sessionName = document.getElementById('sessionName');
+    const sessionGroup = document.getElementById('sessionGroup');
     const sessionClinician = document.getElementById('sessionClinician');
     const sessionStart = document.getElementById('sessionStart');
     const sessionDuration = document.getElementById('sessionDuration');
@@ -136,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 7. Submit therapy session registration
     startBtn.addEventListener('click', async () => {
         const nameVal = sessionName.value.trim();
+        const groupVal = sessionGroup ? sessionGroup.value : '';
         const clinicianVal = sessionClinician ? (sessionClinician.value.trim() || 'clinician_1') : 'clinician_1';
         const startVal = sessionStart.value;
         const durationVal = sessionDuration.value;
@@ -149,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formData = new FormData();
         formData.append('session_name', nameVal);
+        formData.append('group_id', groupVal);
         formData.append('clinician_id', clinicianVal);
         formData.append('start_at', startVal.replace('T', ' ') + ':00');
         formData.append('duration', durationVal);

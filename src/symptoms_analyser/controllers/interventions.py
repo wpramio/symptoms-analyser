@@ -37,11 +37,19 @@ TDPM_ITEMS_NAMES = {
     "20.1": "Euforia / grandiosidade"
 }
 
-def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str, Any]:
+def _run_heuristics_calculations(
+    ref_session_id: int,
+    session_ids: List[int],
+    session_order: Dict[int, int],
+    eval_ids: List[int],
+    eval_id_to_session: Dict[int, int],
+    curr_participants: Dict[int, str],
+    all_possible_patients: Dict[int, str],
+    group_id: Optional[int],
+    is_global: bool
+) -> Dict[str, Any]:
     """
-    Core engine that computes qualitative and quantitative action suggestions.
-    If is_global is True, it runs calculations based on all historic sessions from the group
-    to show alerts and actions for now.
+    Executes core heuristic calculations over resolved session/evaluation state.
     """
     alerts = []
     
@@ -49,65 +57,7 @@ def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # 1. Fetch reference session
-        cursor.execute("SELECT name, start_at FROM therapy_sessions WHERE id = ?", (session_id,))
-        curr_session = cursor.fetchone()
-        if not curr_session:
-            return {"alerts": []}
-            
-        curr_start = curr_session["start_at"]
-        
-        # 2. Get all therapy sessions up to and including the current one, sorted chronologically
-        cursor.execute("""
-            SELECT id, name, start_at 
-            FROM therapy_sessions 
-            WHERE start_at <= ? 
-            ORDER BY start_at ASC
-        """, (curr_start,))
-        all_sessions = cursor.fetchall()
-        session_ids = [s["id"] for s in all_sessions]
-        session_order = {sid: idx for idx, sid in enumerate(session_ids)}
-        
-        if not session_ids:
-            return {"alerts": []}
-            
-        # 3. Get the latest evaluations for these sessions
         placeholders = ",".join("?" for _ in session_ids)
-        cursor.execute(f"""
-            SELECT e.id as eval_id, e.therapy_session_id
-            FROM tdpm_evaluations e
-            JOIN (
-                SELECT therapy_session_id, MAX(id) as max_eval_id
-                FROM tdpm_evaluations
-                WHERE therapy_session_id IN ({placeholders})
-                GROUP BY therapy_session_id
-            ) latest_eval ON e.id = latest_eval.max_eval_id
-        """, session_ids)
-        evals = cursor.fetchall()
-        eval_id_to_session = {r["eval_id"]: r["therapy_session_id"] for r in evals}
-        eval_ids = list(eval_id_to_session.keys())
-        
-        # 4. Get active participants of the current session
-        cursor.execute("""
-            SELECT p.id, p.pseudonym
-            FROM therapy_session_patients tsp
-            JOIN patients p ON tsp.patient_id = p.id
-            WHERE tsp.therapy_session_id = ?
-        """, (session_id,))
-        curr_participants = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
-        
-        # Determine all possible patients in the cohort up to this point
-        if is_global:
-            cursor.execute("""
-                SELECT DISTINCT p.id, p.pseudonym
-                FROM therapy_session_patients tsp
-                JOIN patients p ON tsp.patient_id = p.id
-                JOIN therapy_sessions ts ON tsp.therapy_session_id = ts.id
-                WHERE ts.start_at <= ?
-            """, (curr_start,))
-            all_possible_patients = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
-        else:
-            all_possible_patients = curr_participants
         
         # 5. Fetch all patient item scores for the evaluated sessions
         patient_history = {} # patient_pseudonym -> list of dicts: {"session_id": ..., "scores": {item_code: score}}
@@ -190,7 +140,7 @@ def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str
                 FROM transcripts 
                 WHERE therapy_session_id = ? 
                 ORDER BY created_at DESC LIMIT 1
-            """, (session_id,))
+            """, (ref_session_id,))
             latest_row = cursor.fetchone()
             if latest_row:
                 l_text = latest_row["sanitized_text"] or latest_row["raw_text"]
@@ -203,7 +153,7 @@ def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str
                 FROM transcripts 
                 WHERE therapy_session_id = ? 
                 ORDER BY created_at DESC LIMIT 1
-            """, (session_id,))
+            """, (ref_session_id,))
             transcript_row = cursor.fetchone()
             if transcript_row:
                 text = transcript_row["sanitized_text"] or transcript_row["raw_text"]
@@ -222,7 +172,7 @@ def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str
         historical_syntheses = sorted(synthesis_rows, key=lambda r: session_order.get(r["therapy_session_id"], 9999))
         
         for row in historical_syntheses:
-            if row["therapy_session_id"] == session_id:
+            if row["therapy_session_id"] == ref_session_id:
                 if row["interactions_mapping"]:
                     try:
                         curr_interactions = json.loads(row["interactions_mapping"])
@@ -247,7 +197,7 @@ def _compute_interventions(session_id: int, is_global: bool = False) -> Dict[str
             if is_global:
                 curr_scores = history[-1]["scores"]
             else:
-                curr_scores = history[-1]["scores"] if history[-1]["session_id"] == session_id else {}
+                curr_scores = history[-1]["scores"] if history[-1]["session_id"] == ref_session_id else {}
             if not curr_scores:
                 continue
                 
@@ -544,19 +494,157 @@ def get_session_interventions(session_id: int) -> Dict[str, Any]:
     by looking at the current session's scores, airtimes, social networks, and matching
     them against historical trends of the group.
     """
-    return _compute_interventions(session_id, is_global=False)
+    with get_db() as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # 1. Fetch reference session
+        cursor.execute("SELECT name, start_at, therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,))
+        curr_session = cursor.fetchone()
+        if not curr_session:
+            return {"alerts": []}
+            
+        curr_start = curr_session["start_at"]
+        group_id = curr_session["therapy_group_id"]
+        
+        # 2. Get all therapy sessions up to and including the current one, sorted chronologically
+        if group_id is not None:
+            cursor.execute("""
+                SELECT id, name, start_at 
+                FROM therapy_sessions 
+                WHERE therapy_group_id = ? AND start_at <= ? 
+                ORDER BY start_at ASC
+            """, (group_id, curr_start))
+        else:
+            cursor.execute("""
+                SELECT id, name, start_at 
+                FROM therapy_sessions 
+                WHERE start_at <= ? 
+                ORDER BY start_at ASC
+            """, (curr_start,))
+        all_sessions = cursor.fetchall()
+        session_ids = [s["id"] for s in all_sessions]
+        session_order = {sid: idx for idx, sid in enumerate(session_ids)}
+        
+        if not session_ids:
+            return {"alerts": []}
+            
+        # 3. Get the latest evaluations for these sessions
+        placeholders = ",".join("?" for _ in session_ids)
+        cursor.execute(f"""
+            SELECT e.id as eval_id, e.therapy_session_id
+            FROM tdpm_evaluations e
+            JOIN (
+                SELECT therapy_session_id, MAX(id) as max_eval_id
+                FROM tdpm_evaluations
+                WHERE therapy_session_id IN ({placeholders})
+                GROUP BY therapy_session_id
+            ) latest_eval ON e.id = latest_eval.max_eval_id
+        """, session_ids)
+        evals = cursor.fetchall()
+        eval_id_to_session = {r["eval_id"]: r["therapy_session_id"] for r in evals}
+        eval_ids = list(eval_id_to_session.keys())
+        
+        # 4. Get active participants of the current session
+        cursor.execute("""
+            SELECT p.id, p.pseudonym
+            FROM therapy_session_patients tsp
+            JOIN patients p ON tsp.patient_id = p.id
+            WHERE tsp.therapy_session_id = ?
+        """, (session_id,))
+        curr_participants = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+        
+        # Specific session context: all possible patients is just current participants
+        all_possible_patients = curr_participants
+        
+    return _run_heuristics_calculations(
+        ref_session_id=session_id,
+        session_ids=session_ids,
+        session_order=session_order,
+        eval_ids=eval_ids,
+        eval_id_to_session=eval_id_to_session,
+        curr_participants=curr_participants,
+        all_possible_patients=all_possible_patients,
+        group_id=group_id,
+        is_global=False
+    )
 
 
-def get_interventions() -> Dict[str, Any]:
+
+def get_group_interventions(group_id: int) -> Dict[str, Any]:
     """
-    Runs calculations based on all historic sessions from the group
+    Runs calculations based on all historic sessions from a specific group
     to show active alerts and actions for now (or the near future).
     """
     with get_db() as conn:
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM therapy_sessions ORDER BY start_at DESC LIMIT 1")
-        row = cursor.fetchone()
-        if not row:
+        
+        # Find the reference session for the group
+        cursor.execute("SELECT id, name, start_at FROM therapy_sessions WHERE therapy_group_id = ? ORDER BY start_at DESC LIMIT 1", (group_id,))
+        curr_session = cursor.fetchone()
+            
+        if not curr_session:
             return {"alerts": []}
-        latest_session_id = row[0]
-    return _compute_interventions(latest_session_id, is_global=True)
+                
+        ref_session_id = curr_session["id"]
+        curr_start = curr_session["start_at"]
+        
+        # Get all therapy sessions up to and including the current one, sorted chronologically
+        cursor.execute("""
+            SELECT id, name, start_at 
+            FROM therapy_sessions 
+            WHERE therapy_group_id = ? AND start_at <= ? 
+            ORDER BY start_at ASC
+        """, (group_id, curr_start))
+        all_sessions = cursor.fetchall()
+        session_ids = [s["id"] for s in all_sessions]
+        session_order = {sid: idx for idx, sid in enumerate(session_ids)}
+        
+        if not session_ids:
+            return {"alerts": []}
+            
+        # Get the latest evaluations for these sessions
+        placeholders = ",".join("?" for _ in session_ids)
+        cursor.execute(f"""
+            SELECT e.id as eval_id, e.therapy_session_id
+            FROM tdpm_evaluations e
+            JOIN (
+                SELECT therapy_session_id, MAX(id) as max_eval_id
+                FROM tdpm_evaluations
+                WHERE therapy_session_id IN ({placeholders})
+                GROUP BY therapy_session_id
+            ) latest_eval ON e.id = latest_eval.max_eval_id
+        """, session_ids)
+        evals = cursor.fetchall()
+        eval_id_to_session = {r["eval_id"]: r["therapy_session_id"] for r in evals}
+        eval_ids = list(eval_id_to_session.keys())
+        
+        # Get active participants of the reference session
+        cursor.execute("""
+            SELECT p.id, p.pseudonym
+            FROM therapy_session_patients tsp
+            JOIN patients p ON tsp.patient_id = p.id
+            WHERE tsp.therapy_session_id = ?
+        """, (ref_session_id,))
+        curr_participants = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+        
+        # Determine all possible patients in the cohort up to this point
+        cursor.execute("""
+            SELECT id, pseudonym
+            FROM patients
+            WHERE therapy_group_id = ?
+        """, (group_id,))
+        all_possible_patients = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+            
+    return _run_heuristics_calculations(
+        ref_session_id=ref_session_id,
+        session_ids=session_ids,
+        session_order=session_order,
+        eval_ids=eval_ids,
+        eval_id_to_session=eval_id_to_session,
+        curr_participants=curr_participants,
+        all_possible_patients=all_possible_patients,
+        group_id=group_id,
+        is_global=True
+    )

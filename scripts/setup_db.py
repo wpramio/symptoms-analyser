@@ -64,10 +64,15 @@ def seed_default_users(conn: sqlite3.Connection) -> None:
             INSERT OR REPLACE INTO users (id, username, email, name, role, password_hash)
             VALUES (2, 'admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
         """)
+        # Seed default group
+        cursor.execute("""
+            INSERT OR REPLACE INTO therapy_groups (id, name, clinician_id)
+            VALUES (1, 'Grupo Principal', 1)
+        """)
         conn.commit()
-        print("[✔] Usuários default criados")
+        print("[✔] Usuários e grupo default criados")
     except sqlite3.Error as e:
-        print(f"[!] Erro ao criar usuários default: {e}")
+        print(f"[!] Erro ao criar dados default: {e}")
         conn.rollback()
 
 def main():

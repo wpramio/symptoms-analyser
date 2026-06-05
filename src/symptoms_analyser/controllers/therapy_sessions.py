@@ -27,6 +27,16 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
     # Clinician configuration
     clinician_id = form_data.get("clinician_id") or "clinician_1"
     
+    # Group configuration
+    group_id = form_data.get("group_id")
+    if group_id:
+        try:
+            group_id = int(group_id)
+        except ValueError:
+            group_id = 1
+    else:
+        group_id = 1
+
     # 1. File extension validation if uploaded
     if file_obj and file_obj.filename != "":
         if not allowed_file(file_obj.filename):
@@ -37,7 +47,8 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
         name=session_name,
         start_at=start_at,
         clinician_id=clinician_id,
-        duration=duration
+        duration=duration,
+        therapy_group_id=group_id
     )
 
     # 3. Patient registration and linking

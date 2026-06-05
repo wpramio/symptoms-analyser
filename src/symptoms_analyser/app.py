@@ -25,7 +25,7 @@ from symptoms_analyser.controllers.therapy_sessions import (
     get_session_transcript_status,
 )
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
-from symptoms_analyser.controllers.interventions import get_interventions
+from symptoms_analyser.controllers.interventions import get_group_interventions
 
 app = Flask(__name__)
 app.secret_key = "symptoms-analyser-secure-key"
@@ -139,17 +139,49 @@ def inject_current_user():
 @app.route("/")
 def index():
     try:
-        res = get_interventions()
+        from symptoms_analyser.db import get_db
+        group_id_param = request.args.get("group_id")
+        
+        with get_db() as conn:
+            cursor = conn.cursor()
+            if group_id_param:
+                cursor.execute("SELECT id, name FROM therapy_groups WHERE id = ?", (group_id_param,))
+                selected_group = cursor.fetchone()
+            else:
+                cursor.execute("SELECT id, name FROM therapy_groups ORDER BY id ASC LIMIT 1")
+                selected_group = cursor.fetchone()
+                
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            all_groups = [dict(row) for row in cursor.fetchall()]
+
+        if selected_group:
+            group_id = selected_group["id"]
+            res = get_group_interventions(group_id)
+            group_name = selected_group["name"]
+        else:
+            res = {"alerts": []}
+            group_name = None
+            group_id = None
+            
         alerts = res.get("alerts", [])
-        return render_template("index.html", alerts=alerts)
+        return render_template("index.html", alerts=alerts, groups=all_groups, current_group_id=group_id, current_group_name=group_name)
     except Exception as e:
         print(f"Error rendering home page interventions: {e}")
-        return render_template("index.html", alerts=[])
+        return render_template("index.html", alerts=[], groups=[], current_group_id=None, current_group_name=None)
 
 
 @app.route("/therapy_sessions/new")
 def new_therapy_session():
-    return render_template("new_therapy_session.html")
+    try:
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            groups = [dict(row) for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"Error fetching groups for new session form: {e}")
+        groups = []
+    return render_template("new_therapy_session.html", groups=groups)
 
 
 @app.route("/therapy_sessions")
@@ -494,7 +526,8 @@ def handle_new_session_api():
             "clinician_id": request.form.get("clinician_id"),
             "patient_ids": request.form.get("patient_ids"),
             "auto_fill": request.form.get("auto_fill"),
-            "apply_sanitization": request.form.get("apply_sanitization")
+            "apply_sanitization": request.form.get("apply_sanitization"),
+            "group_id": request.form.get("group_id")
         }
         
         file = None
@@ -608,7 +641,8 @@ def api_admin_sessions():
                 "start_at": data.get("start_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 "duration": data.get("duration"),
                 "clinician_id": data.get("clinician_id"),
-                "patient_ids": data.get("patient_ids")
+                "patient_ids": data.get("patient_ids"),
+                "group_id": data.get("group_id")
             }
             result = handle_new_therapy_session(form_data)
             return jsonify({"message": "Sessão criada com sucesso!", "session_id": result["session_id"]}), 201

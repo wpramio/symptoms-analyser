@@ -6,12 +6,22 @@
 {% block content %}
 <div class="main-container">
     <!-- Hub Page Header -->
-    <div class="compact-page-header">
+    <div class="compact-page-header compact-page-header-index">
         <div class="compact-header-left">
             <div class="compact-header-title-container">
                 <h1 class="compact-header-title">Painel central</h1>
-                <div class="compact-header-meta">
+                <div class="compact-header-meta compact-header-meta-index">
                     <span class="meta-item">Console centralizado de alertas e sugestões de manejo ativo</span>
+                    {% if groups %}
+                    <span class="meta-item meta-item-group-selector">
+                        <strong>Grupo:</strong>
+                        <select onchange="window.location.href='/?group_id=' + this.value">
+                            {% for g in groups %}
+                            <option value="{{ g.id }}" {% if g.id == current_group_id %}selected{% endif %}>{{ g.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -40,25 +50,25 @@
     {% endif %}
     {% endfor %}
 
-    <div class="metrics-grid" style="margin-bottom: 2rem;">
-        <div class="metric-card" style="border-left: 4px solid var(--score-4);">
-            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+    <div class="metrics-grid metrics-grid-index">
+        <div class="metric-card metric-card-critical">
+            <div class="metric-label metric-label-index">
                 <span>Alertas críticos</span>
-                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--score-4);">🚨 Ação imediata</span>
+                <span class="metric-badge-critical">🚨 Ação imediata</span>
             </div>
             <div class="metric-value">{{ ns.critical }}</div>
         </div>
-        <div class="metric-card" style="border-left: 4px solid var(--score-3);">
-            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div class="metric-card metric-card-warning">
+            <div class="metric-label metric-label-index">
                 <span>Avisos e atenções</span>
-                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--score-3);">⚠️ Clínico/social</span>
+                <span class="metric-badge-warning">⚠️ Clínico/social</span>
             </div>
             <div class="metric-value">{{ ns.warning }}</div>
         </div>
-        <div class="metric-card" style="border-left: 4px solid var(--primary);">
-            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div class="metric-card metric-card-info">
+            <div class="metric-label metric-label-index">
                 <span>Sugestões de manejo</span>
-                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--primary);">💡 Oportunidades</span>
+                <span class="metric-badge-info">💡 Oportunidades</span>
             </div>
             <div class="metric-value">{{ ns.info }}</div>
         </div>
@@ -68,8 +78,7 @@
     <!-- Consolidated Active Alerts -->
     {% if alerts %}
     <div class="dashboard-card">
-        <div class="synthesis-card-header"
-            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+        <div class="synthesis-card-header">
             <div class="synthesis-title-container">
                 <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -114,7 +123,7 @@
         </svg>
         <p class="placeholder-text-main">Nenhum alerta ativo</p>
         <p class="placeholder-text-sub">Todos os indicadores clínicos e dinâmicas de grupo estão estáveis.</p>
-        <div style="margin-top: 1.5rem;">
+        <div class="placeholder-action">
             <a href="/therapy_sessions" class="btn btn-secondary">Acessar sessões de terapia</a>
         </div>
     </div>

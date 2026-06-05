@@ -28,6 +28,15 @@
                 <input type="text" id="sessionName" placeholder="Ex: Acompanhamento semanal - Grupo 1">
             </div>
 
+            <div class="input-group">
+                <label for="sessionGroup">Grupo</label>
+                <select id="sessionGroup">
+                    {% for group in groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="form-row-spaced">
                 <div class="input-group flex-1">
                     <label for="sessionStart">Data e hora da sessão *</label>

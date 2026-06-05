@@ -17,6 +17,7 @@ def create_therapy_session(
     start_at: str,
     clinician_id: str,
     duration: int,
+    therapy_group_id: Optional[int] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> int:
     """Create a new therapy session and return its ID."""
@@ -24,9 +25,20 @@ def create_therapy_session(
         clinician_id = "clinician_1"
 
     sql = """
-        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration, therapy_group_id)
+        VALUES (?, ?, ?, ?, ?)
     """
+
+    def _ensure_group_exists(cursor: sqlite3.Cursor, g_id: Optional[int], user_db_id: int) -> Optional[int]:
+        if g_id is None:
+            return None
+        cursor.execute("SELECT id FROM therapy_groups WHERE id = ?", (g_id,))
+        if cursor.fetchone() is None:
+            cursor.execute("""
+                INSERT OR IGNORE INTO therapy_groups (id, name, clinician_id)
+                VALUES (?, 'Grupo Principal', ?)
+            """, (g_id, user_db_id))
+        return g_id
 
     def _get_or_create_user(cursor: sqlite3.Cursor) -> int:
         cursor.execute("SELECT id FROM users WHERE username = ?", (clinician_id,))
@@ -42,14 +54,16 @@ def create_therapy_session(
     if db_conn:
         cursor = db_conn.cursor()
         user_db_id = _get_or_create_user(cursor)
-        cursor.execute(sql, (name, user_db_id, start_at, duration))
+        _ensure_group_exists(cursor, therapy_group_id, user_db_id)
+        cursor.execute(sql, (name, user_db_id, start_at, duration, therapy_group_id))
         db_conn.commit()
         return cursor.lastrowid
     else:
         with get_db() as conn:
             cursor = conn.cursor()
             user_db_id = _get_or_create_user(cursor)
-            cursor.execute(sql, (name, user_db_id, start_at, duration))
+            _ensure_group_exists(cursor, therapy_group_id, user_db_id)
+            cursor.execute(sql, (name, user_db_id, start_at, duration, therapy_group_id))
             conn.commit()
             return cursor.lastrowid
 

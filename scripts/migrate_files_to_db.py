@@ -83,8 +83,8 @@ def get_or_create_session(conn, session_name, raw_text):
     clinician_db_id = cursor.fetchone()[0]
 
     cursor.execute("""
-        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO therapy_sessions (name, clinician_id, start_at, duration, therapy_group_id)
+        VALUES (?, ?, ?, ?, 1)
     """, (public_name, clinician_db_id, start_at_str, duration))
     
     session_id = cursor.lastrowid
@@ -112,11 +112,17 @@ def seed_users_and_patients(conn):
         VALUES (2, 'admin_1', 'admin@symptomsanalyser.org', 'Admin', 'admin', 'dummy_hash')
     """)
     
+    # Default Group
+    cursor.execute("""
+        INSERT OR REPLACE INTO therapy_groups (id, name, clinician_id)
+        VALUES (1, 'Grupo Principal', 1)
+    """)
+    
     # Patient Pseudonym Map Registry
     for idx, (pseudonym, real_name) in enumerate(PATIENT_REGISTRY.items(), start=1):
         cursor.execute("""
-            INSERT OR REPLACE INTO patients (id, real_name, pseudonym, metadata)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO patients (id, real_name, pseudonym, metadata, therapy_group_id)
+            VALUES (?, ?, ?, ?, 1)
         """, (idx, real_name, pseudonym, json.dumps({"notes": "Migração histórica de paciente"})))
         
     conn.commit()
