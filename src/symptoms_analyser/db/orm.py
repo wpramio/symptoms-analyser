@@ -398,6 +398,7 @@ def update_patient(
     original_id: str,
     new_pseudonym: str,
     new_real_name: str,
+    therapy_group_id: Optional[int] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
     """
@@ -422,11 +423,10 @@ def update_patient(
             raise ValueError(f"O pseudônimo '{new_pseudonym}' já está cadastrado para outro paciente")
 
         try:
-            # Update patients table pseudonym and real_name directly.
-            # No cascades to join tables needed anymore due to INTEGER AUTOINCREMENT primary keys!
+            # Update patients table pseudonym, real_name, and therapy_group_id directly.
             cursor.execute(
-                "UPDATE patients SET pseudonym = ?, real_name = ? WHERE pseudonym = ?",
-                (new_pseudonym, new_real_name, original_id),
+                "UPDATE patients SET pseudonym = ?, real_name = ?, therapy_group_id = ? WHERE pseudonym = ?",
+                (new_pseudonym, new_real_name, therapy_group_id, original_id),
             )
             conn.commit()
         except Exception as e:

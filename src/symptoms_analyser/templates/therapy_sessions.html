@@ -33,6 +33,7 @@
                 <a href="/therapy_sessions/{{ session.id }}" class="session-grid-row">
                     <div class="col-width-25">
                         <div class="font-semibold">{{ session.name }}</div>
+                        <div class="text-xs-muted">Grupo: {{ session.therapy_group_name }}</div>
                     </div>
                     <div class="col-width-20">{{ session.clinician_name }}</div>
                     <div class="col-width-20">

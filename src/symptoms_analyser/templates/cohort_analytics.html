@@ -161,7 +161,7 @@
                                     <td class="cohort-dim-key"><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
                                     {% for cell in dim.cells %}
                                     <td class="heatmap-cell cohort-heatmap-cell" data-severity="{{ cell.severity }}"
-                                        title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Média: {{ cell.mean_score }}/{{ cell.max }} | Mediana: {{ cell.median_score }}/{{ cell.max }}">
+                                        title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Grupo: {{ cell.therapy_group_name }} | Média: {{ cell.mean_score }}/{{ cell.max }} | Mediana: {{ cell.median_score }}/{{ cell.max }}">
                                         {{ cell.mean_score }}<span class="cohort-cell-max">/{{ cell.max }}</span>
                                     </td>
                                     {% endfor %}
@@ -191,6 +191,7 @@
                                 <div>
                                     <span class="timeline-date cohort-timeline-date">{{ cs.date }}</span>
                                     <span class="cohort-timeline-name">{{ cs.session_name }}</span>
+                                    <span class="text-xs-muted" style="margin-left: 0.5rem;">(Grupo: {{ cs.therapy_group_name }})</span>
                                 </div>
                                 <span class="score-badge cohort-score-badge" data-severity="4">Score Médio: {{
                                     cs.mean_total

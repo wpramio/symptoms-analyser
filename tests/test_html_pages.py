@@ -25,20 +25,26 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'hash')
     """)
     
+    # 1.5. Seed Therapy Group
+    cursor.execute("""
+        INSERT INTO therapy_groups (id, name, clinician_id)
+        VALUES (1, 'Grupo Alfa', 1)
+    """)
+    
     # 2. Seed Patients
     cursor.execute("""
-        INSERT INTO patients (id, real_name, pseudonym, metadata)
-        VALUES (1, 'John Doe', 'Paciente1', '{"notes": "Test"}')
+        INSERT INTO patients (id, real_name, pseudonym, metadata, therapy_group_id)
+        VALUES (1, 'John Doe', 'Paciente1', '{"notes": "Test"}', 1)
     """)
     cursor.execute("""
-        INSERT INTO patients (id, real_name, pseudonym, metadata)
-        VALUES (2, 'Jane Doe', 'Paciente2', '{"notes": "Test"}')
+        INSERT INTO patients (id, real_name, pseudonym, metadata, therapy_group_id)
+        VALUES (2, 'Jane Doe', 'Paciente2', '{"notes": "Test"}', NULL)
     """)
     
     # 3. Seed Therapy Sessions
     cursor.execute("""
-        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration)
-        VALUES (1, 'Sessão Teste A', 1, '2026-05-29 14:00:00', 3600)
+        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration, therapy_group_id)
+        VALUES (1, 'Sessão Teste A', 1, '2026-05-29 14:00:00', 3600, 1)
     """)
     
     # 4. Link Patient to Session
@@ -50,10 +56,22 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 1, 'session_1.txt', 'txt', 'Texto', 'Texto limpo', 1234, 'completed', 100.0)
     """)
     
+    # 5.5. Seed Sanitization Telemetry
+    cursor.execute("""
+        INSERT INTO sanitization_telemetry (id, transcript_id, model, strategy, status, chunks_completed, chunks_total, total_elapsed_seconds, prompt_tokens, completion_tokens, turns_merged, noise_tokens_removed, corrections, anonymization_flags)
+        VALUES (1, 1, 'gemini-2.5-flash', 'chunked_100', 'success', 1, 1, 12.5, 450, 150, 2, '["uh"]', '{"para a": "para"}', '["Dr. Silva"]')
+    """)
+    
     # 6. Seed evaluations
     cursor.execute("""
         INSERT INTO tdpm_evaluations (id, transcript_id, evaluator_id, evaluation_type, therapy_session_id, created_at)
         VALUES (1, 1, 1, 'automated', 1, '2026-05-29 14:15:00')
+    """)
+    
+    # 7. Seed evaluation telemetry
+    cursor.execute("""
+        INSERT INTO evaluation_telemetry (evaluation_id, model, prompt_tokens, completion_tokens, total_elapsed_seconds, raw_payload)
+        VALUES (1, 'gpt-4', 1000, 300, 10.0, '{"aggregated": {"patients": {"Paciente1": {"dimensions": {"1": {"dimension_sum": 3}}, "items": {}}}}}')
     """)
     
     conn.commit()
@@ -194,3 +212,35 @@ def test_tdpm_table_page_dom(client):
     # Check dimensions are loaded
     cards = soup.find_all(class_="tdpm-card")
     assert len(cards) == 20
+
+
+def test_therapy_group_ui_rendering(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         
+        # 1. Sessions List Page
+        resp = client.get("/therapy_sessions")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data
+
+        # 2. Session Detail Page
+        resp = client.get("/therapy_sessions/1")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data
+
+        # 3. Patient Detail Page
+        resp = client.get("/patients/Paciente1")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data
+
+        # 4. Admin Transcripts Page
+        resp = client.get("/admin/transcripts")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data
+
+        # 5. Cohort Analytics Page
+        resp = client.get("/cohort_analytics")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data

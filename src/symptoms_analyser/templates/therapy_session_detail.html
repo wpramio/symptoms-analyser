@@ -24,6 +24,8 @@
                 <div class="compact-header-title-container">
                     <h2 class="compact-header-title">{{ session.name }}</h2>
                     <div class="compact-header-meta">
+                        <span class="meta-item">Grupo: <strong>{{ session.therapy_group_name }}</strong></span>
+                        <span class="meta-dot"></span>
                         <span class="meta-item">Clínico: <strong>{{ session.clinician_name }}</strong></span>
                         <span class="meta-dot"></span>
                         <span class="meta-item">Data: <strong>{{ session.start_at |

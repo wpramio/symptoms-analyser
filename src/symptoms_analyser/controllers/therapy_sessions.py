@@ -92,12 +92,14 @@ def get_therapy_sessions() -> list[dict]:
         cursor.execute("""
             SELECT s.id, s.name, s.start_at, s.duration,
                    u.name as clinician_name,
+                   g.name as therapy_group_name,
                    (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients,
                    (SELECT status FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_status,
                    (SELECT progress_percent FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_progress,
                    (SELECT id FROM tdpm_evaluations WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as evaluation_id
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             ORDER BY s.start_at DESC, s.created_at DESC
         """)
         return [
@@ -105,6 +107,7 @@ def get_therapy_sessions() -> list[dict]:
                 "id": r["id"],
                 "name": r["name"],
                 "clinician_name": r["clinician_name"] or "Sem clínico",
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                 "start_at": r["start_at"],
                 "duration": r["duration"],
                 "patients": r["patients"] or "Nenhum paciente",
@@ -216,9 +219,11 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT s.id, s.name, s.start_at, s.duration, u.name as clinician_name
+            SELECT s.id, s.name, s.start_at, s.duration, u.name as clinician_name,
+                   g.name as therapy_group_name
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             WHERE s.id = ?
         """, (session_id,))
         session_row = cursor.fetchone()
@@ -229,6 +234,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
             "id": session_row["id"],
             "name": session_row["name"],
             "clinician_name": session_row["clinician_name"] or "Sem clínico",
+            "therapy_group_name": session_row["therapy_group_name"] or "Sem grupo",
             "start_at": session_row["start_at"],
             "duration": session_row["duration"]
         }

@@ -195,3 +195,37 @@ def test_calculate_airtime():
     # "Eu também sinto isso às vezes." (6 words)
     assert speakers["Paciente2"]["word_count"] == 6
     assert speakers["Paciente2"]["turn_count"] == 1
+
+
+def test_get_therapy_session_with_group(mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
+         
+        # Seed a therapy group
+        with mock_get_db() as conn:
+            conn.execute("""
+                INSERT INTO therapy_groups (id, name, clinician_id)
+                VALUES (1, 'Grupo Fênix', 1)
+            """)
+            conn.commit()
+            
+        # Create session with the group ID
+        # Since handle_new_therapy_session might not directly set therapy_group_id, let's create it and update it
+        handle_new_therapy_session({
+            "session_name": "Sessão com Grupo",
+            "start_at": "2026-05-29 15:00:00",
+            "patient_ids": "PacienteA"
+        })
+        
+        with mock_get_db() as conn:
+            conn.execute("UPDATE therapy_sessions SET therapy_group_id = 1 WHERE id = 1")
+            conn.commit()
+            
+        sessions = get_therapy_sessions()
+        assert len(sessions) == 1
+        assert sessions[0]["therapy_group_name"] == "Grupo Fênix"
+        
+        detail = get_therapy_session_detail(1)
+        assert detail is not None
+        assert detail["session"]["therapy_group_name"] == "Grupo Fênix"
+

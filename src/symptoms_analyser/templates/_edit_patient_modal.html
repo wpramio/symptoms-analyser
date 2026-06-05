@@ -15,6 +15,16 @@ size='medium') %}
     <input type="text" id="editPatientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva" required>
 </div>
 
+<div class="input-group">
+    <label for="editPatientGroup">Grupo de Terapia:</label>
+    <select id="editPatientGroup" name="therapy_group_id">
+        <option value="">Sem grupo</option>
+        {% for group in therapy_groups %}
+        <option value="{{ group.id }}">{{ group.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
 <div class="modal-actions">
     <button type="button" class="btn btn-secondary" data-close="editPatientModal">Cancelar</button>
     <button type="submit" class="btn">Salvar</button>
@@ -30,16 +40,19 @@ size='medium') %}
         const editOriginalId = document.getElementById("editOriginalId");
         const editPatientPseudonym = document.getElementById("editPatientPseudonym");
         const editPatientRealName = document.getElementById("editPatientRealName");
+        const editPatientGroup = document.getElementById("editPatientGroup");
 
         // Listen to custom modal open event to populate the fields dynamically
         editModal.addEventListener("modal:open", function (e) {
             const trigger = e.detail.trigger;
             const id = trigger.getAttribute("data-id");
             const realName = trigger.getAttribute("data-realname");
+            const groupId = trigger.getAttribute("data-groupid");
 
             if (editOriginalId) editOriginalId.value = id;
             if (editPatientPseudonym) editPatientPseudonym.value = id;
             if (editPatientRealName) editPatientRealName.value = realName;
+            if (editPatientGroup) editPatientGroup.value = groupId || "";
         });
 
         // Submit form frontend validation

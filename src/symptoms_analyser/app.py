@@ -215,6 +215,8 @@ def therapy_session_detail(session_id):
             airtime=data.get("airtime")
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error serving session detail for {session_id}: {e}")
         return str(e), 500
 
@@ -366,16 +368,17 @@ def admin_transcripts():
         # 2. Fetch jobs (transcripts)
         jobs = get_transcripts()
         
-        # 3. Fetch therapy sessions
         from symptoms_analyser.db import get_db
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
                        u.name as clinician_name,
+                       g.name as therapy_group_name,
                        (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients
                 FROM therapy_sessions s
                 LEFT JOIN users u ON s.clinician_id = u.id
+                LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
                 ORDER BY s.start_at DESC, s.created_at DESC
             """)
             sessions = [
@@ -384,6 +387,7 @@ def admin_transcripts():
                     "name": r["name"],
                     "clinician_id": r["clinician_id"],
                     "clinician_name": r["clinician_name"] or "Sem clínico",
+                    "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                     "start_at": r["start_at"],
                     "duration": r["duration"],
                     "created_at": r["created_at"],
@@ -407,6 +411,8 @@ def admin_transcripts():
             eval_telemetry=eval_telemetry
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error serving admin transcripts: {e}")
         return str(e), 500
 
@@ -422,14 +428,16 @@ def admin_patients():
             original_id = data.get("original_id") or request.form.get("original_id")
             pseudonym = data.get("pseudonym") or request.form.get("pseudonym")
             real_name = data.get("real_name") or request.form.get("real_name")
+            therapy_group_id = data.get("therapy_group_id") or request.form.get("therapy_group_id")
             
-            result, status = update_patient(original_id, pseudonym, real_name)
+            result, status = update_patient(original_id, pseudonym, real_name, therapy_group_id)
             return jsonify(result), status
 
         if request.method == "POST":
             original_id = request.form.get("original_id", "").strip()
             pseudonym = request.form.get("pseudonym", "").strip()
             real_name = request.form.get("real_name", "").strip()
+            therapy_group_id = request.form.get("therapy_group_id", "").strip()
 
             if original_id:
                 # Update existing patient (HTML form edit)
@@ -438,7 +446,7 @@ def admin_patients():
                 elif not re.match(r"^Paciente\d+$", pseudonym):
                     flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
                 else:
-                    result, status = update_patient(original_id, pseudonym, real_name)
+                    result, status = update_patient(original_id, pseudonym, real_name, therapy_group_id)
                     if status == 200:
                         flash("✓ Paciente atualizado com sucesso!", "success")
                     else:
@@ -450,7 +458,7 @@ def admin_patients():
                 elif not re.match(r"^Paciente\d+$", pseudonym):
                     flash("Erro: O pseudônimo precisa estar no formato 'PacienteX', onde X é um número inteiro (ex: Paciente8).", "error")
                 else:
-                    result, status = create_patient(pseudonym, real_name)
+                    result, status = create_patient(pseudonym, real_name, therapy_group_id)
                     if status in (200, 201):
                         flash("✓ Paciente criado com sucesso!", "success")
                     else:
@@ -458,8 +466,15 @@ def admin_patients():
             
             return redirect(url_for("admin_patients"))
 
+        # Fetch therapy groups for dropdowns
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
+            therapy_groups = [dict(r) for r in cursor.fetchall()]
+
         patients = get_patients()
-        return render_template("admin_patients.html", patients=patients)
+        return render_template("admin_patients.html", patients=patients, therapy_groups=therapy_groups)
     except Exception as e:
         print(f"Error serving admin patients: {e}")
         return str(e), 500
@@ -649,7 +664,6 @@ def api_admin_sessions():
         except Exception as e:
             return jsonify({"error": str(e)}), 500
             
-    # GET
     try:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
@@ -657,9 +671,11 @@ def api_admin_sessions():
             cursor.execute("""
                 SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
                        u.name as clinician_name,
+                       g.name as therapy_group_name,
                        (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
                 FROM therapy_sessions s
                 LEFT JOIN users u ON s.clinician_id = u.id
+                LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
                 ORDER BY s.start_at DESC, s.created_at DESC
             """)
             sessions = [
@@ -668,6 +684,7 @@ def api_admin_sessions():
                     "name": r["name"],
                     "clinician_id": r["clinician_id"],
                     "clinician_name": r["clinician_name"] or "Sem clínico",
+                    "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                     "start_at": r["start_at"],
                     "duration": r["duration"],
                     "patients": r["patients"] or "Nenhum paciente",

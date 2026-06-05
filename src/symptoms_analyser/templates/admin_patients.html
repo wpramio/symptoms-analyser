@@ -18,9 +18,10 @@
                 <table class="cost-table">
                     <thead>
                         <tr>
-                            <th class="col-width-30">Pseudônimo</th>
-                            <th class="col-width-50">Nome real do paciente (restrito)</th>
-                            <th class="col-width-20 text-center">Ações</th>
+                            <th class="col-width-25">Pseudônimo</th>
+                            <th class="col-width-35">Nome real do paciente (restrito)</th>
+                            <th class="col-width-25">Grupo de Terapia</th>
+                            <th class="col-width-15 text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="registryTableBody">
@@ -33,9 +34,12 @@
                                 <span class="text-muted text-small">Criado em: {{ pat.created_at | format_datetime
                                     }}</span>
                             </td>
+                            <td>
+                                <span class="text-medium">{{ pat.therapy_group_name }}</span>
+                            </td>
                             <td class="text-center">
                                 <button class="btn btn-secondary edit-patient-btn" data-open="editPatientModal"
-                                    data-id="{{ pat.pseudonym }}" data-realname="{{ pat.real_name }}">
+                                    data-id="{{ pat.pseudonym }}" data-realname="{{ pat.real_name }}" data-groupid="{{ pat.therapy_group_id or '' }}">
                                     Editar
                                 </button>
                             </td>
@@ -43,7 +47,7 @@
                         {% endfor %}
                         {% else %}
                         <tr>
-                            <td colspan="3" class="text-center text-muted padding-large">
+                            <td colspan="4" class="text-center text-muted padding-large">
                                 Nenhum registro de paciente encontrado.
                             </td>
                         </tr>
@@ -66,6 +70,15 @@
                     <label for="patientRealName">Nome real:</label>
                     <input type="text" id="patientRealName" name="real_name" placeholder="Ex: Roberto Carlos da Silva"
                         required>
+                </div>
+                <div class="input-group">
+                    <label for="patientGroup">Grupo de Terapia:</label>
+                    <select id="patientGroup" name="therapy_group_id">
+                        <option value="">Sem grupo</option>
+                        {% for group in therapy_groups %}
+                        <option value="{{ group.id }}">{{ group.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <button type="submit" class="btn btn-full-width margin-top-medium">Salvar</button>
             </form>

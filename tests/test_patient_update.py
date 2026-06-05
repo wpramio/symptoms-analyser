@@ -15,6 +15,7 @@ def test_db_path(tmp_path):
         CREATE TABLE IF NOT EXISTS patients (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE,
+            therapy_group_id INTEGER,
             real_name TEXT NOT NULL,
             pseudonym TEXT UNIQUE NOT NULL,
             metadata TEXT,

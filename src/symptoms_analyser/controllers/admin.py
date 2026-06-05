@@ -144,19 +144,26 @@ def get_evaluation_telemetry() -> list[dict]:
 def get_patients() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, pseudonym, real_name, created_at FROM patients ORDER BY id ASC")
+        cursor.execute("""
+            SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name
+            FROM patients p
+            LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
+            ORDER BY p.id ASC
+        """)
         return [
             {
                 "id": r["id"],
                 "pseudonym": r["pseudonym"],
                 "real_name": r["real_name"],
                 "created_at": r["created_at"],
+                "therapy_group_id": r["therapy_group_id"],
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
             }
             for r in cursor.fetchall()
         ]
 
 
-def create_patient(pseudonym: str | None, real_name: str | None) -> tuple[dict, int]:
+def create_patient(pseudonym: str | None, real_name: str | None, therapy_group_id: int | str | None = None) -> tuple[dict, int]:
     """
     Validate and insert a new patient mapping.
     Returns (response_dict, http_status_code).
@@ -173,6 +180,14 @@ def create_patient(pseudonym: str | None, real_name: str | None) -> tuple[dict, 
     if not re.match(r"^Paciente\d+$", pseudonym):
         return {"error": "Pseudônimo deve seguir o formato 'PacienteX' (ex: Paciente8)"}, 400
 
+    try:
+        if therapy_group_id is not None and str(therapy_group_id).strip() not in ("", "None"):
+            therapy_group_id = int(therapy_group_id)
+        else:
+            therapy_group_id = None
+    except (ValueError, TypeError):
+        therapy_group_id = None
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (pseudonym,))
@@ -180,15 +195,20 @@ def create_patient(pseudonym: str | None, real_name: str | None) -> tuple[dict, 
             return {"error": f"O pseudônimo '{pseudonym}' já está cadastrado"}, 409
 
         cursor.execute(
-            "INSERT INTO patients (pseudonym, real_name) VALUES (?, ?)",
-            (pseudonym, real_name),
+            "INSERT INTO patients (pseudonym, real_name, therapy_group_id) VALUES (?, ?, ?)",
+            (pseudonym, real_name, therapy_group_id),
         )
         conn.commit()
 
     return {"message": "Paciente registrado com sucesso"}, 201
 
 
-def update_patient(original_id: str | None, new_pseudonym: str | None, new_real_name: str | None) -> tuple[dict, int]:
+def update_patient(
+    original_id: str | None,
+    new_pseudonym: str | None,
+    new_real_name: str | None,
+    therapy_group_id: int | str | None = None
+) -> tuple[dict, int]:
     """
     Validate and update an existing patient's details via ORM layer.
     Returns (response_dict, http_status_code).
@@ -206,9 +226,17 @@ def update_patient(original_id: str | None, new_pseudonym: str | None, new_real_
     if not re.match(r"^Paciente\d+$", new_pseudonym):
         return {"error": "Pseudônimo deve seguir o formato 'PacienteX' (ex: Paciente8)"}, 400
 
+    try:
+        if therapy_group_id is not None and str(therapy_group_id).strip() not in ("", "None"):
+            therapy_group_id = int(therapy_group_id)
+        else:
+            therapy_group_id = None
+    except (ValueError, TypeError):
+        therapy_group_id = None
+
     from symptoms_analyser.db import update_patient as orm_update_patient
     try:
-        orm_update_patient(original_id, new_pseudonym, new_real_name)
+        orm_update_patient(original_id, new_pseudonym, new_real_name, therapy_group_id)
     except ValueError as e:
         err_msg = str(e)
         if "não encontrado" in err_msg:
@@ -226,9 +254,10 @@ def get_patients_list_with_stats() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT p.id, p.pseudonym, p.real_name, p.created_at,
+            SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name,
                    (SELECT count(*) FROM therapy_session_patients WHERE patient_id = p.id) as total_sessions
             FROM patients p
+            LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
             ORDER BY p.id ASC
         """)
         return [
@@ -237,6 +266,8 @@ def get_patients_list_with_stats() -> list[dict]:
                 "pseudonym": r["pseudonym"],
                 "real_name": r["real_name"],
                 "created_at": r["created_at"],
+                "therapy_group_id": r["therapy_group_id"],
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                 "total_sessions": r["total_sessions"]
             }
             for r in cursor.fetchall()
@@ -247,7 +278,12 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
     """Retrieve pseudonym details and the chronological therapy session log for a single patient."""
     with get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, pseudonym, real_name, created_at FROM patients WHERE pseudonym = ?", (patient_id,))
+        cursor.execute("""
+            SELECT p.id, p.pseudonym, p.real_name, p.created_at, g.name as therapy_group_name
+            FROM patients p
+            LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
+            WHERE p.pseudonym = ?
+        """, (patient_id,))
         patient_row = cursor.fetchone()
         if not patient_row:
             return None
@@ -257,14 +293,16 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
             "real_name": patient_row["real_name"],
+            "therapy_group_name": patient_row["therapy_group_name"] or "Sem grupo",
             "created_at": patient_row["created_at"]
         }
         
         # Query sessions this patient has participated in
         cursor.execute("""
-            SELECT s.id, s.name, s.start_at
+            SELECT s.id, s.name, s.start_at, g.name as therapy_group_name
             FROM therapy_sessions s
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             WHERE sp.patient_id = ?
             ORDER BY s.start_at DESC
         """, (patient_db_id,))
@@ -272,7 +310,8 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
             {
                 "id": r["id"],
                 "name": r["name"],
-                "start_at": r["start_at"]
+                "start_at": r["start_at"],
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo"
             }
             for r in cursor.fetchall()
         ]
@@ -327,7 +366,12 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
 
         # --- Patient record ---
         cursor.execute(
-            "SELECT id, pseudonym, real_name, created_at FROM patients WHERE pseudonym = ?",
+            """
+            SELECT p.id, p.pseudonym, p.real_name, p.created_at, g.name as therapy_group_name
+            FROM patients p
+            LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
+            WHERE p.pseudonym = ?
+            """,
             (patient_id,),
         )
         patient_row = cursor.fetchone()
@@ -339,22 +383,29 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
             "real_name": patient_row["real_name"],
+            "therapy_group_name": patient_row["therapy_group_name"] or "Sem grupo",
             "created_at": format_date_dmyy(patient_row["created_at"]),
         }
 
         # --- Sessions this patient is linked to ---
         cursor.execute(
             """
-            SELECT s.id, s.name, s.start_at
+            SELECT s.id, s.name, s.start_at, g.name as therapy_group_name
             FROM therapy_sessions s
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             WHERE sp.patient_id = ?
             ORDER BY s.start_at DESC
             """,
             (patient_db_id,),
         )
         sessions = [
-            {"id": r["id"], "name": r["name"], "start_at": format_date_dmyy(r["start_at"])}
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "start_at": format_date_dmyy(r["start_at"]),
+                "therapy_group_name": r["therapy_group_name"] or "Sem grupo"
+            }
             for r in cursor.fetchall()
         ]
 
@@ -540,6 +591,7 @@ def get_cohort_evolution_data() -> dict:
         cursor.execute(
             """
             SELECT e.id as eval_id, s.id as session_id, s.name as session_name, s.start_at,
+                   g.name as therapy_group_name,
                    et.raw_payload
             FROM tdpm_evaluations e
             JOIN (
@@ -548,6 +600,7 @@ def get_cohort_evolution_data() -> dict:
                 GROUP BY therapy_session_id
             ) latest_eval ON e.id = latest_eval.max_eval_id
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
+            LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             JOIN evaluation_telemetry et ON et.evaluation_id = e.id
             ORDER BY s.start_at ASC
             """
@@ -599,6 +652,7 @@ def get_cohort_evolution_data() -> dict:
         timeline.append({
             "session_id": row["session_id"],
             "session_name": row["session_name"],
+            "therapy_group_name": row["therapy_group_name"] or "Sem grupo",
             "date": date_str,
             "patient_count": n_patients,
             "mean_total": mean_total,
@@ -688,7 +742,8 @@ def get_cohort_evolution_data() -> dict:
                 "max": max_size,
                 "severity": severity,
                 "date": entry["date"],
-                "session_name": entry["session_name"]
+                "session_name": entry["session_name"],
+                "therapy_group_name": entry.get("therapy_group_name") or "Sem grupo"
             })
         heatmap_dims.append({
             "key": dim_key,
@@ -733,6 +788,7 @@ def get_cohort_evolution_data() -> dict:
             critical_sessions.append({
                 "session_id": curr["session_id"],
                 "session_name": curr["session_name"],
+                "therapy_group_name": curr.get("therapy_group_name") or "Sem grupo",
                 "date": curr["date"],
                 "mean_total": curr["mean_total"],
                 "prev_mean_total": prev["mean_total"],

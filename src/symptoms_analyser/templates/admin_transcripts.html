@@ -89,7 +89,10 @@
                     {% for s in sessions %}
                     <tr>
                         <td><strong class="text-primary">#{{ s.id }}</strong></td>
-                        <td><strong class="text-main text-medium">{{ s.name }}</strong></td>
+                        <td>
+                            <strong class="text-main text-medium">{{ s.name }}</strong><br>
+                            <span class="text-muted text-small">Grupo: {{ s.therapy_group_name }}</span>
+                        </td>
                         <td class="text-medium">
                             <span>{{ s.clinician_name }}</span><br>
                             <span class="text-muted text-small">ID: {{ s.clinician_id }}</span>
