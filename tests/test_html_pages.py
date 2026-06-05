@@ -95,7 +95,7 @@ def test_index_page_dom(client):
     # Check landing header title
     h1 = soup.find("h1")
     assert h1 is not None
-    assert "symptoms" in h1.text.lower() or "sintomas" in h1.text.lower() or "analyser" in h1.text.lower()
+    assert "symptoms" in h1.text.lower() or "sintomas" in h1.text.lower() or "analyser" in h1.text.lower() or "painel" in h1.text.lower()
 
 def test_new_therapy_session_page_dom(client):
     resp = client.get("/therapy_sessions/new")

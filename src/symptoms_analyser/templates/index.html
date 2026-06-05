@@ -1,35 +1,123 @@
 {% extends 'base.html' %}
 {% set active_page = 'index' %}
 
-{% block title %}Symptoms Analyser - Hub{% endblock %}
+{% block title %}Painel central - Symptoms Analyser{% endblock %}
 
 {% block content %}
-<div class="hub-container">
-    <div class="hub-hero">
-        <h1>Symptoms Analyser</h1>
-        <p>Plataforma de análise clínica avançada (TDPM-20) baseada em IA para transcrições de terapia</p>
+<div class="main-container">
+    <!-- Hub Page Header -->
+    <div class="compact-page-header">
+        <div class="compact-header-left">
+            <div class="compact-header-title-container">
+                <h1 class="compact-header-title">Painel central</h1>
+                <div class="compact-header-meta">
+                    <span class="meta-item">Console centralizado de alertas e sugestões de manejo ativo</span>
+                </div>
+            </div>
+        </div>
+        <div class="compact-header-right">
+            <a href="/therapy_sessions/new" class="btn btn-primary btn-icon-flex-start">
+                <svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Nova sessão
+            </a>
+        </div>
     </div>
 
-    <div class="hub-grid">
-        <a href="/therapy_sessions/new" class="hub-card">
-            <div class="hub-icon">✨</div>
-            <h2 class="hub-title">Nova sessão de terapia</h2>
-            <p class="hub-desc">Agende ou cadastre sessões de terapia com suporte a upload de transcrição e análise
-                clínica por IA.</p>
-        </a>
+    <!-- Quick Stats Summary -->
+    {% if alerts %}
+    {% set ns = namespace(critical=0, warning=0, info=0) %}
+    {% for alert in alerts %}
+    {% if alert.severity == 'critical' %}
+    {% set ns.critical = ns.critical + 1 %}
+    {% elif alert.severity == 'warning' %}
+    {% set ns.warning = ns.warning + 1 %}
+    {% else %}
+    {% set ns.info = ns.info + 1 %}
+    {% endif %}
+    {% endfor %}
 
-        <a href="/therapy_sessions" class="hub-card">
-            <div class="hub-icon">📊</div>
-            <h2 class="hub-title">Sessões de terapia</h2>
-            <p class="hub-desc">Acesse o painel clínico de sessões para visualizar relatórios de sintomas ou importar
-                novas transcrições.</p>
-        </a>
-
-        <a href="/patients" class="hub-card">
-            <div class="hub-icon">📈</div>
-            <h2 class="hub-title">Evolução por paciente</h2>
-            <p class="hub-desc">Acompanhe a trajetória, heatmap clínico e progresso individual de cada participante.</p>
-        </a>
+    <div class="metrics-grid" style="margin-bottom: 2rem;">
+        <div class="metric-card" style="border-left: 4px solid var(--score-4);">
+            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>Alertas críticos</span>
+                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--score-4);">🚨 Ação imediata</span>
+            </div>
+            <div class="metric-value">{{ ns.critical }}</div>
+        </div>
+        <div class="metric-card" style="border-left: 4px solid var(--score-3);">
+            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>Avisos e atenções</span>
+                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--score-3);">⚠️ Clínico/social</span>
+            </div>
+            <div class="metric-value">{{ ns.warning }}</div>
+        </div>
+        <div class="metric-card" style="border-left: 4px solid var(--primary);">
+            <div class="metric-label" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>Sugestões de manejo</span>
+                <span style="font-size: 0.75rem; text-transform: none; font-weight: normal; color: var(--primary);">💡 Oportunidades</span>
+            </div>
+            <div class="metric-value">{{ ns.info }}</div>
+        </div>
     </div>
+    {% endif %}
+
+    <!-- Consolidated Active Alerts -->
+    {% if alerts %}
+    <div class="dashboard-card">
+        <div class="synthesis-card-header"
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+            <div class="synthesis-title-container">
+                <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <div class="synthesis-title-text-group">
+                    <h3 class="synthesis-card-title">Intervenções e ações recomendadas</h3>
+                    <span class="metadata-subtitle">Alertas ativos consolidados para acompanhamento do grupo</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="interventions-grid">
+            {% for alert in alerts %}
+            <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
+                <div class="alert-badge-row">
+                    <span class="badge-severity badge-{{ alert.severity }}">
+                        {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity == 'warning' %}⚠️
+                        Alerta{% else %}💡 Sugestão{% endif %}
+                    </span>
+                    <span class="badge-type badge-type-{{ alert.type }}">
+                        {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational'
+                        %}Interpessoal{% else %}Temático{% endif %}
+                    </span>
+                </div>
+                <h4 class="alert-title">{{ alert.title }}</h4>
+                <p class="alert-description">{{ alert.description | safe }}</p>
+                <div class="alert-action-box">
+                    <strong>Ação proposta:</strong> {{ alert.action }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="no-interventions-placeholder">
+        <svg class="no-interventions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="m9 12 2 2 4-4"></path>
+        </svg>
+        <p class="placeholder-text-main">Nenhum alerta ativo</p>
+        <p class="placeholder-text-sub">Todos os indicadores clínicos e dinâmicas de grupo estão estáveis.</p>
+        <div style="margin-top: 1.5rem;">
+            <a href="/therapy_sessions" class="btn btn-secondary">Acessar sessões de terapia</a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

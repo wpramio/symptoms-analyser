@@ -25,6 +25,7 @@ from symptoms_analyser.controllers.therapy_sessions import (
     get_session_transcript_status,
 )
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
+from symptoms_analyser.controllers.interventions import get_interventions
 
 app = Flask(__name__)
 app.secret_key = "symptoms-analyser-secure-key"
@@ -137,7 +138,13 @@ def inject_current_user():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    try:
+        res = get_interventions()
+        alerts = res.get("alerts", [])
+        return render_template("index.html", alerts=alerts)
+    except Exception as e:
+        print(f"Error rendering home page interventions: {e}")
+        return render_template("index.html", alerts=[])
 
 
 @app.route("/therapy_sessions/new")
