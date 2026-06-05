@@ -305,6 +305,14 @@
                                         style="opacity: 0; pointer-events: none;">
                                     </div>
                                 </div>
+                                <div id="subgroupsLegend" class="subgroups-legend"
+                                    style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.75rem; width: 100%; font-size: 0.8rem; display: none;">
+                                    <div
+                                        style="font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.75rem;">
+                                        Subgrupos Coesivos</div>
+                                    <div id="subgroupsList"
+                                        style="display: flex; flex-direction: column; gap: 0.35rem;"></div>
+                                </div>
                             </div>
 
                             <!-- Right Side: Interactions Scroll List -->
@@ -442,7 +450,8 @@
 {
     "groupId": {{ group.id }},
     "airtime": {{ airtime | tojson if airtime else 'null' }},
-    "synthesis": {{ synthesis | tojson if synthesis else 'null' }}
+    "synthesis": {{ synthesis | tojson if synthesis else 'null' }},
+    "groupPatients": {{ patients | map(attribute='pseudonym') | list | tojson }}
 }
 </script>
 <script src="/static/js/therapy_group_detail.js"></script>
