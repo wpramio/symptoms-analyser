@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (_page.groupPatients && _page.groupPatients.length > 0) {
                 _page.groupPatients.forEach(p => nodeSet.add(p));
             }
-            
+
             // Also ensure any node or edge mentioned in the mapping is added
             nodes.forEach(n => nodeSet.add(n.id));
             edges.forEach(edge => {
@@ -352,9 +352,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (subgroups.length === 0) {
                 // Fallback: place all nodes in a circle
-                const CX = 160;
-                const CY = 160;
-                const R = 90;
+                const CX = 220;
+                const CY = 200;
+                const R = 130;
                 uniqueNodes.forEach((node, idx) => {
                     const angle = (2 * Math.PI * idx) / uniqueNodes.length - Math.PI / 2;
                     nodeCoords[node.id] = {
@@ -364,9 +364,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             } else if (subgroups.length === 1) {
                 // Single subgroup: place it in the center, and isolated nodes at the bottom
-                const CX = 160;
-                const CY = 130;
-                const R = 75;
+                const CX = 220;
+                const CY = 170;
+                const R = 110;
                 const subNodes = subgroups[0];
                 subNodes.forEach((nodeId, idx) => {
                     const angle = (2 * Math.PI * idx) / subNodes.length - Math.PI / 2;
@@ -378,11 +378,11 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (subgroups.length === 2) {
                 // Two subgroups: place them side-by-side
                 const centers = [
-                    { x: 95, y: 125, r: 46 },
-                    { x: 225, y: 125, r: 46 }
+                    { x: 115, y: 165, r: 70 },
+                    { x: 325, y: 165, r: 70 }
                 ];
                 subgroups.forEach((subNodes, subIdx) => {
-                    const center = centers[subIdx] || { x: 160, y: 125, r: 46 };
+                    const center = centers[subIdx] || { x: 220, y: 165, r: 70 };
                     subNodes.forEach((nodeId, idx) => {
                         const angle = (2 * Math.PI * idx) / subNodes.length - Math.PI / 2;
                         nodeCoords[nodeId] = {
@@ -394,12 +394,12 @@ document.addEventListener("DOMContentLoaded", () => {
             } else if (subgroups.length === 3) {
                 // Three subgroups: place them in a triangle
                 const centers = [
-                    { x: 90, y: 90, r: 35 },
-                    { x: 230, y: 90, r: 35 },
-                    { x: 160, y: 195, r: 35 }
+                    { x: 115, y: 115, r: 55 },
+                    { x: 325, y: 115, r: 55 },
+                    { x: 220, y: 270, r: 55 }
                 ];
                 subgroups.forEach((subNodes, subIdx) => {
-                    const center = centers[subIdx] || { x: 160, y: 125, r: 35 };
+                    const center = centers[subIdx] || { x: 220, y: 165, r: 55 };
                     subNodes.forEach((nodeId, idx) => {
                         const angle = (2 * Math.PI * idx) / subNodes.length - Math.PI / 2;
                         nodeCoords[nodeId] = {
@@ -410,9 +410,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             } else {
                 // Fallback: place all non-isolated nodes in one big circle
-                const CX = 160;
-                const CY = 125;
-                const R = 75;
+                const CX = 220;
+                const CY = 175;
+                const R = 115;
                 const allSubNodes = [];
                 subgroups.forEach(comp => allSubNodes.push(...comp));
                 allSubNodes.forEach((nodeId, idx) => {
@@ -424,13 +424,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            // Place isolated nodes in a neat horizontal row at the bottom of the SVG (e.g. CY = 280)
+            // Place isolated nodes in a neat horizontal row at the bottom of the SVG
             if (isolated.length > 0) {
-                const startX = 40;
-                const endX = 280;
+                const startX = 50;
+                const endX = 390;
                 const width = endX - startX;
                 const step = isolated.length > 1 ? width / (isolated.length - 1) : width / 2;
-                const isolatedY = 280;
+                const isolatedY = 400;
 
                 const sortedIsolated = [...isolated].sort((a, b) => {
                     const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
@@ -439,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 sortedIsolated.forEach((nodeId, idx) => {
-                    const x = isolated.length === 1 ? 160 : startX + idx * step;
+                    const x = isolated.length === 1 ? 220 : startX + idx * step;
                     nodeCoords[nodeId] = {
                         x: x,
                         y: isolatedY
@@ -538,7 +538,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 path.setAttribute('d', pathD);
                 path.setAttribute('fill', 'none');
                 path.setAttribute('stroke', color);
-                
+
                 // Opacity & Stroke Width based on frequency count
                 const strokeWidth = 2 + Math.min(edge.count * 0.75, 5.5);
                 path.setAttribute('stroke-width', strokeWidth.toString());
@@ -598,7 +598,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 tooltipHtml += `<div style="font-size: 0.65rem; color: #94a3b8; text-align: right; margin-top: 0.1rem;">+ ${edge.evidences.length - limit} interações...</div>`;
                             }
                             tooltipHtml += `</div>`;
-                            
+
                             tooltipEl.innerHTML = tooltipHtml;
                             tooltipEl.style.left = `${x}px`;
                             tooltipEl.style.top = `${y}px`;
@@ -646,15 +646,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 circle.setAttribute('class', 'node-circle');
                 circle.dataset.patientId = node.id;
 
-                // Border/stroke representing the subgroup!
-                const compInfo = nodeComponentMap[node.id];
-                if (compInfo && compInfo.type === 'subgroup') {
-                    circle.style.stroke = compInfo.color;
-                    circle.style.strokeWidth = '3.5px';
-                } else {
-                    circle.style.stroke = '#ffffff';
-                    circle.style.strokeWidth = '2px';
-                }
+                // All nodes start with a neutral white border.
+                // The subgroup color ring is revealed only on legend hover.
+                circle.style.stroke = '#ffffff';
+                circle.style.strokeWidth = '2px';
 
                 // SVG Text label
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -669,14 +664,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Node Hover interaction effects
                 circle.addEventListener('mouseenter', (e) => {
                     if (hoverTimeout) clearTimeout(hoverTimeout);
+                    // Capture mouse coords immediately — they won't be valid inside setTimeout
+                    const mouseX = e.clientX;
+                    const mouseY = e.clientY;
                     hoverTimeout = setTimeout(() => {
                         const patientId = node.id;
                         const sent = edges.filter(e => e.source === patientId).length;
                         const rec = edges.filter(e => e.target === patientId).length;
 
                         const wrapperRect = svgEl.parentNode.getBoundingClientRect();
-                        let x = coord.x * (wrapperRect.width / 320);
-                        let y = (coord.y - 20) * (wrapperRect.height / 320);
+                        let x = mouseX - wrapperRect.left;
+                        let y = mouseY - wrapperRect.top - 10;
 
                         if (tooltipEl) {
                             const compInfo = nodeComponentMap[patientId];
@@ -730,21 +728,21 @@ document.addEventListener("DOMContentLoaded", () => {
             // Draw a separator line and label for isolated nodes inside the SVG if they exist
             if (isolated.length > 0) {
                 const sepLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                sepLine.setAttribute('x1', '20');
-                sepLine.setAttribute('y1', '252');
-                sepLine.setAttribute('x2', '300');
-                sepLine.setAttribute('y2', '252');
+                sepLine.setAttribute('x1', '25');
+                sepLine.setAttribute('y1', '356');
+                sepLine.setAttribute('x2', '415');
+                sepLine.setAttribute('y2', '356');
                 sepLine.setAttribute('stroke', 'rgba(148, 163, 184, 0.25)');
                 sepLine.setAttribute('stroke-width', '1');
                 sepLine.setAttribute('stroke-dasharray', '3,3');
                 graphNodesG.appendChild(sepLine);
 
                 const sepText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                sepText.setAttribute('x', '160');
-                sepText.setAttribute('y', '246');
+                sepText.setAttribute('x', '220');
+                sepText.setAttribute('y', '350');
                 sepText.setAttribute('text-anchor', 'middle');
                 sepText.setAttribute('fill', '#64748b');
-                sepText.setAttribute('font-size', '8px');
+                sepText.setAttribute('font-size', '10px');
                 sepText.setAttribute('font-weight', '700');
                 sepText.setAttribute('letter-spacing', '0.05em');
                 sepText.textContent = 'MEMBROS ISOLADOS';
@@ -769,7 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         item.style.padding = '0.25rem 0.5rem';
                         item.style.borderRadius = '4px';
                         item.style.transition = 'background-color 0.2s';
-                        
+
                         // Sort members numerically for cleaner presentation
                         const sortedMembers = [...comp].sort((a, b) => {
                             const numA = parseInt(a.match(/\d+/)?.[0] || 0, 10);
@@ -794,6 +792,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             document.querySelectorAll('.node-circle').forEach(c => {
                                 const isMember = comp.includes(c.dataset.patientId);
                                 c.style.opacity = isMember ? '1' : '0.15';
+                                // Reveal the subgroup color ring on member nodes
+                                if (isMember) {
+                                    c.style.stroke = compInfo.color;
+                                    c.style.strokeWidth = '3.5px';
+                                }
                             });
                         });
 
@@ -803,7 +806,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                 p.style.opacity = '0.75';
                                 p.style.strokeWidth = '3';
                             });
-                            document.querySelectorAll('.node-circle').forEach(c => c.style.opacity = '1');
+                            document.querySelectorAll('.node-circle').forEach(c => {
+                                c.style.opacity = '1';
+                                // Reset border back to neutral white
+                                c.style.stroke = '#ffffff';
+                                c.style.strokeWidth = '2px';
+                            });
                         });
 
                         subgroupsListEl.appendChild(item);
@@ -855,6 +863,67 @@ document.addEventListener("DOMContentLoaded", () => {
                 } else {
                     subgroupsLegendEl.style.display = 'none';
                 }
+            }
+
+            // =========================================================
+            // Initialize svg-pan-zoom for interactive navigation
+            // svg-pan-zoom must not be initialized on a hidden element —
+            // it can't measure dimensions when display:none, producing a
+            // broken transform. We lazy-init on the first time the tab
+            // becomes visible instead.
+            // =========================================================
+            let panZoomInstance = null;
+
+            function initPanZoom() {
+                if (panZoomInstance || typeof svgPanZoom === 'undefined') return;
+
+                // rAF ensures the browser has painted the tab as visible
+                requestAnimationFrame(() => {
+                    panZoomInstance = svgPanZoom(svgEl, {
+                        zoomEnabled: true,
+                        panEnabled: true,
+                        controlIconsEnabled: false,
+                        fit: false,
+                        center: true,
+                        minZoom: 0.25,
+                        maxZoom: 8,
+                        zoomScaleSensitivity: 0.25,
+                        mouseWheelZoomEnabled: false,
+                        dblClickZoomEnabled: true,
+                        preventMouseEventsDefault: false,
+                        // Clamp pan so at least `margin` px of content is always
+                        // visible on every edge — prevents losing the graph off-screen.
+                        beforePan: function(oldPan, newPan) {
+                            const sizes  = this.getSizes();
+                            const margin = 80; // minimum visible content (px)
+                            const cw = sizes.viewBox.width  * sizes.realZoom;
+                            const ch = sizes.viewBox.height * sizes.realZoom;
+                            return {
+                                x: Math.max(margin - cw, Math.min(sizes.width  - margin, newPan.x)),
+                                y: Math.max(margin - ch, Math.min(sizes.height - margin, newPan.y))
+                            };
+                        }
+                    });
+
+                    const zoomInBtn = document.getElementById('graphZoomInBtn');
+                    const zoomOutBtn = document.getElementById('graphZoomOutBtn');
+                    const resetBtn = document.getElementById('graphResetBtn');
+
+                    if (zoomInBtn) zoomInBtn.addEventListener('click', () => panZoomInstance.zoomIn());
+                    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => panZoomInstance.zoomOut());
+                    if (resetBtn) resetBtn.addEventListener('click', () => { panZoomInstance.reset(); panZoomInstance.center(); });
+                });
+            }
+
+            // Hook into the dynamics tab button click
+            const dynamicsTabBtn = document.querySelector('[data-target="tab-dynamics"]');
+            if (dynamicsTabBtn) {
+                dynamicsTabBtn.addEventListener('click', initPanZoom);
+            }
+
+            // Also init immediately if the dynamics tab happens to be active on load
+            if (document.getElementById('tab-dynamics')?.classList.contains('active')) {
+                initPanZoom();
             }
         }
     }

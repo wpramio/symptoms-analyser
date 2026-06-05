@@ -6,6 +6,8 @@
 {% block extra_head %}
 <!-- Import Chart.js for group dynamics charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Import svg-pan-zoom for interactive graph navigation -->
+<script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -283,24 +285,48 @@
                                         Confronto</span>
                                 </div>
                                 <div class="svg-graph-wrapper">
-                                    <svg id="socialNetworkGraph" viewBox="0 0 320 320" width="100%" height="100%">
+                                    <svg id="socialNetworkGraph" viewBox="0 0 440 440" width="100%" height="100%">
                                         <defs>
                                             <marker id="arrow-apoio" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                                                 <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
                                             </marker>
                                             <marker id="arrow-validacao" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                                                 <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6" />
                                             </marker>
                                             <marker id="arrow-confronto" viewBox="0 0 10 10" refX="22" refY="5"
-                                                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                                                 <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
                                             </marker>
                                         </defs>
                                         <g id="graphEdges"></g>
                                         <g id="graphNodes"></g>
                                     </svg>
+                                    <!-- Graph navigation controls -->
+                                    <div class="graph-nav-controls">
+                                        <button id="graphZoomInBtn" class="graph-nav-btn" title="Ampliar">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="12" y1="5" x2="12" y2="19" />
+                                                <line x1="5" y1="12" x2="19" y2="12" />
+                                            </svg>
+                                        </button>
+                                        <button id="graphZoomOutBtn" class="graph-nav-btn" title="Reduzir">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="5" y1="12" x2="19" y2="12" />
+                                            </svg>
+                                        </button>
+                                        <button id="graphResetBtn" class="graph-nav-btn graph-nav-btn--reset"
+                                            title="Resetar visualização">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                                <path d="M3 3v5h5" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                     <div id="graphTooltip" class="graph-tooltip"
                                         style="opacity: 0; pointer-events: none;">
                                     </div>
