@@ -226,7 +226,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT s.id, s.name, s.start_at, s.duration, u.name as clinician_name,
-                   g.name as therapy_group_name
+                   s.therapy_group_id, g.name as therapy_group_name
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
@@ -240,6 +240,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
             "id": session_row["id"],
             "name": session_row["name"],
             "clinician_name": session_row["clinician_name"] or "Sem clínico",
+            "therapy_group_id": session_row["therapy_group_id"],
             "therapy_group_name": session_row["therapy_group_name"] or "Sem grupo",
             "start_at": session_row["start_at"],
             "duration": session_row["duration"]
@@ -323,4 +324,33 @@ def get_session_transcript_status(session_id: int) -> dict:
             "error": row["error_message"],
             "logs": logs
         }
+
+
+def get_therapy_groups() -> list[dict]:
+    """Retrieve all therapy groups with clinician name, patients count, and sessions count."""
+    from symptoms_analyser.db import get_db
+    with get_db() as conn:
+        cursor = conn.cursor()
+        query = """
+            SELECT g.id, g.name, g.created_at,
+                   u.name as clinician_name,
+                   (SELECT COUNT(*) FROM patients p WHERE p.therapy_group_id = g.id) as patient_count,
+                   (SELECT COUNT(*) FROM therapy_sessions s WHERE s.therapy_group_id = g.id) as session_count
+            FROM therapy_groups g
+            LEFT JOIN users u ON g.clinician_id = u.id
+            ORDER BY g.name ASC
+        """
+        cursor.execute(query)
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "clinician_name": r["clinician_name"] or "Sem clínico",
+                "created_at": r["created_at"],
+                "patient_count": r["patient_count"],
+                "session_count": r["session_count"]
+            }
+            for r in cursor.fetchall()
+        ]
+
 

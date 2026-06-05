@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% set active_page = 'therapy_groups' %}
+
+{% block title %}{{ group.name }} (Detalhes do grupo) - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumbs">
+        <a href="/therapy_groups">Grupos de terapia</a>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-current">{{ group.name }}</span>
+    </nav>
+
+    <!-- Compact Page Header -->
+    <div class="compact-page-header">
+        <div class="compact-header-left">
+            <div class="compact-header-title-container">
+                <h2 class="compact-header-title">{{ group.name }}</h2>
+                <div class="compact-header-meta">
+                    <span class="meta-item">Clínico: <strong>{{ group.clinician_name or "Sem clínico" }}</strong></span>
+                    <span class="meta-dot"></span>
+                    <span class="meta-item">Criado em: <strong>{{ group.created_at | format_datetime }}</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="compact-header-right">
+            <div class="compact-participants-panel">
+                <span class="compact-participants-label">Pacientes do grupo:</span>
+                <div class="flex-wrap-gap-xs" style="margin-top: 0.25rem;">
+                    {% if patients %}
+                    {% for patient in patients %}
+                    <a href="/patients/{{ patient.pseudonym }}" class="session-pill-link"
+                        title="Nome real: {{ patient.real_name }}">
+                        {{ patient.pseudonym }}
+                    </a>
+                    {% endfor %}
+                    {% else %}
+                    <span class="patient-no-sessions">Nenhum paciente no grupo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Tabs Navigation -->
+    <div class="session-tabs-container">
+        <div class="session-main-tabs">
+            <button class="session-tab-btn active" data-target="tab-interventions">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Intervenções e ações recomendadas
+            </button>
+            <button class="session-tab-btn" data-target="tab-sessions">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Sessões passadas
+            </button>
+            <button class="session-tab-btn" data-target="tab-indicators">
+                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Indicadores-chave
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Panels -->
+    <div class="session-tab-content">
+        
+        <!-- Tab 1: Interventions and Actions -->
+        <div class="session-tab-panel active" id="tab-interventions">
+            {% if alerts %}
+            {% set ns = namespace(critical=0, warning=0, info=0) %}
+            {% for alert in alerts %}
+                {% if alert.severity == 'critical' %}
+                    {% set ns.critical = ns.critical + 1 %}
+                {% elif alert.severity == 'warning' %}
+                    {% set ns.warning = ns.warning + 1 %}
+                {% else %}
+                    {% set ns.info = ns.info + 1 %}
+                {% endif %}
+            {% endfor %}
+
+            <div class="metrics-grid metrics-grid-index" style="margin-bottom: 1.5rem;">
+                <div class="metric-card metric-card-critical">
+                    <div class="metric-label metric-label-index">
+                        <span>Alertas críticos</span>
+                        <span class="metric-badge-critical">🚨 Ação imediata</span>
+                    </div>
+                    <div class="metric-value">{{ ns.critical }}</div>
+                </div>
+                <div class="metric-card metric-card-warning">
+                    <div class="metric-label metric-label-index">
+                        <span>Avisos e atenções</span>
+                        <span class="metric-badge-warning">⚠️ Clínico/social</span>
+                    </div>
+                    <div class="metric-value">{{ ns.warning }}</div>
+                </div>
+                <div class="metric-card metric-card-info">
+                    <div class="metric-label metric-label-index">
+                        <span>Sugestões de manejo</span>
+                        <span class="metric-badge-info">💡 Oportunidades</span>
+                    </div>
+                    <div class="metric-value">{{ ns.info }}</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="synthesis-card-header">
+                    <div class="synthesis-title-container">
+                        <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <div class="synthesis-title-text-group">
+                            <h3 class="synthesis-card-title">Intervenções e ações recomendadas</h3>
+                            <span class="metadata-subtitle">Alertas ativos consolidados para acompanhamento do grupo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="interventions-grid">
+                    {% for alert in alerts %}
+                    <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
+                        <div class="alert-badge-row">
+                            <span class="badge-severity badge-{{ alert.severity }}">
+                                {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity == 'warning' %}⚠️ Alerta{% else %}💡 Sugestão{% endif %}
+                            </span>
+                            <span class="badge-type badge-type-{{ alert.type }}">
+                                {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational' %}Interpessoal{% else %}Temático{% endif %}
+                            </span>
+                        </div>
+                        <h4 class="alert-title">{{ alert.title }}</h4>
+                        <p class="alert-description">{{ alert.description | safe }}</p>
+                        <div class="alert-action-box">
+                            <strong>Ação proposta:</strong> {{ alert.action }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="no-interventions-placeholder">
+                <svg class="no-interventions-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="m9 12 2 2 4-4"></path>
+                </svg>
+                <p class="placeholder-text-main">Nenhum alerta ativo</p>
+                <p class="placeholder-text-sub">Todos os indicadores clínicos e dinâmicas de grupo estão estáveis.</p>
+                <div class="placeholder-action">
+                    <a href="/therapy_sessions" class="btn btn-secondary">Acessar sessões de terapia</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Tab 2: Past Sessions -->
+        <div class="session-tab-panel" id="tab-sessions">
+            <div class="results-container" style="padding-top: 0; box-shadow: none; border: none; background: transparent;">
+                <div class="session-grid-container">
+                    <div class="session-grid-header">
+                        <div class="col-width-25">Sessão</div>
+                        <div class="col-width-20">Clínico</div>
+                        <div class="col-width-20">Data</div>
+                        <div class="col-width-15">Participantes</div>
+                        <div class="col-width-20">Análise de sintomas</div>
+                    </div>
+                    <div class="session-grid-body">
+                        {% if sessions %}
+                        {% for session in sessions %}
+                        <a href="/therapy_sessions/{{ session.id }}" class="session-grid-row">
+                            <div class="col-width-25">
+                                <div class="font-semibold">{{ session.name }}</div>
+                                <div class="text-xs-muted">Grupo: {{ session.therapy_group_name }}</div>
+                            </div>
+                            <div class="col-width-20">{{ session.clinician_name }}</div>
+                            <div class="col-width-20">
+                                <div class="font-semibold">{{ session.start_at | format_datetime }}</div>
+                                <div class="text-xs-muted">Duração: {{ session.duration }} min</div>
+                            </div>
+                            <div class="col-width-15">
+                                {% if session.patients == 'Nenhum paciente' %}
+                                    {% set count = 0 %}
+                                {% else %}
+                                    {% set count = session.patients.split(', ') | length %}
+                                {% endif %}
+                                <span class="participant-badge-count" data-count="{{ count }}">
+                                    {{ count }} {% if count == 1 %}paciente{% else %}pacientes{% endif %}
+                                </span>
+                            </div>
+                            <div class="col-width-20">
+                                {% if session.transcript_status == 'completed' %}
+                                <span class="status-badge" data-status="completed">
+                                    Disponível
+                                </span>
+                                {% elif session.transcript_status == 'preprocessing' or
+                                session.transcript_status == 'analyzing' %}
+                                <span class="status-badge" data-status="preprocessing">
+                                    Processando ({{ session.transcript_progress }}%)
+                                </span>
+                                {% elif session.transcript_status == 'failed' %}
+                                <span class="status-badge" data-status="failed">
+                                    Erro
+                                </span>
+                                {% else %}
+                                <span class="status-badge" data-status="queued">
+                                    Sem transcrição
+                                </span>
+                                {% endif %}
+                            </div>
+                        </a>
+                        {% endfor %}
+                        {% else %}
+                        <div class="session-grid-empty">
+                            Nenhuma sessão registrada para este grupo.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Key Indicators -->
+        <div class="session-tab-panel" id="tab-indicators">
+            {% if not kpis %}
+            <div class="welcome-message">
+                <span style="font-size: 3rem;">📁</span>
+                <h3>Sem dados de coorte</h3>
+                <p>Ainda não há sessões de terapia com avaliações clínicas processadas para gerar a análise coletiva do grupo.</p>
+            </div>
+            {% else %}
+            <!-- Evolution Dashboard -->
+            <div class="evolution-dashboard cohort-dashboard" style="display: flex; flex-direction: column; gap: 2rem;">
+                
+                <!-- KPI Cards Grid -->
+                <div class="metrics-grid" style="margin-top: 0;">
+                    <div class="metric-card">
+                        <span class="metric-label">Sessões do grupo</span>
+                        <span class="metric-value">{{ kpis.total_sessions }}</span>
+                        <span class="metric-desc">Sessões avaliadas</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Pico de severidade média</span>
+                        <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
+                        <span class="metric-desc">Na sessão de: {{ kpis.peak_date }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Tendência sistêmica</span>
+                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
+                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Dimensão mais crítica</span>
+                        <span class="metric-value text-primary metric-value-dimension">
+                            {{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}
+                        </span>
+                        <span class="metric-desc">Média geral: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
+                    </div>
+                </div>
+
+            </div><!-- /evolution-dashboard -->
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/therapy_group_detail.js"></script>
+{% endblock %}

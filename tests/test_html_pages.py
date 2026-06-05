@@ -240,7 +240,12 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
         assert resp.status_code == 200
         assert b"Grupo Alfa" in resp.data
 
-        # 5. Cohort Analytics Page
-        resp = client.get("/cohort_analytics")
+        # 5. Therapy Groups Page
+        resp = client.get("/therapy_groups")
+        assert resp.status_code == 200
+        assert b"Grupo Alfa" in resp.data
+
+        # 6. Therapy Group Detail Page
+        resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200
         assert b"Grupo Alfa" in resp.data

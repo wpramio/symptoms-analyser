@@ -13,7 +13,13 @@
     <div class="{% if not evaluation_id %}centered-container-narrow{% endif %}">
         <!-- Breadcrumb -->
         <nav class="breadcrumb" aria-label="Breadcrumbs">
-            <a href="/therapy_sessions">Sessões de terapia</a>
+            <a href="/therapy_groups">Grupos de terapia</a>
+            <span class="breadcrumb-separator">/</span>
+            {% if session.therapy_group_id %}
+            <a href="/therapy_groups/{{ session.therapy_group_id }}">{{ session.therapy_group_name }}</a>
+            {% else %}
+            <span>{{ session.therapy_group_name }}</span>
+            {% endif %}
             <span class="breadcrumb-separator">/</span>
             <span class="breadcrumb-current">{{ session.name }}</span>
         </nav>

@@ -7,7 +7,13 @@
 <div class="main-container">
     <!-- Breadcrumb -->
     <nav class="breadcrumb" aria-label="Breadcrumbs">
-        <a href="/patients">Pacientes</a>
+        <a href="/therapy_groups">Grupos de terapia</a>
+        <span class="breadcrumb-separator">/</span>
+        {% if patient.therapy_group_id %}
+        <a href="/therapy_groups/{{ patient.therapy_group_id }}">{{ patient.therapy_group_name }}</a>
+        {% else %}
+        <span>{{ patient.therapy_group_name }}</span>
+        {% endif %}
         <span class="breadcrumb-separator">/</span>
         <span class="breadcrumb-current">{{ patient.pseudonym }}</span>
     </nav>

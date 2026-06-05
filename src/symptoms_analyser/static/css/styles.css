@@ -5047,6 +5047,8 @@ select:focus {
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
+    max-width: 50%;
+    flex: 1;
 }
 
 .compact-participants-panel {

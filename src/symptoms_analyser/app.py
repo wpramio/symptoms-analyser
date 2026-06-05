@@ -23,6 +23,7 @@ from symptoms_analyser.controllers.therapy_sessions import (
     get_therapy_sessions,
     get_therapy_session_detail,
     get_session_transcript_status,
+    get_therapy_groups,
 )
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
 from symptoms_analyser.controllers.interventions import get_group_interventions
@@ -317,24 +318,79 @@ def patient_detail(patient_id):
         return str(e), 500
 
 
-@app.route("/cohort_analytics")
-def cohort_analytics():
+@app.route("/therapy_groups")
+def therapy_groups():
     try:
-        data = get_cohort_evolution_data()
+        groups = get_therapy_groups()
+        return render_template("therapy_groups.html", groups=groups)
+    except Exception as e:
+        print(f"Error serving therapy groups list: {e}")
+        return str(e), 500
+
+
+@app.route("/therapy_groups/<int:group_id>")
+def therapy_group_detail(group_id):
+    try:
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT g.id, g.name, u.name as clinician_name, g.created_at
+                FROM therapy_groups g
+                LEFT JOIN users u ON g.clinician_id = u.id
+                WHERE g.id = ?
+                """,
+                (group_id,),
+            )
+            group = cursor.fetchone()
+            
+            if group:
+                cursor.execute(
+                    """
+                    SELECT id, real_name, pseudonym
+                    FROM patients
+                    WHERE therapy_group_id = ?
+                    ORDER BY CAST(SUBSTR(pseudonym, 9) AS INTEGER) ASC
+                    """,
+                    (group_id,),
+                )
+                patients = [dict(row) for row in cursor.fetchall()]
+            else:
+                patients = []
+            
+        if not group:
+            return "Grupo não encontrado", 404
+            
+        # First tab: Intervenções e ações recomendadas
+        res = get_group_interventions(group_id)
+        alerts = res.get("alerts", [])
+        
+        # Second tab: Sessões passadas
+        sessions = get_therapy_sessions(group_id=group_id)
+        
+        # Third tab: Indicadores-chave
+        cohort_data = get_cohort_evolution_data(group_id=group_id)
+        
         return render_template(
-            "cohort_analytics.html",
-            timeline=data["timeline"],
-            kpis=data["kpis"],
-            heatmap_dims=data["heatmap_dims"],
-            critical_sessions=data["critical_sessions"],
-            chart_labels=data["chart_labels"],
-            chart_mean_totals=data["chart_mean_totals"],
-            chart_median_totals=data["chart_median_totals"],
-            chart_dimensions=data["chart_dimensions"],
+            "therapy_group_detail.html",
+            group=group,
+            patients=patients,
+            alerts=alerts,
+            sessions=sessions,
+            timeline=cohort_data["timeline"],
+            kpis=cohort_data["kpis"],
+            heatmap_dims=cohort_data["heatmap_dims"],
+            critical_sessions=cohort_data["critical_sessions"],
+            chart_labels=cohort_data["chart_labels"],
+            chart_mean_totals=cohort_data["chart_mean_totals"],
+            chart_median_totals=cohort_data["chart_median_totals"],
+            chart_dimensions=cohort_data["chart_dimensions"],
         )
     except Exception as e:
-        print(f"Error serving cohort analytics: {e}")
+        print(f"Error serving therapy group detail: {e}")
         return str(e), 500
+
 
 
 @app.route("/tdpm_table")

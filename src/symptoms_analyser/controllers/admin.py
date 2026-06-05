@@ -373,7 +373,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         # --- Patient record ---
         cursor.execute(
             """
-            SELECT p.id, p.pseudonym, p.real_name, p.created_at, g.name as therapy_group_name
+            SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
             WHERE p.pseudonym = ?
@@ -389,6 +389,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             "id": patient_row["id"],
             "pseudonym": patient_row["pseudonym"],
             "real_name": patient_row["real_name"],
+            "therapy_group_id": patient_row["therapy_group_id"],
             "therapy_group_name": patient_row["therapy_group_name"] or "Sem grupo",
             "created_at": format_date_dmyy(patient_row["created_at"]),
         }
@@ -574,7 +575,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
     }
 
 
-def get_cohort_evolution_data() -> dict:
+def get_cohort_evolution_data(group_id: int | str | None = None) -> dict:
     """
     Build the full server-side cohort/group evolution dataset.
     
@@ -594,8 +595,7 @@ def get_cohort_evolution_data() -> dict:
         cursor = conn.cursor()
         
         # Chronological sessions with latest evaluations
-        cursor.execute(
-            """
+        query = """
             SELECT e.id as eval_id, s.id as session_id, s.name as session_name, s.start_at,
                    g.name as therapy_group_name,
                    et.raw_payload
@@ -608,9 +608,14 @@ def get_cohort_evolution_data() -> dict:
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
             JOIN evaluation_telemetry et ON et.evaluation_id = e.id
-            ORDER BY s.start_at ASC
-            """
-        )
+        """
+        params = []
+        if group_id is not None and str(group_id).strip() not in ("", "None"):
+            query += " WHERE s.therapy_group_id = ?"
+            params.append(int(group_id))
+            
+        query += " ORDER BY s.start_at ASC"
+        cursor.execute(query, params)
         eval_rows = cursor.fetchall()
         
     timeline = []

@@ -27,18 +27,24 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Félix', 'clinician', 'hash')
     """)
     
+    # 1.5. Seed Therapy Group
+    cursor.execute("""
+        INSERT INTO therapy_groups (id, name, clinician_id)
+        VALUES (1, 'Grupo Alfa', 1)
+    """)
+    
     # 2. Seed Patients
     cursor.execute("""
-        INSERT INTO patients (id, real_name, pseudonym)
-        VALUES (1, 'John Doe', 'Paciente1'), (2, 'Jane Doe', 'Paciente2')
+        INSERT INTO patients (id, real_name, pseudonym, therapy_group_id)
+        VALUES (1, 'John Doe', 'Paciente1', 1), (2, 'Jane Doe', 'Paciente2', 1)
     """)
     
     # 3. Seed Therapy Sessions
     cursor.execute("""
-        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration)
+        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration, therapy_group_id)
         VALUES 
-        (1, 'Sessão 1', 1, '2026-05-20 14:00:00', 3600),
-        (2, 'Sessão 2', 1, '2026-05-27 14:00:00', 3600)
+        (1, 'Sessão 1', 1, '2026-05-20 14:00:00', 3600, 1),
+        (2, 'Sessão 2', 1, '2026-05-27 14:00:00', 3600, 1)
     """)
     
     # 4. Seed Transcripts
@@ -184,7 +190,7 @@ def test_cohort_analytics_page_route(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
-        resp = client.get("/cohort_analytics")
+        resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200
         
         soup = BeautifulSoup(resp.data, "html.parser")
@@ -195,7 +201,7 @@ def test_cohort_analytics_page_route(client, mock_get_db):
         assert "grupo" in active_nav.text.lower()
         
         # Check title and descriptions
-        h2 = soup.find("h2", class_="patient-id-title")
+        h2 = soup.find("h2", class_="compact-header-title")
         assert h2 is not None
         assert "grupo" in h2.text.lower()
         
@@ -203,13 +209,3 @@ def test_cohort_analytics_page_route(client, mock_get_db):
         metric_values = [v.text.strip() for v in soup.find_all(class_="metric-value")]
         assert "2" in metric_values  # Total sessions
         assert "12" in metric_values or "12.0" in metric_values  # Peak severity
-        
-        # Check heatmap and table rendering
-        table = soup.find("table", {"id": "heatmapTable"})
-        assert table is not None
-        
-        # Check script island is present with data
-        script_island = soup.find("script", {"id": "page-data"})
-        assert script_island is not None
-        script_data = json.loads(script_island.string)
-        assert "chartMeanTotals" in script_data
