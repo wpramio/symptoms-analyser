@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================================
-    // Social Cohesion & Mutual Support Network Visualization
+    // Social Network Visualization
     // =========================================================================
     const synthesisData = _page.synthesis;
     if (synthesisData && synthesisData.interactions_mapping) {
@@ -305,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             {
                                 selector: 'edge',
                                 style: {
-                                    'width': function(ele) {
+                                    'width': function (ele) {
                                         return 1.5 + Math.min(ele.data('count') * 0.4, 3.5);
                                     },
                                     'line-color': 'data(color)',
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 selector: 'edge.highlighted',
                                 style: {
                                     'opacity': 1,
-                                    'width': function(ele) {
+                                    'width': function (ele) {
                                         return 2.5 + Math.min(ele.data('count') * 0.4, 3.5);
                                     }
                                 }

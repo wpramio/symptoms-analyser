@@ -4511,10 +4511,10 @@ select:focus {
 }
 
 /* ==========================================================================
-   Social Cohesion & Mutual Support Network Styles
+   Social Network Styles
    ========================================================================== */
 
-.social-cohesion-card {
+.social-network-card {
     background-color: var(--card-bg, #ffffff);
     border: 1px solid var(--border, #e2e8f0);
     border-radius: var(--radius, 12px);
@@ -4523,13 +4523,13 @@ select:focus {
     margin-bottom: 2rem;
 }
 
-.social-cohesion-header {
+.social-network-header {
     border-bottom: 1px solid var(--border, #e2e8f0);
     padding-bottom: 1rem;
     margin-bottom: 1.5rem;
 }
 
-.cohesion-split-grid {
+.social-network-split-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -4537,12 +4537,12 @@ select:focus {
 }
 
 @media (min-width: 992px) {
-    .cohesion-split-grid {
+    .social-network-split-grid {
         grid-template-columns: 1.15fr 0.85fr;
     }
 }
 
-.cohesion-graph-container {
+.social-network-graph-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4624,7 +4624,7 @@ select:focus {
     justify-content: center;
     padding: 0;
     transition: all 0.15s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .graph-nav-btn svg {
@@ -4707,108 +4707,13 @@ select:focus {
     color: #cbd5e1;
 }
 
-/* Right side details layout */
-.cohesion-details-container {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-    .cohesion-details-container {
-        grid-template-columns: 1fr 1fr;
-    }
-}
-
-.cohesion-score-banner {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    background: #f8fafc;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1.25rem;
-}
-
-.cohesion-circular-score {
-    position: relative;
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: var(--card-bg);
-    border: 3.5px solid var(--border);
-    box-shadow: var(--shadow);
-    transition: all 0.3s ease;
-}
-
-.cohesion-circular-score[data-score="0"] {
-    border-color: var(--border);
-}
-
-.cohesion-circular-score[data-score="1"],
-.cohesion-circular-score[data-score="2"],
-.cohesion-circular-score[data-score="3"],
-.cohesion-circular-score[data-score="4"] {
-    border-color: #ef4444;
-    /* Low Cohesion */
-}
-
-.cohesion-circular-score[data-score="5"],
-.cohesion-circular-score[data-score="6"],
-.cohesion-circular-score[data-score="7"] {
-    border-color: #f59e0b;
-    /* Moderate Cohesion */
-}
-
-.cohesion-circular-score[data-score="8"],
-.cohesion-circular-score[data-score="9"],
-.cohesion-circular-score[data-score="10"] {
-    border-color: #10b981;
-    /* High Cohesion */
-}
-
-.cohesion-circular-score .score-number {
-    font-size: 1.1rem;
-    font-weight: 800;
-    line-height: 1;
-    color: var(--text-main);
-}
-
-.cohesion-circular-score .score-label {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-top: 1px;
-}
-
-.cohesion-analysis-box {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-}
-
-.cohesion-sub-title {
+.interaction-list-sub-title {
     font-size: 0.85rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
     margin-bottom: 0.5rem;
-}
-
-.cohesion-analysis-text {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    color: var(--text-main);
-    margin: 0;
 }
 
 .interaction-list-box {
@@ -4836,6 +4741,7 @@ select:focus {
         height: 0;
         min-height: 100%;
     }
+
     .interaction-scroll-list {
         flex: 1;
         min-height: 0;
@@ -4987,7 +4893,8 @@ select:focus {
 }
 
 .node-filter-pill-checkbox {
-    display: none; /* Hide real checkbox */
+    display: none;
+    /* Hide real checkbox */
 }
 
 /* Styled indicator dot */

@@ -246,14 +246,14 @@ def test_session_synthesis_orm(test_db_path):
         transcript_id=42,
         therapy_session_id=1,
         group_progress_note="Minuta inicial sugerida pela IA.",
-        interactions_mapping='{"cohesion": 0.9}',
+        interactions_mapping='{"nodes": [], "edges": []}',
         db_conn=conn
     )
     
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
     assert row is not None
     assert row["group_progress_note"] == "Minuta inicial sugerida pela IA."
-    assert row["interactions_mapping"] == '{"cohesion": 0.9}'
+    assert row["interactions_mapping"] == '{"nodes": [], "edges": []}'
 
     # 3. Test update_session_synthesis (simulating clinician edit)
     orm.update_session_synthesis(
@@ -265,7 +265,7 @@ def test_session_synthesis_orm(test_db_path):
     row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
     assert row is not None
     assert row["group_progress_note"] == "Minuta editada pelo clínico."
-    assert row["interactions_mapping"] == '{"cohesion": 0.9}'  # Kept intact!
+    assert row["interactions_mapping"] == '{"nodes": [], "edges": []}'  # Kept intact!
     
     conn.close()
 

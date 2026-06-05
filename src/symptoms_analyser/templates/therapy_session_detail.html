@@ -4,9 +4,10 @@
 {% block title %}{{ session.name }} - Symptoms Analyser{% endblock %}
 
 {% block extra_head %}
-<!-- Import Chart.js securely for future patient sub-charts if needed -->
+<!-- JS libraries -->
+<!-- Chart.js for airtime doughnut chart -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Import Cytoscape.js for interactive social cohesion graph rendering -->
+<!-- Cytoscape.js for interactive social network graph rendering -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
 {% endblock %}
 
@@ -165,8 +166,8 @@
             <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
                 <!-- CARD 1.7: Rede de interações sociais -->
                 {% if evaluation_id and evaluation and evaluation.synthesis %}
-                <div class="dashboard-card social-cohesion-card" id="social-cohesion-section">
-                    <div class="social-cohesion-header">
+                <div class="dashboard-card social-network-card" id="social-network-section">
+                    <div class="social-network-header">
                         <div class="synthesis-title-container">
                             <svg class="synthesis-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -193,10 +194,10 @@
                         </div>
                     </div>
 
-                    <div class="social-cohesion-body">
-                        <div class="cohesion-split-grid mb-4">
+                    <div class="social-network-body">
+                        <div class="social-network-split-grid mb-4">
                             <!-- Left Side: SVG Network Graph -->
-                            <div class="cohesion-graph-container">
+                            <div class="social-network-graph-container">
                                 <div class="graph-legend">
                                     <span class="legend-item"><span class="legend-line line-apoio"></span> Apoio</span>
                                     <span class="legend-item"><span class="legend-line line-validacao"></span>
@@ -238,7 +239,7 @@
 
                             <!-- Right Side: Interactions Scroll List -->
                             <div class="interaction-list-box">
-                                <h4 class="cohesion-sub-title">Registro de interações sociais</h4>
+                                <h4 class="interaction-list-sub-title">Registro de interações sociais</h4>
                                 <div class="interaction-scroll-list" id="interactionScrollList">
                                     <p class="text-muted text-medium">Nenhuma interação identificada nesta sessão.</p>
                                 </div>

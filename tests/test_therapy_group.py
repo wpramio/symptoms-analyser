@@ -285,8 +285,8 @@ def test_group_dynamics_tab_rendering(client, mock_get_db):
         panel = soup.find("div", id="tab-dynamics")
         assert panel is not None
         
-        # 3. Verify presence of social cohesion card & airtime card
-        assert panel.find(class_="social-cohesion-card") is not None
+        # 3. Verify presence of social network card & airtime card
+        assert panel.find(class_="social-network-card") is not None
         assert panel.find(class_="airtime-card") is not None
         
         # 4. Verify data island JSON contains correct attributes

@@ -127,10 +127,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // =========================================================================
-    // Social Cohesion & Mutual Support Network Visualization
+    // Social Network Visualization
     // =========================================================================
     const synthesisData = _page.synthesis;
-    const graphData     = _page.graphData;
+    const graphData = _page.graphData;
 
     // ── Interaction Scroll List (uses raw edges from synthesis) ───────────────
     if (synthesisData && synthesisData.interactions_mapping) {
@@ -195,8 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let cyInstance = null;
 
             // All graph analysis is pre-computed server-side
-            const { nodes_ordered, subgroups, isolated, node_meta,
-                    aggregated_edges, pair_edge_counts } = graphData;
+            const { nodes_ordered, subgroups, isolated, node_meta, aggregated_edges } = graphData;
 
             const uniqueNodes = nodes_ordered.map(id => ({ id, label: id }));
 
@@ -376,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             {
                                 selector: 'edge',
                                 style: {
-                                    'width': function(ele) {
+                                    'width': function (ele) {
                                         return 1.5 + Math.min(ele.data('count') * 0.4, 3.5);
                                     },
                                     'line-color': 'data(color)',
@@ -405,10 +404,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             {
                                 selector: 'node.highlighted',
                                 style: {
-                                    'border-color': function(ele) {
+                                    'border-color': function (ele) {
                                         return ele.data('ringColor') || '#ffffff';
                                     },
-                                    'border-width': function(ele) {
+                                    'border-width': function (ele) {
                                         return ele.data('ringColor') ? 3.5 : 2.5;
                                     },
                                     'opacity': 1
@@ -418,7 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 selector: 'edge.highlighted',
                                 style: {
                                     'opacity': 1,
-                                    'width': function(ele) {
+                                    'width': function (ele) {
                                         return 2.5 + Math.min(ele.data('count') * 0.4, 3.5);
                                     }
                                 }
@@ -617,7 +616,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                                 item.addEventListener('mouseenter', () => {
                                     cyInstance.elements().addClass('dimmed');
-                                    
+
                                     comp.forEach(memberId => {
                                         const node = cyInstance.getElementById(memberId);
                                         node.removeClass('dimmed');
