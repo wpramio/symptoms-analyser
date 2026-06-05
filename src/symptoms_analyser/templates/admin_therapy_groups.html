@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% set active_page = 'admin_therapy_groups' %}
+
+{% block title %}Gestão de Grupos de Terapia - Symptoms Analyser{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <!-- Header matching page-header style -->
+    <div class="page-header">
+        <h2>Gestão de Grupos de Terapia</h2>
+        <p>Criação e edição de grupos de terapia para organização de pacientes e sessões.</p>
+    </div>
+
+    <div class="patients-split-grid">
+        <!-- Groups table wrapped in table-container + cost-table -->
+        <div class="results-container margin-bottom-none">
+            <div class="table-container">
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th class="col-width-10">#</th>
+                            <th class="col-width-40">Nome do Grupo</th>
+                            <th class="col-width-25">Clínico responsável</th>
+                            <th class="col-width-15">Criado em</th>
+                            <th class="col-width-10 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="therapyGroupsTableBody">
+                        {% if therapy_groups %}
+                        {% for group in therapy_groups %}
+                        <tr>
+                            <td><span class="text-muted text-small">{{ group.id }}</span></td>
+                            <td><strong class="text-primary text-medium">{{ group.name }}</strong></td>
+                            <td>
+                                <span class="text-medium">{{ group.clinician_name }}</span>
+                            </td>
+                            <td>
+                                <span class="text-muted text-small">{{ group.created_at | format_datetime }}</span>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-secondary edit-group-btn" data-open="editTherapyGroupModal"
+                                    data-id="{{ group.id }}" data-name="{{ group.name }}" data-clinicianid="{{ group.clinician_id or '' }}">
+                                    Editar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted padding-large">
+                                Nenhum grupo de terapia cadastrado.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Create group form matching dashboard-card style -->
+        <div class="dashboard-card">
+            <h3>Cadastrar novo grupo</h3>
+            <form id="createTherapyGroupForm" action="/admin/therapy_groups" method="POST">
+                <div class="input-group">
+                    <label for="groupName">Nome do grupo:</label>
+                    <input type="text" id="groupName" name="name" placeholder="Ex: Grupo Quinta-feira" required>
+                    <span class="form-helper-text">Use um nome descritivo para identificar o grupo.</span>
+                </div>
+                <div class="input-group">
+                    <label for="groupClinician">Clínico responsável:</label>
+                    <select id="groupClinician" name="clinician_id" required>
+                        <option value="">Selecionar clínico</option>
+                        {% for clinician in clinicians %}
+                        <option value="{{ clinician.id }}">{{ clinician.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-full-width margin-top-medium">Salvar</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include '_edit_therapy_group_modal.html' %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

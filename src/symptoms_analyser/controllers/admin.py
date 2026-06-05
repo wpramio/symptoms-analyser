@@ -892,6 +892,108 @@ def get_tdpm_table_data() -> list[dict]:
     return grouped_dimensions
 
 
+def get_clinicians() -> list[dict]:
+    """Return all users with the clinician or admin role for select dropdowns."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name FROM users WHERE role IN ('clinician', 'admin') ORDER BY name ASC"
+        )
+        return [{"id": r["id"], "name": r["name"]} for r in cursor.fetchall()]
+
+
+def get_therapy_groups_admin() -> list[dict]:
+    """Return all therapy groups ordered by name for the admin management page."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT g.id, g.name, g.clinician_id, u.name as clinician_name, g.created_at
+            FROM therapy_groups g
+            LEFT JOIN users u ON g.clinician_id = u.id
+            ORDER BY g.name ASC
+        """)
+        return [
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "clinician_id": r["clinician_id"],
+                "clinician_name": r["clinician_name"] or "Sem clínico",
+                "created_at": r["created_at"],
+            }
+            for r in cursor.fetchall()
+        ]
+
+
+def create_therapy_group(name: str | None, clinician_id: int | str | None = None) -> tuple[dict, int]:
+    """Validate and insert a new therapy group. Returns (response_dict, http_status_code)."""
+    if not name or not name.strip():
+        return {"error": "O nome do grupo não pode estar vazio"}, 400
+
+    name = name.strip()
+
+    try:
+        clinician_id = int(clinician_id) if clinician_id and str(clinician_id).strip() not in ("", "None") else None
+    except (ValueError, TypeError):
+        clinician_id = None
+
+    if clinician_id is None:
+        return {"error": "É necessário selecionar um clínico responsável"}, 400
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM therapy_groups WHERE name = ?", (name,))
+        if cursor.fetchone():
+            return {"error": f"Já existe um grupo com o nome '{name}'"}, 409
+
+        cursor.execute("INSERT INTO therapy_groups (name, clinician_id) VALUES (?, ?)", (name, clinician_id))
+        conn.commit()
+
+    return {"message": "Grupo criado com sucesso"}, 201
+
+
+def update_therapy_group(
+    group_id: int | str | None,
+    new_name: str | None,
+    clinician_id: int | str | None = None,
+) -> tuple[dict, int]:
+    """Validate and update an existing therapy group name and clinician. Returns (response_dict, http_status_code)."""
+    if not group_id or not new_name or not str(new_name).strip():
+        return {"error": "Dados inválidos ou incompletos"}, 400
+
+    new_name = new_name.strip()
+
+    try:
+        group_id = int(group_id)
+    except (ValueError, TypeError):
+        return {"error": "ID do grupo inválido"}, 400
+
+    try:
+        clinician_id = int(clinician_id) if clinician_id and str(clinician_id).strip() not in ("", "None") else None
+    except (ValueError, TypeError):
+        clinician_id = None
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM therapy_groups WHERE id = ?", (group_id,))
+        if not cursor.fetchone():
+            return {"error": "Grupo não encontrado"}, 404
+
+        cursor.execute("SELECT id FROM therapy_groups WHERE name = ? AND id != ?", (new_name, group_id))
+        if cursor.fetchone():
+            return {"error": f"Já existe um grupo com o nome '{new_name}'"}, 409
+
+        if clinician_id is not None:
+            cursor.execute(
+                "UPDATE therapy_groups SET name = ?, clinician_id = ? WHERE id = ?",
+                (new_name, clinician_id, group_id),
+            )
+        else:
+            cursor.execute("UPDATE therapy_groups SET name = ? WHERE id = ?", (new_name, group_id))
+        conn.commit()
+
+    return {"message": "Grupo atualizado com sucesso"}, 200
+
+
 def get_group_dynamics_data(group_id: int | str) -> dict:
     """
     Retrieve and aggregate historically-aggregated airtime and interactions mapping data

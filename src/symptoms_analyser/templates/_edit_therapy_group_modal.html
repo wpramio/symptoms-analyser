@@ -1,0 +1,50 @@
+{% from 'macros.html' import modal %}
+
+{% call modal(id='editTherapyGroupModal', title='Editar grupo de terapia', form_id='editTherapyGroupForm',
+action='/admin/therapy_groups', size='medium') %}
+<input type="hidden" id="editGroupOriginalId" name="group_id">
+
+<div class="input-group">
+    <label for="editGroupName">Nome do grupo:</label>
+    <input type="text" id="editGroupName" name="name" placeholder="Ex: Grupo Quinta-feira" required>
+    <span class="form-helper-text">Use um nome descritivo para identificar o grupo.</span>
+</div>
+
+<div class="input-group">
+    <label for="editGroupClinician">Clínico responsável:</label>
+    <select id="editGroupClinician" name="clinician_id">
+        <option value="">Selecionar clínico</option>
+        {% for clinician in clinicians %}
+        <option value="{{ clinician.id }}">{{ clinician.name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="modal-actions">
+    <button type="button" class="btn btn-secondary" data-close="editTherapyGroupModal">Cancelar</button>
+    <button type="submit" class="btn">Salvar</button>
+</div>
+{% endcall %}
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const editModal = document.getElementById("editTherapyGroupModal");
+        if (!editModal) return;
+
+        const editGroupOriginalId = document.getElementById("editGroupOriginalId");
+        const editGroupName = document.getElementById("editGroupName");
+        const editGroupClinician = document.getElementById("editGroupClinician");
+
+        // Listen to custom modal open event to populate the fields dynamically
+        editModal.addEventListener("modal:open", function (e) {
+            const trigger = e.detail.trigger;
+            const id = trigger.getAttribute("data-id");
+            const name = trigger.getAttribute("data-name");
+            const clinicianId = trigger.getAttribute("data-clinicianid");
+
+            if (editGroupOriginalId) editGroupOriginalId.value = id;
+            if (editGroupName) editGroupName.value = name;
+            if (editGroupClinician) editGroupClinician.value = clinicianId || "";
+        });
+    });
+</script>

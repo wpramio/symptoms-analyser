@@ -16,6 +16,10 @@ from symptoms_analyser.controllers.admin import (
     update_patient,
     get_tdpm_table_data,
     get_group_dynamics_data,
+    get_therapy_groups_admin,
+    create_therapy_group,
+    update_therapy_group,
+    get_clinicians,
 )
 from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
 from symptoms_analyser.controllers.revisions import save_revision_logic
@@ -573,6 +577,49 @@ def admin_patients():
         return render_template("admin_patients.html", patients=patients, therapy_groups=therapy_groups)
     except Exception as e:
         print(f"Error serving admin patients: {e}")
+        return str(e), 500
+
+
+@app.route("/admin/therapy_groups", methods=["GET", "POST", "PATCH"])
+def admin_therapy_groups():
+    try:
+        from flask import flash, redirect, url_for
+
+        if request.method == "PATCH":
+            data = request.get_json() or {}
+            group_id = data.get("group_id") or request.form.get("group_id")
+            name = data.get("name") or request.form.get("name")
+            clinician_id = data.get("clinician_id") or request.form.get("clinician_id")
+            result, status = update_therapy_group(group_id, name, clinician_id)
+            return jsonify(result), status
+
+        if request.method == "POST":
+            group_id = request.form.get("group_id", "").strip()
+            name = request.form.get("name", "").strip()
+            clinician_id = request.form.get("clinician_id", "").strip()
+
+            if group_id:
+                # Update existing group (HTML form edit)
+                result, status = update_therapy_group(group_id, name, clinician_id)
+                if status == 200:
+                    flash("✓ Grupo atualizado com sucesso!", "success")
+                else:
+                    flash(f"Erro ao salvar grupo: {result.get('error', 'Erro desconhecido')}", "error")
+            else:
+                # Create new group
+                result, status = create_therapy_group(name, clinician_id)
+                if status in (200, 201):
+                    flash("✓ Grupo criado com sucesso!", "success")
+                else:
+                    flash(f"Erro ao criar grupo: {result.get('error', 'Erro desconhecido')}", "error")
+
+            return redirect(url_for("admin_therapy_groups"))
+
+        therapy_groups = get_therapy_groups_admin()
+        clinicians = get_clinicians()
+        return render_template("admin_therapy_groups.html", therapy_groups=therapy_groups, clinicians=clinicians)
+    except Exception as e:
+        print(f"Error serving admin therapy groups: {e}")
         return str(e), 500
 
 

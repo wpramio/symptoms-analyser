@@ -5787,11 +5787,11 @@ select:focus {
         align-items: center;
         gap: 4rem;
     }
-    
+
     .group-dynamics-grid .airtime-chart-wrapper {
         flex-shrink: 0;
     }
-    
+
     .group-dynamics-grid .airtime-legend-grid {
         flex: 1;
         margin-top: 0;
