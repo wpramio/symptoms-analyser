@@ -132,9 +132,10 @@ def test_page_routes(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
-        # Index
+        # Index redirect
         resp = client.get("/")
-        assert resp.status_code == 200
+        assert resp.status_code == 302
+        assert resp.headers["Location"].endswith("/therapy_groups")
         
         # New therapy session form
         resp = client.get("/therapy_sessions/new")

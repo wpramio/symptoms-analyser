@@ -146,36 +146,7 @@ def inject_current_user():
 
 @app.route("/")
 def index():
-    try:
-        from symptoms_analyser.db import get_db
-        group_id_param = request.args.get("group_id")
-        
-        with get_db() as conn:
-            cursor = conn.cursor()
-            if group_id_param:
-                cursor.execute("SELECT id, name FROM therapy_groups WHERE id = ?", (group_id_param,))
-                selected_group = cursor.fetchone()
-            else:
-                cursor.execute("SELECT id, name FROM therapy_groups ORDER BY id ASC LIMIT 1")
-                selected_group = cursor.fetchone()
-                
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            all_groups = [dict(row) for row in cursor.fetchall()]
-
-        if selected_group:
-            group_id = selected_group["id"]
-            res = get_group_interventions(group_id)
-            group_name = selected_group["name"]
-        else:
-            res = {"alerts": []}
-            group_name = None
-            group_id = None
-            
-        alerts = res.get("alerts", [])
-        return render_template("index.html", alerts=alerts, groups=all_groups, current_group_id=group_id, current_group_name=group_name)
-    except Exception as e:
-        print(f"Error rendering home page interventions: {e}")
-        return render_template("index.html", alerts=[], groups=[], current_group_id=None, current_group_name=None)
+    return redirect(url_for("therapy_groups"))
 
 
 @app.route("/therapy_sessions/new")

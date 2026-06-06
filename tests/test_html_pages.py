@@ -101,19 +101,10 @@ def client():
     with app.test_client() as client:
         yield client
 
-def test_index_page_dom(client):
+def test_root_redirect_to_therapy_groups(client):
     resp = client.get("/")
-    assert resp.status_code == 200
-    
-    soup = BeautifulSoup(resp.data, "html.parser")
-    
-    # Check layout structural container
-    assert soup.find("main") is not None
-    
-    # Check landing header title
-    h1 = soup.find("h1")
-    assert h1 is not None
-    assert "symptoms" in h1.text.lower() or "sintomas" in h1.text.lower() or "analyser" in h1.text.lower() or "painel" in h1.text.lower()
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/therapy_groups")
 
 def test_new_therapy_session_page_dom(client):
     resp = client.get("/therapy_sessions/new")
