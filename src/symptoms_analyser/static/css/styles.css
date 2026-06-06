@@ -5259,10 +5259,6 @@ select:focus {
    TDPM-20 Reference Table / Ontology Page Styling
    ========================================================================== */
 
-.tdpm-table-view {
-    padding-top: 1rem;
-}
-
 .tdpm-toolbar {
     display: flex;
     justify-content: space-between;

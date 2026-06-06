@@ -17,13 +17,14 @@
 
     <!-- Sessions List -->
     <div class="results-container">
-        <h3>Histórico de sessões</h3>
         <div class="meta-item-group-selector margin-bottom-medium">
             <strong>Grupo:</strong>
-            <select onchange="window.location.href='/therapy_sessions?group_id=' + this.value" class="group-filter-select">
+            <select onchange="window.location.href='/therapy_sessions?group_id=' + this.value"
+                class="group-filter-select">
                 <option value="">Todos os grupos</option>
                 {% for g in therapy_groups %}
-                <option value="{{ g.id }}" {% if selected_group_id | string == g.id | string %}selected{% endif %}>{{ g.name }}</option>
+                <option value="{{ g.id }}" {% if selected_group_id | string==g.id | string %}selected{% endif %}>{{
+                    g.name }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -51,9 +52,9 @@
                     </div>
                     <div class="col-width-15">
                         {% if session.patients == 'Nenhum paciente' %}
-                            {% set count = 0 %}
+                        {% set count = 0 %}
                         {% else %}
-                            {% set count = session.patients.split(', ') | length %}
+                        {% set count = session.patients.split(', ') | length %}
                         {% endif %}
                         <span class="participant-badge-count" data-count="{{ count }}">
                             {{ count }} {% if count == 1 %}paciente{% else %}pacientes{% endif %}

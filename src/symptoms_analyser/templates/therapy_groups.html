@@ -1,21 +1,19 @@
 {% extends 'base.html' %}
 {% set active_page = 'therapy_groups' %}
 
-{% block title %}Grupos de terapia - Symptoms Analyser{% endblock %}
+{% block title %}Evolução por grupo - Symptoms Analyser{% endblock %}
 
 {% block content %}
 <div class="main-container">
     <div class="page-header page-header-flex">
         <div>
-            <h2>Grupos de terapia</h2>
+            <h2>Evolução por grupo</h2>
             <p>Gerenciamento de grupos terapêuticos e acompanhamento de evolução coletiva.</p>
         </div>
     </div>
 
     <!-- Groups List -->
     <div class="results-container">
-        <h3>Grupos cadastrados</h3>
-
         <div class="session-grid-container">
             <div class="session-grid-header">
                 <div class="col-width-40">Grupo</div>
@@ -29,17 +27,18 @@
                 <a href="/therapy_groups/{{ group.id }}" class="session-grid-row">
                     <div class="col-width-40">
                         <div class="font-semibold">{{ group.name }}</div>
-                        <div class="text-xs-muted">ID: {{ group.id }}</div>
                     </div>
                     <div class="col-width-30">{{ group.clinician_name }}</div>
                     <div class="col-width-15">
                         <span class="participant-badge-count" data-count="{{ group.patient_count }}">
-                            {{ group.patient_count }} {% if group.patient_count == 1 %}paciente{% else %}pacientes{% endif %}
+                            {{ group.patient_count }} {% if group.patient_count == 1 %}paciente{% else %}pacientes{%
+                            endif %}
                         </span>
                     </div>
                     <div class="col-width-15">
                         <span class="participant-badge-count" data-count="{{ group.session_count }}">
-                            {{ group.session_count }} {% if group.session_count == 1 %}sessão{% else %}sessões{% endif %}
+                            {{ group.session_count }} {% if group.session_count == 1 %}sessão{% else %}sessões{% endif
+                            %}
                         </span>
                     </div>
                 </a>
