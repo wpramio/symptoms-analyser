@@ -104,30 +104,36 @@ def update_therapy_session(
 def find_or_create_patient(
     patient_id: str,
     real_name: Optional[str] = None,
+    therapy_group_id: Optional[int] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> int:
     """
     Find an existing patient by pseudonym, or create one if not found.
     Returns the patient's integer ID.
+    If therapy_group_id is provided, updates or sets the patient's association.
     """
     patient_id = patient_id.strip()
     if not real_name:
         real_name = f"Nome Real de {patient_id}"
 
-    select_sql = "SELECT id FROM patients WHERE pseudonym = ?"
-    insert_sql = """
-        INSERT INTO patients (real_name, pseudonym, metadata)
-        VALUES (?, ?, ?)
-    """
-    insert_params = (real_name, patient_id, json.dumps({"notes": "Auto-cadastro ORM"}))
+    select_sql = "SELECT id, therapy_group_id FROM patients WHERE pseudonym = ?"
 
     if db_conn:
         cursor = db_conn.cursor()
         cursor.execute(select_sql, (patient_id,))
         row = cursor.fetchone()
         if row:
-            return row["id"]
+            p_id = row["id"]
+            if therapy_group_id is not None and row["therapy_group_id"] != therapy_group_id:
+                cursor.execute("UPDATE patients SET therapy_group_id = ? WHERE id = ?", (therapy_group_id, p_id))
+                db_conn.commit()
+            return p_id
         
+        insert_sql = """
+            INSERT INTO patients (real_name, pseudonym, therapy_group_id, metadata)
+            VALUES (?, ?, ?, ?)
+        """
+        insert_params = (real_name, patient_id, therapy_group_id, json.dumps({"notes": "Auto-cadastro ORM"}))
         cursor.execute(insert_sql, insert_params)
         db_conn.commit()
         return cursor.lastrowid
@@ -137,8 +143,17 @@ def find_or_create_patient(
             cursor.execute(select_sql, (patient_id,))
             row = cursor.fetchone()
             if row:
-                return row["id"]
+                p_id = row["id"]
+                if therapy_group_id is not None and row["therapy_group_id"] != therapy_group_id:
+                    cursor.execute("UPDATE patients SET therapy_group_id = ? WHERE id = ?", (therapy_group_id, p_id))
+                    conn.commit()
+                return p_id
             
+            insert_sql = """
+                INSERT INTO patients (real_name, pseudonym, therapy_group_id, metadata)
+                VALUES (?, ?, ?, ?)
+            """
+            insert_params = (real_name, patient_id, therapy_group_id, json.dumps({"notes": "Auto-cadastro ORM"}))
             cursor.execute(insert_sql, insert_params)
             conn.commit()
             return cursor.lastrowid
@@ -157,17 +172,16 @@ def link_patient_to_session(
 
     def _execute(conn: sqlite3.Connection):
         cursor = conn.cursor()
+        cursor.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,))
+        sess_row = cursor.fetchone()
+        g_id = sess_row["therapy_group_id"] if sess_row else None
+
         if isinstance(patient_id, str):
-            cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (patient_id,))
-            row = cursor.fetchone()
-            if row:
-                p_id = row["id"]
-            else:
-                cursor.execute("INSERT INTO patients (real_name, pseudonym, metadata) VALUES (?, ?, ?)",
-                               (f"Nome Real de {patient_id}", patient_id, json.dumps({"notes": "Auto-cadastro ORM"})))
-                p_id = cursor.lastrowid
+            p_id = find_or_create_patient(patient_id, therapy_group_id=g_id, db_conn=conn)
         else:
             p_id = patient_id
+            if g_id is not None:
+                cursor.execute("UPDATE patients SET therapy_group_id = ? WHERE id = ?", (g_id, p_id))
 
         cursor.execute(sql, (session_id, p_id))
         conn.commit()

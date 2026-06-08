@@ -21,15 +21,19 @@ def test_db_path(tmp_path, schema_sql):
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(schema_sql)
     
-    # Seed user & therapy session to prevent foreign key errors
+    # Seed user, group & therapy session to prevent foreign key errors
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO users (id, username, email, name, role, password_hash)
         VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Clinician', 'clinician', 'hash')
     """)
     cursor.execute("""
-        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration)
-        VALUES (1, 'Sessão 1', 1, '2026-05-29 10:00:00', 3600)
+        INSERT INTO therapy_groups (id, name, clinician_id)
+        VALUES (42, 'Grupo de Teste', 1)
+    """)
+    cursor.execute("""
+        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration, therapy_group_id)
+        VALUES (1, 'Sessão 1', 1, '2026-05-29 10:00:00', 3600, 42)
     """)
     conn.commit()
     conn.close()
@@ -72,7 +76,7 @@ def test_process_transcript_pipeline_success(
         
     # Verify task state changes
     assert tasks[task_id]["status"] == "completed"
-    assert "Processamento e análise concluídos" in tasks[task_id]["logs"][-1]
+    assert "Sessão registrada e análise com IA finalizada" in tasks[task_id]["logs"][-1]
     
     # Verify patient created and linked in the database
     conn = sqlite3.connect(test_db_path)
@@ -80,6 +84,7 @@ def test_process_transcript_pipeline_success(
     p_row = conn.execute("SELECT * FROM patients WHERE pseudonym = 'Paciente1'").fetchone()
     assert p_row is not None
     assert p_row["real_name"] == "Real Patient"
+    assert p_row["therapy_group_id"] == 42
     
     join_row = conn.execute("SELECT * FROM therapy_session_patients WHERE therapy_session_id = 1").fetchone()
     assert join_row is not None

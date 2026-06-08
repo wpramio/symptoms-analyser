@@ -157,13 +157,23 @@ def tdpm_analysis_with_llm(
     # 1. Fetch sanitized text and session references
     cursor = db_conn.cursor() if db_conn else None
     if cursor:
-        cursor.execute("SELECT sanitized_text, therapy_session_id, filename FROM transcripts WHERE id = ?", (transcript_id,))
+        cursor.execute("""
+            SELECT t.sanitized_text, t.therapy_session_id, t.filename, s.therapy_group_id
+            FROM transcripts t
+            LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
+            WHERE t.id = ?
+        """, (transcript_id,))
         row = cursor.fetchone()
     else:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT sanitized_text, therapy_session_id, filename FROM transcripts WHERE id = ?", (transcript_id,))
+            cursor.execute("""
+                SELECT t.sanitized_text, t.therapy_session_id, t.filename, s.therapy_group_id
+                FROM transcripts t
+                LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
+                WHERE t.id = ?
+            """, (transcript_id,))
             row = cursor.fetchone()
 
     if not row or not row["sanitized_text"]:
@@ -171,6 +181,7 @@ def tdpm_analysis_with_llm(
 
     text = row["sanitized_text"]
     therapy_session_id = row["therapy_session_id"]
+    therapy_group_id = row["therapy_group_id"]
     filename = row["filename"]
     session_name = Path(filename).stem
 
@@ -271,7 +282,7 @@ def tdpm_analysis_with_llm(
     for patient_id, pat_payload in patients_dict.items():
         
         # Self-healing Patients
-        orm.find_or_create_patient(patient_id=patient_id, db_conn=db_conn)
+        orm.find_or_create_patient(patient_id=patient_id, therapy_group_id=therapy_group_id, db_conn=db_conn)
         
         # Link Patient to Session join table mapping
         orm.link_patient_to_session(session_id=therapy_session_id, patient_id=patient_id, db_conn=db_conn)

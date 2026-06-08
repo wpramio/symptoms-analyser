@@ -24,14 +24,18 @@ def test_db_path(tmp_path, schema_sql):
     conn.executescript(schema_sql)
     
     cursor = conn.cursor()
-    # Seed user & therapy session to prevent foreign key errors
+    # Seed user, group & therapy session to prevent foreign key errors
     cursor.execute("""
         INSERT INTO users (id, username, email, name, role, password_hash)
         VALUES (1, 'clinician_1', 'clinician_1@symptomsanalyser.org', 'Dr. Clinician', 'clinician', 'hash')
     """)
     cursor.execute("""
-        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration)
-        VALUES (1, 'Sessão 1', 1, '2026-05-29 10:00:00', 3600)
+        INSERT INTO therapy_groups (id, name, clinician_id)
+        VALUES (84, 'Grupo TDPM', 1)
+    """)
+    cursor.execute("""
+        INSERT INTO therapy_sessions (id, name, clinician_id, start_at, duration, therapy_group_id)
+        VALUES (1, 'Sessão 1', 1, '2026-05-29 10:00:00', 3600, 84)
     """)
     conn.commit()
     conn.close()
@@ -206,6 +210,11 @@ def test_tdpm_analysis_with_llm(mock_load, mock_openai, test_db_path):
     assert eval_row is not None
     assert eval_row["therapy_session_id"] == 1
     
+    # Check patient associated with the correct therapy group
+    p_row = conn.execute("SELECT * FROM patients WHERE pseudonym = 'Paciente1'").fetchone()
+    assert p_row is not None
+    assert p_row["therapy_group_id"] == 84
+
     # Check telemetry
     tel_row = conn.execute("SELECT * FROM evaluation_telemetry WHERE evaluation_id = 1").fetchone()
     assert tel_row is not None

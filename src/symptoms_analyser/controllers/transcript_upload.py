@@ -73,8 +73,13 @@ def process_transcript_pipeline(
         )
 
         # Register any new provisional patients identified in Step 3b
+        cursor = db_conn.cursor()
+        cursor.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (therapy_session_id,))
+        session_row = cursor.fetchone()
+        therapy_group_id = session_row["therapy_group_id"] if session_row else None
+
         for real_name, pseudonym in mappings:
-            orm.find_or_create_patient(pseudonym, real_name, db_conn)
+            orm.find_or_create_patient(pseudonym, real_name, therapy_group_id, db_conn)
             orm.link_patient_to_session(therapy_session_id, pseudonym, db_conn)
 
         # STEP 4: LLM Sanitization
