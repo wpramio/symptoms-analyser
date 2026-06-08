@@ -73,16 +73,24 @@ def update_therapy_session(
     name: str,
     start_at: str,
     duration: int,
-    therapy_group_id: Optional[int] = None,
+    therapy_group_id: Optional[int] = -1,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
     """Update an existing therapy session's name, start date/time, duration, and optionally its group."""
-    sql = """
-        UPDATE therapy_sessions
-        SET name = ?, start_at = ?, duration = ?, therapy_group_id = ?
-        WHERE id = ?
-    """
-    params = (name, start_at, duration, therapy_group_id, session_id)
+    if therapy_group_id == -1:
+        sql = """
+            UPDATE therapy_sessions
+            SET name = ?, start_at = ?, duration = ?
+            WHERE id = ?
+        """
+        params = (name, start_at, duration, session_id)
+    else:
+        sql = """
+            UPDATE therapy_sessions
+            SET name = ?, start_at = ?, duration = ?, therapy_group_id = ?
+            WHERE id = ?
+        """
+        params = (name, start_at, duration, therapy_group_id, session_id)
 
     if db_conn:
         db_conn.execute(sql, params)

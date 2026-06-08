@@ -268,3 +268,48 @@ def test_orm_operations_without_db_conn(mock_get_db, test_db_path):
         
     finally:
         conn.close()
+
+
+def test_update_therapy_session_preserves_group(mock_get_db, test_db_path):
+    with mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db):
+        # Create a session with group_id = 1
+        session_id = create_therapy_session(
+            name="Sessão Com Grupo",
+            start_at="2026-05-29 10:00:00",
+            clinician_id="clinician_direct",
+            duration=50,
+            therapy_group_id=1
+        )
+        
+        # Verify it has group_id = 1
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,)).fetchone()
+            assert row["therapy_group_id"] == 1
+            
+        # Update session without passing therapy_group_id (should default to -1 and preserve existing group)
+        update_therapy_session(
+            session_id=session_id,
+            name="Sessão Com Grupo Modificada",
+            start_at="2026-05-29 11:00:00",
+            duration=60
+        )
+        
+        # Verify it still has group_id = 1
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,)).fetchone()
+            assert row["therapy_group_id"] == 1
+            
+        # Update session explicitly passing None (should clear group)
+        update_therapy_session(
+            session_id=session_id,
+            name="Sessão Com Grupo Modificada",
+            start_at="2026-05-29 11:00:00",
+            duration=60,
+            therapy_group_id=None
+        )
+        
+        # Verify it now has group_id = None (NULL)
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,)).fetchone()
+            assert row["therapy_group_id"] is None
+
