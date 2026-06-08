@@ -1982,11 +1982,11 @@ select:focus {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.75rem 1.25rem;
-    box-shadow: var(--shadow);
+    padding: 0.5rem 1rem;
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.1rem;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -1996,7 +1996,7 @@ select:focus {
 }
 
 .metric-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -2004,7 +2004,7 @@ select:focus {
 }
 
 .metric-value {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-main);
     line-height: 1.2;
@@ -5646,13 +5646,13 @@ select:focus {
 .intervention-alert-card {
     background-color: var(--card-bg);
     border: 1px solid var(--border);
-    border-left: 5px solid var(--border);
+    border-left: 4px solid var(--border);
     border-radius: 8px;
-    padding: 1.25rem;
+    padding: 0.8rem 1rem;
     box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.45rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -5675,15 +5675,15 @@ select:focus {
 
 .alert-badge-row {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     align-items: center;
 }
 
 .badge-severity {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 0.2rem 0.5rem;
+    padding: 0.15rem 0.4rem;
     border-radius: 4px;
     letter-spacing: 0.04em;
 }
@@ -5704,10 +5704,10 @@ select:focus {
 }
 
 .badge-type {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    padding: 0.2rem 0.5rem;
+    padding: 0.15rem 0.4rem;
     border-radius: 4px;
     letter-spacing: 0.04em;
     background: #f1f5f9;
@@ -5716,15 +5716,15 @@ select:focus {
 
 .alert-title {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-main);
 }
 
 .alert-description {
     margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.5;
+    font-size: 0.825rem;
+    line-height: 1.45;
     color: var(--text-muted);
 }
 
@@ -5733,9 +5733,9 @@ select:focus {
     background: #f8fafc;
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    line-height: 1.45;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
     color: var(--text-main);
 }
 
@@ -6004,4 +6004,24 @@ select:focus {
     background-color: var(--card-bg);
     color: var(--primary);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Compact Metric Cards Styling */
+.metric-card-compact {
+    padding: 0.4rem 0.8rem;
+    gap: 0.1rem;
+}
+
+.metric-card-compact .metric-value {
+    font-size: 1.2rem;
+    margin-top: -0.1rem;
+}
+
+.metric-card-compact .metric-label {
+    font-size: 0.65rem;
+}
+
+.metric-card-compact .metric-label-index span[class^="metric-badge-"],
+.metric-card-compact .metric-label-index span[class*=" metric-badge-"] {
+    font-size: 0.7rem;
 }
