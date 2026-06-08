@@ -236,7 +236,15 @@ def get_stats() -> dict:
         if stats["total_transcripts"] > 0:
             stats["success_rate"] = round((successes / stats["total_transcripts"]) * 100.0, 1)
 
-        cursor.execute("SELECT sum(prompt_tokens), sum(completion_tokens) FROM evaluation_telemetry")
+        cursor.execute("""
+            SELECT 
+                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM evaluation_telemetry) +
+                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM sanitization_telemetry) +
+                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_syntheses),
+                (SELECT COALESCE(SUM(completion_tokens), 0) FROM evaluation_telemetry) +
+                (SELECT COALESCE(SUM(completion_tokens), 0) FROM sanitization_telemetry) +
+                (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_syntheses)
+        """)
         row = cursor.fetchone()
         stats["total_prompt_tokens"] = row[0] or 0
         stats["total_completion_tokens"] = row[1] or 0
@@ -330,6 +338,32 @@ def get_evaluation_telemetry() -> list[dict]:
                 "status": r["status"],
                 "failure_reason": r["failure_reason"],
                 "created_at": r["created_at"],
+            }
+            for r in cursor.fetchall()
+        ]
+
+
+def get_synthesis_telemetry() -> list[dict]:
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT ss.transcript_id, ss.therapy_session_id, ss.model,
+                   ss.prompt_tokens, ss.completion_tokens, ss.processing_time,
+                   ss.created_at, s.name as session_name
+            FROM session_syntheses ss
+            LEFT JOIN therapy_sessions s ON ss.therapy_session_id = s.id
+            ORDER BY ss.created_at DESC
+        """)
+        return [
+            {
+                "transcript_id": r["transcript_id"],
+                "therapy_session_id": r["therapy_session_id"],
+                "model": r["model"],
+                "prompt_tokens": r["prompt_tokens"],
+                "completion_tokens": r["completion_tokens"],
+                "processing_time": r["processing_time"],
+                "created_at": r["created_at"],
+                "session_name": r["session_name"] or "Sem sessão vinculada",
             }
             for r in cursor.fetchall()
         ]

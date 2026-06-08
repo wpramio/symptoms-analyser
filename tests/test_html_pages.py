@@ -74,6 +74,12 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 'gpt-4', 1000, 300, 10.0, '{"aggregated": {"patients": {"Paciente1": {"dimensions": {"1": {"dimension_sum": 3}}, "items": {}}}}}')
     """)
     
+    # 8. Seed session synthesis telemetry
+    cursor.execute("""
+        INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time, created_at)
+        VALUES (1, 1, 'Group Note', '{"nodes":[],"edges":[]}', 'gpt-4', 500, 200, 3.4, '2026-05-29 14:15:00')
+    """)
+    
     conn.commit()
     conn.close()
     
@@ -230,6 +236,7 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
         resp = client.get("/admin/transcripts")
         assert resp.status_code == 200
         assert b"Grupo Alfa" in resp.data
+        assert b"Telemetria de s\xc3\xadntese cl\xc3\xadnica" in resp.data
 
         # 5. Therapy Groups Page
         resp = client.get("/therapy_groups")

@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!jobsTableBody) return;
 
                 if (jobs.length === 0) {
-                    jobsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted padding-large">Nenhuma ingestão registrada no banco de dados.</td></tr>`;
+                    jobsTableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted padding-large">Nenhuma transcrição registrada no banco de dados.</td></tr>`;
                     return;
                 }
 

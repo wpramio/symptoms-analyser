@@ -8,6 +8,7 @@ from symptoms_analyser.controllers.admin import (
     get_evaluation_telemetry,
     get_patients,
     get_sanitization_telemetry,
+    get_synthesis_telemetry,
     get_stats,
     get_transcripts,
     get_patients_list_with_stats,
@@ -476,13 +477,17 @@ def admin_transcripts():
         # 5. Fetch evaluation telemetry
         eval_telemetry = get_evaluation_telemetry()
         
+        # 6. Fetch synthesis telemetry
+        synthesis_telemetry = get_synthesis_telemetry()
+        
         return render_template(
             "admin_transcripts.html",
             stats=stats,
             jobs=jobs,
             sessions=sessions,
             telemetry=telemetry,
-            eval_telemetry=eval_telemetry
+            eval_telemetry=eval_telemetry,
+            synthesis_telemetry=synthesis_telemetry
         )
     except Exception as e:
         import traceback
@@ -768,6 +773,15 @@ def api_admin_evaluation_telemetry():
         return jsonify(get_evaluation_telemetry())
     except Exception as e:
         print(f"Error fetching admin evaluation telemetry: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/admin/synthesis-telemetry")
+def api_admin_synthesis_telemetry():
+    try:
+        return jsonify(get_synthesis_telemetry())
+    except Exception as e:
+        print(f"Error fetching admin synthesis telemetry: {e}")
         return jsonify({"error": str(e)}), 500
 
 

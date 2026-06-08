@@ -211,7 +211,7 @@
     </div>
 
     <!-- Section 3: Detailed Evaluation Telemetry Logs matching .results-container table container -->
-    <div class="results-container">
+    <div class="results-container margin-bottom-large">
         <h3>Telemetria de avaliação clínica (TDPM-20)</h3>
         <div class="table-container">
             <table class="cost-table">
@@ -260,6 +260,62 @@
                     <tr>
                         <td colspan="5" class="text-center text-muted padding-large">Nenhum log de telemetria de
                             avaliação encontrado.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 4: Detailed Synthesis Telemetry Logs matching .results-container table container -->
+    <div class="results-container">
+        <h3>Telemetria de síntese clínica</h3>
+        <div class="table-container">
+            <table class="cost-table">
+                <thead>
+                    <tr>
+                        <th class="col-width-15">ID Transcrição</th>
+                        <th class="col-width-25">Sessão</th>
+                        <th class="col-width-25">Modelo IA</th>
+                        <th class="col-width-20">Tokens consumidos</th>
+                        <th class="col-width-15">Tempo e data</th>
+                    </tr>
+                </thead>
+                <tbody id="synthesisTelemetryTableBody">
+                    {% if synthesis_telemetry %}
+                    {% for tele in synthesis_telemetry %}
+                    <tr>
+                        <td><strong class="text-primary">{{ tele.transcript_id }}</strong></td>
+                        <td class="text-medium">
+                            <strong>{{ tele.session_name }}</strong><br>
+                            <span class="text-muted text-small">ID Sessão: {{ tele.therapy_session_id }}</span>
+                        </td>
+                        <td class="text-medium">
+                            {{ tele.model or "-" }}
+                        </td>
+                        <td class="text-medium">
+                            {% if tele.prompt_tokens is not none %}
+                            <strong>Total:</strong> {{ (tele.prompt_tokens + tele.completion_tokens) | number_format
+                            }}<br>
+                            <span class="text-muted text-small">Prompt: {{ tele.prompt_tokens | number_format
+                                }}</span><br>
+                            <span class="text-muted text-small">Comp: {{ tele.completion_tokens | number_format
+                                }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-medium">
+                            <strong>{% if tele.processing_time %}{{ tele.processing_time }}s{% else %}-{% endif
+                                %}</strong><br>
+                            <span class="text-muted text-small">{{ tele.created_at | format_datetime }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted padding-large">Nenhum log de telemetria de síntese
+                            clínica encontrado.</td>
                     </tr>
                     {% endif %}
                 </tbody>

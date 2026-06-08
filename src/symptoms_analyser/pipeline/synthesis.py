@@ -117,9 +117,15 @@ Transcrição da Sessão:
     
     max_json_retries = 3
     synthesis_data = None
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    run_start = time.time()
     
     for parse_attempt in range(1, max_json_retries + 1):
-        response_content, _ = call_model(client, system_prompt, user_text)
+        response_content, usage = call_model(client, system_prompt, user_text)
+        if usage:
+            total_prompt_tokens += usage.get("prompt_tokens", 0)
+            total_completion_tokens += usage.get("completion_tokens", 0)
         try:
             synthesis_data = json.loads(response_content)
             break
@@ -129,6 +135,7 @@ Transcrição da Sessão:
             print(f"\n  ⚠ Failed to parse LLM response as JSON (attempt {parse_attempt}/{max_json_retries}). Retrying...", flush=True)
             time.sleep(2)
         
+    processing_time = time.time() - run_start
     group_note = synthesis_data.get("group_clinical_progress_note")
     
     # Safely serialize interactions network mapping placeholder
@@ -141,5 +148,9 @@ Transcrição da Sessão:
         therapy_session_id=therapy_session_id,
         group_progress_note=group_note,
         interactions_mapping=interactions_str,
+        model=MODEL,
+        prompt_tokens=total_prompt_tokens,
+        completion_tokens=total_completion_tokens,
+        processing_time=round(processing_time, 2),
         db_conn=db_conn
     )

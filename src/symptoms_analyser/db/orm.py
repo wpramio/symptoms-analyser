@@ -446,15 +446,19 @@ def create_session_synthesis(
     therapy_session_id: int,
     group_progress_note: Optional[str] = None,
     interactions_mapping: Optional[str] = None,
+    model: Optional[str] = None,
+    prompt_tokens: Optional[int] = None,
+    completion_tokens: Optional[int] = None,
+    processing_time: Optional[float] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
     """Insert or replace a qualitative whole-session clinical synthesis."""
     sql = """
         INSERT OR REPLACE INTO session_syntheses 
-        (transcript_id, therapy_session_id, group_progress_note, interactions_mapping)
-        VALUES (?, ?, ?, ?)
+        (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """
-    params = (transcript_id, therapy_session_id, group_progress_note, interactions_mapping)
+    params = (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time)
 
     if db_conn:
         db_conn.execute(sql, params)

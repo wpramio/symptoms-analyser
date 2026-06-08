@@ -247,6 +247,10 @@ def test_session_synthesis_orm(test_db_path):
         therapy_session_id=1,
         group_progress_note="Minuta inicial sugerida pela IA.",
         interactions_mapping='{"nodes": [], "edges": []}',
+        model="google/gemini-flash",
+        prompt_tokens=100,
+        completion_tokens=200,
+        processing_time=1.5,
         db_conn=conn
     )
     
@@ -254,6 +258,10 @@ def test_session_synthesis_orm(test_db_path):
     assert row is not None
     assert row["group_progress_note"] == "Minuta inicial sugerida pela IA."
     assert row["interactions_mapping"] == '{"nodes": [], "edges": []}'
+    assert row["model"] == "google/gemini-flash"
+    assert row["prompt_tokens"] == 100
+    assert row["completion_tokens"] == 200
+    assert row["processing_time"] == 1.5
 
     # 3. Test update_session_synthesis (simulating clinician edit)
     orm.update_session_synthesis(
@@ -301,6 +309,10 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     assert row["therapy_session_id"] == 1
     assert row["group_progress_note"] == "Esta é a evolução do grupo da sessão 1."
     assert json.loads(row["interactions_mapping"]) == {"nodes": [], "edges": []}
+    assert row["model"] is not None
+    assert row["prompt_tokens"] == 100
+    assert row["completion_tokens"] == 50
+    assert row["processing_time"] is not None
     
     conn.close()
 

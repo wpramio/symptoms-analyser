@@ -173,6 +173,10 @@ CREATE TABLE IF NOT EXISTS session_syntheses (
     therapy_session_id INTEGER NOT NULL,
     group_progress_note TEXT,
     interactions_mapping TEXT,       -- JSON text representing interactions network (future-proofing)
+    model TEXT,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    processing_time REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
     FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
