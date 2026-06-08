@@ -175,3 +175,75 @@ def test_get_group_interventions(mock_get_db):
         # Verify that we get the alerts
         assert isinstance(res1, dict)
         assert isinstance(res2, dict)
+
+def test_new_heuristics(mock_get_db):
+    from symptoms_analyser.controllers.interventions import get_group_interventions
+    with mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+        with mock_get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Insert a therapy group
+            cursor.execute("INSERT INTO therapy_groups (id, name, clinician_id) VALUES (10, 'Grupo Teste Heuristicas', 1)")
+            
+            # Insert patients: PacienteA and PacienteB
+            cursor.execute("INSERT INTO patients (id, real_name, pseudonym, therapy_group_id) VALUES (10, 'Paciente A', 'PacienteA', 10)")
+            cursor.execute("INSERT INTO patients (id, real_name, pseudonym, therapy_group_id) VALUES (20, 'Paciente B', 'PacienteB', 10)")
+            
+            # Insert 4 sessions for the group
+            for idx in range(1, 5):
+                cursor.execute(f"""
+                    INSERT INTO therapy_sessions (id, name, start_at, duration, clinician_id, therapy_group_id)
+                    VALUES ({idx}, 'Sessão {idx}', '2026-05-0{idx} 10:00:00', 50, 1, 10)
+                """)
+            
+            # Patient attendance:
+            # PacienteB attends all 4 sessions - attendance 100%
+            # PacienteA only attends 2 sessions (1, 2) - attendance 50%
+            for idx in range(1, 5):
+                cursor.execute(f"INSERT INTO therapy_session_patients (therapy_session_id, patient_id) VALUES ({idx}, 20)")
+            for idx in [1, 2]:
+                cursor.execute(f"INSERT INTO therapy_session_patients (therapy_session_id, patient_id) VALUES ({idx}, 10)")
+                
+            # Transcripts (with word count > 0)
+            # PacienteB speaks 98 words, PacienteA speaks 2 words total
+            text1 = "PacienteB: hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello\nPacienteA: oi"
+            text2 = "PacienteB: hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello\nPacienteA: oi"
+            text3 = "PacienteB: hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello"
+            text4 = "PacienteB: hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello hello"
+            
+            cursor.execute("INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status, progress_percent) VALUES (101, 1, 't1.txt', 'txt', ?, 'completed', 100.0)", (text1,))
+            cursor.execute("INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status, progress_percent) VALUES (102, 2, 't2.txt', 'txt', ?, 'completed', 100.0)", (text2,))
+            cursor.execute("INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status, progress_percent) VALUES (103, 3, 't3.txt', 'txt', ?, 'completed', 100.0)", (text3,))
+            cursor.execute("INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status, progress_percent) VALUES (104, 4, 't4.txt', 'txt', ?, 'completed', 100.0)", (text4,))
+            
+            # Evaluations
+            for idx in range(1, 5):
+                cursor.execute(f"INSERT INTO tdpm_evaluations (id, therapy_session_id, transcript_id, created_at) VALUES ({100 + idx}, {idx}, {100 + idx}, '2026-05-0{idx} 11:00:00')")
+                
+            # Score mappings
+            for idx in [1, 2]:
+                cursor.execute(f"INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES ({100 + idx}, 10, '1', '1.1', 1)")
+            for idx in range(1, 5):
+                cursor.execute(f"INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES ({100 + idx}, 20, '1', '1.1', 1)")
+                
+            # Session syntheses
+            for idx in range(1, 5):
+                cursor.execute(f"INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note) VALUES ({100 + idx}, {idx}, 'Progresso da sessao')")
+                
+            conn.commit()
+            
+        res = get_group_interventions(10)
+        alerts = res["alerts"]
+        
+        # We expect:
+        # 1. Risco alto de abandono (dropout) for PacienteA (attendance_rate = 50.0% and peer_interactions < 1.5)
+        # 2. Potencial isolamento for PacienteA (airtime accumulated < 3%)
+        
+        dropout_alert = [a for a in alerts if "Risco alto de abandono (dropout)" in a["title"]]
+        assert len(dropout_alert) == 1
+        assert dropout_alert[0]["severity"] == "critical"
+        
+        isolation_alert = [a for a in alerts if "Potencial isolamento" in a["title"]]
+        assert len(isolation_alert) == 1
+        assert isolation_alert[0]["severity"] == "warning"
+        assert "PacienteA" in isolation_alert[0]["title"]

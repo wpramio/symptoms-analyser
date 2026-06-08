@@ -59,7 +59,7 @@ A identificação de subgrupos ou panelas que segregam o grupo é feita pela **a
 Podemos extrair dados altamente acionáveis das minutas (`group_clinical_progress_note`) sob duas perspectivas: **individual (por sessão)** e **histórica (longitudinal)**.
 
 ### A. Análise Individual (Por Sessão)
-* **Correlação Tema-Sintoma:** Cruzar os temas transversais detectados na minuta da sessão com os picos de sintomas (TDPM-20) individuais.
+* **Correlação Tema-Sintoma:** Cruzar os temas transversais detectados no resumo de tópicos da sessão com os picos de sintomas (TDPM-20) individuais.
   * *Exemplo:* Se o tema transversal foi "conflitos familiares" e as notas de *Irritabilidade (17.1)* e *Ansiedade (16.1)* subiram na mesma sessão para determinados pacientes, o painel infere e aponta que **estressores familiares** são os principais gatilhos ativos para esses indivíduos.
 * **Mapeamento de Técnicas Clínicas Utilizadas:** Registrar quais intervenções foram aplicadas pelo terapeuta (ex: reestruturação cognitiva, psicoeducação, treino de assertividade) na sessão para auditar ou guiar o planejamento das próximas sessões.
 
