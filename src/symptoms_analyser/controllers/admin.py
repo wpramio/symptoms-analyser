@@ -288,7 +288,7 @@ def get_sanitization_telemetry() -> list[dict]:
             SELECT st.id, st.transcript_id, st.model, st.strategy, st.total_elapsed_seconds,
                    st.turns_merged, st.noise_tokens_removed, st.corrections, st.anonymization_flags,
                    st.prompt_tokens, st.completion_tokens, st.chunks_completed, st.created_at,
-                   s.name as session_name
+                   s.name as session_name, t.therapy_session_id
             FROM sanitization_telemetry st
             JOIN transcripts t ON st.transcript_id = t.id
             LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
@@ -310,6 +310,7 @@ def get_sanitization_telemetry() -> list[dict]:
                 "chunks_completed": r["chunks_completed"],
                 "created_at": r["created_at"],
                 "session_name": r["session_name"] or "Sem sessão vinculada",
+                "therapy_session_id": r["therapy_session_id"],
             }
             for r in cursor.fetchall()
         ]
@@ -320,11 +321,14 @@ def get_evaluation_telemetry() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT evaluation_id, model, chunks_analyzed, blocks_per_call,
-                   prompt_tokens, completion_tokens, total_elapsed_seconds,
-                   status, failure_reason, created_at
-            FROM evaluation_telemetry
-            ORDER BY created_at DESC
+            SELECT et.evaluation_id, et.model, et.chunks_analyzed, et.blocks_per_call,
+                   et.prompt_tokens, et.completion_tokens, et.total_elapsed_seconds,
+                   et.status, et.failure_reason, et.created_at,
+                   e.transcript_id, e.therapy_session_id, s.name as session_name
+            FROM evaluation_telemetry et
+            JOIN tdpm_evaluations e ON et.evaluation_id = e.id
+            LEFT JOIN therapy_sessions s ON e.therapy_session_id = s.id
+            ORDER BY et.created_at DESC
         """)
         return [
             {
@@ -338,6 +342,9 @@ def get_evaluation_telemetry() -> list[dict]:
                 "status": r["status"],
                 "failure_reason": r["failure_reason"],
                 "created_at": r["created_at"],
+                "transcript_id": r["transcript_id"],
+                "therapy_session_id": r["therapy_session_id"],
+                "session_name": r["session_name"] or "Sem sessão vinculada",
             }
             for r in cursor.fetchall()
         ]

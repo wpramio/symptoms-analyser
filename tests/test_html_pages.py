@@ -235,7 +235,6 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
         # 4. Admin Transcripts Page
         resp = client.get("/admin/transcripts")
         assert resp.status_code == 200
-        assert b"Grupo Alfa" in resp.data
         assert b"Telemetria de s\xc3\xadntese cl\xc3\xadnica" in resp.data
 
         # 5. Therapy Groups Page

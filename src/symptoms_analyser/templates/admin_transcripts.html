@@ -33,7 +33,8 @@
                         <td>{{ job.file_size_bytes | format_bytes }}</td>
                         <td>
                             <div class="status-badge {% if job.status == 'failed' %}cursor-pointer{% endif %}"
-                                data-status="{{ job.status }}" data-id="{{ job.id }}">
+                                data-status="{{ job.status }}" data-id="{{ job.id }}"
+                                data-error="{{ job.error_message or '' }}">
                                 {% if job.status == 'queued' %}Na Fila
                                 {% elif job.status == 'preprocessing' %}Pré-processando
                                 {% elif job.status == 'preprocessed' %}Pré-processada
@@ -69,56 +70,6 @@
         </div>
     </div>
 
-    <!-- Section: Therapy Sessions Management Panel -->
-    <div class="results-container margin-bottom-large">
-        <h3>Sessões de terapia cadastradas</h3>
-
-        <div class="table-container">
-            <table class="cost-table">
-                <thead>
-                    <tr>
-                        <th class="col-width-10">ID</th>
-                        <th class="col-width-30">Nome da Sessão</th>
-                        <th class="col-width-20">Clínico</th>
-                        <th class="col-width-20">Data</th>
-                        <th class="col-width-20">Pacientes</th>
-                    </tr>
-                </thead>
-                <tbody id="sessionsTableBody">
-                    {% if sessions %}
-                    {% for s in sessions %}
-                    <tr>
-                        <td><strong class="text-primary">#{{ s.id }}</strong></td>
-                        <td>
-                            <strong class="text-main text-medium">{{ s.name }}</strong><br>
-                            <span class="text-muted text-small">Grupo: {{ s.therapy_group_name }}</span>
-                        </td>
-                        <td class="text-medium">
-                            <span>{{ s.clinician_name }}</span><br>
-                            <span class="text-muted text-small">ID: {{ s.clinician_id }}</span>
-                        </td>
-                        <td class="text-small text-muted">
-                            <strong>{{ s.start_at | format_datetime }}</strong><br>
-                            <span>Duração: {{ s.duration }} min</span>
-                        </td>
-                        <td>
-                            <span class="session-patients-badge">
-                                {{ s.patients }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted padding-large">Nenhuma sessão de terapia
-                            cadastrada.</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <!-- Compact statistics row right after Transcriptions list -->
     <div class="stats-compact-row margin-bottom-large margin-top-none">
         <div class="stats-compact-card">
@@ -147,10 +98,10 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-15">ID sessão</th>
-                        <th class="col-width-35">Configuração IA</th>
+                        <th class="col-width-25">Sessão / Transcrição</th>
+                        <th class="col-width-30">Configuração IA</th>
                         <th class="col-width-20">Correções de fala</th>
-                        <th class="col-width-20">Vazamento de PHI / anônimo</th>
+                        <th class="col-width-15">Vazamento de PHI / anônimo</th>
                         <th class="col-width-10">Tempo de execução</th>
                     </tr>
                 </thead>
@@ -158,7 +109,11 @@
                     {% if telemetry %}
                     {% for tele in telemetry %}
                     <tr>
-                        <td><strong class="text-main">{{ tele.transcript_id }}</strong></td>
+                        <td class="text-medium">
+                            <strong>{{ tele.session_name }}</strong><br>
+                            <span class="text-muted text-small">ID Sessão: {{ tele.therapy_session_id or '-' }}</span><br>
+                            <span class="text-muted text-small">ID Transcrição: {{ tele.transcript_id }}</span>
+                        </td>
                         <td class="text-small">
                             <strong>Modelo:</strong> {{ tele.model }}<br>
                             <span class="text-muted text-small">Estratégia: {{ tele.strategy }}</span><br>
@@ -217,10 +172,10 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-10">ID</th>
-                        <th class="col-width-40">Configuração IA</th>
+                        <th class="col-width-25">Sessão / Transcrição</th>
+                        <th class="col-width-30">Configuração IA</th>
                         <th class="col-width-20">Tokens consumidos</th>
-                        <th class="col-width-15">Status</th>
+                        <th class="col-width-10">Status</th>
                         <th class="col-width-15">Tempo e data</th>
                     </tr>
                 </thead>
@@ -228,7 +183,11 @@
                     {% if eval_telemetry %}
                     {% for tele in eval_telemetry %}
                     <tr>
-                        <td><strong class="text-primary">{{ tele.evaluation_id }}</strong></td>
+                        <td class="text-medium">
+                            <strong>{{ tele.session_name }}</strong><br>
+                            <span class="text-muted text-small">ID Sessão: {{ tele.therapy_session_id or '-' }}</span><br>
+                            <span class="text-muted text-small">ID Transcrição: {{ tele.transcript_id or '-' }}</span>
+                        </td>
                         <td class="text-medium">
                             <strong>Modelo:</strong> {{ tele.model }}<br>
                             <span class="text-muted text-small">Chunks: {{ tele.chunks_analyzed or 0 }}</span><br>
@@ -245,7 +204,8 @@
                         <td>
                             <div class="status-badge {% if tele.status != 'success' %}cursor-pointer{% endif %}"
                                 data-status="{% if tele.status == 'success' %}completed{% else %}failed{% endif %}"
-                                data-id="{{ tele.evaluation_id }}">
+                                data-id="{{ tele.evaluation_id }}"
+                                data-error="{{ tele.failure_reason or '' }}">
                                 {% if tele.status == 'success' %}Concluída{% else %}Falha (Ver erro){% endif %}
                             </div>
                         </td>
@@ -274,24 +234,23 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-15">ID Transcrição</th>
-                        <th class="col-width-25">Sessão</th>
-                        <th class="col-width-25">Modelo IA</th>
-                        <th class="col-width-20">Tokens consumidos</th>
-                        <th class="col-width-15">Tempo e data</th>
+                        <th class="col-width-30">Sessão / Transcrição</th>
+                        <th class="col-width-25">Configuração IA</th>
+                        <th class="col-width-25">Tokens consumidos</th>
+                        <th class="col-width-20">Tempo e data</th>
                     </tr>
                 </thead>
                 <tbody id="synthesisTelemetryTableBody">
                     {% if synthesis_telemetry %}
                     {% for tele in synthesis_telemetry %}
                     <tr>
-                        <td><strong class="text-primary">{{ tele.transcript_id }}</strong></td>
                         <td class="text-medium">
                             <strong>{{ tele.session_name }}</strong><br>
-                            <span class="text-muted text-small">ID Sessão: {{ tele.therapy_session_id }}</span>
+                            <span class="text-muted text-small">ID Sessão: {{ tele.therapy_session_id or '-' }}</span><br>
+                            <span class="text-muted text-small">ID Transcrição: {{ tele.transcript_id or '-' }}</span>
                         </td>
                         <td class="text-medium">
-                            {{ tele.model or "-" }}
+                            <strong>Modelo:</strong> {{ tele.model or "-" }}
                         </td>
                         <td class="text-medium">
                             {% if tele.prompt_tokens is not none %}
