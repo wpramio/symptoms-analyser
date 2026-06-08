@@ -794,4 +794,36 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     }
+
+    // =========================================================================
+    // Alert View Switcher (Per-Patient vs. Aggregated)
+    // =========================================================================
+    const switcherRadios = document.querySelectorAll('input[name="alert-view-toggle"]');
+    const perPatientView = document.getElementById('alerts-per-patient-view');
+    const aggregatedView = document.getElementById('alerts-aggregated-view');
+
+    if (switcherRadios.length > 0) {
+        switcherRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                // Remove active class from all switcher labels
+                document.querySelectorAll('.alert-view-switcher .switcher-btn').forEach(label => {
+                    label.classList.remove('active');
+                });
+                
+                // Add active class to selected radio's parent label
+                const label = e.target.closest('.switcher-btn');
+                if (label) {
+                    label.classList.add('active');
+                }
+
+                if (e.target.value === 'per-patient') {
+                    if (perPatientView) perPatientView.style.display = 'flex';
+                    if (aggregatedView) aggregatedView.style.display = 'none';
+                } else {
+                    if (perPatientView) perPatientView.style.display = 'none';
+                    if (aggregatedView) aggregatedView.style.display = 'grid';
+                }
+            });
+        });
+    }
 });

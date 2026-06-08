@@ -5901,3 +5901,107 @@ select:focus {
         margin-top: 0;
     }
 }
+
+/* ==========================================================================
+   Patient Alert Groups Styling
+   ========================================================================== */
+.patient-alerts-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.patient-alert-group-container {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.patient-alert-group-container:hover {
+    box-shadow: var(--shadow);
+}
+
+.patient-alert-group-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.patient-avatar-mini {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.15);
+    flex-shrink: 0;
+}
+
+.patient-avatar-mini.general-avatar {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+    font-size: 1.2rem;
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.15);
+}
+
+.patient-header-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.patient-group-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.patient-group-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Alert View Switcher Styling */
+.alert-view-switcher {
+    display: inline-flex;
+    background-color: #f1f5f9;
+    padding: 0.15rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    gap: 0.1rem;
+}
+
+.switcher-btn {
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.775rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.switcher-btn:hover {
+    color: var(--text-main);
+}
+
+.switcher-btn.active {
+    background-color: var(--card-bg);
+    color: var(--primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}

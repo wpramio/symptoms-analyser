@@ -146,13 +146,117 @@
                         </svg>
                         <div class="synthesis-title-text-group">
                             <h3 class="synthesis-card-title">Intervenções e ações recomendadas</h3>
-                            <span class="metadata-subtitle">Alertas ativos consolidados para acompanhamento do
-                                grupo</span>
                         </div>
+                    </div>
+
+                    <div class="alert-view-switcher">
+                        <label class="switcher-btn active">
+                            <input type="radio" name="alert-view-toggle" value="per-patient" checked
+                                style="display: none;">
+                            <span>Por paciente</span>
+                        </label>
+                        <label class="switcher-btn">
+                            <input type="radio" name="alert-view-toggle" value="aggregated" style="display: none;">
+                            <span>Consolidado</span>
+                        </label>
                     </div>
                 </div>
 
-                <div class="interventions-grid">
+                <!-- 1. Per-Patient Grouped View -->
+                <div id="alerts-per-patient-view" class="patient-alerts-wrapper">
+                    <!-- Patient-specific alerts -->
+                    {% for patient in patients %}
+                    {% set ns = namespace(has_alerts=false) %}
+                    {% for alert in alerts %}
+                    {% if alert.patient == patient.pseudonym %}
+                    {% set ns.has_alerts = true %}
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if ns.has_alerts %}
+                    <div class="patient-alert-group-container">
+                        <div class="patient-alert-group-header">
+                            <span class="patient-avatar-mini">{{ patient.pseudonym[0] }}{{ patient.pseudonym[-1]
+                                }}</span>
+                            <div class="patient-header-details">
+                                <h4 class="patient-group-title">{{ patient.pseudonym }}</h4>
+                                <span class="patient-group-subtitle">Nome real: {{ patient.real_name }}</span>
+                            </div>
+                        </div>
+                        <div class="interventions-grid">
+                            {% for alert in alerts %}
+                            {% if alert.patient == patient.pseudonym %}
+                            <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
+                                <div class="alert-badge-row">
+                                    <span class="badge-severity badge-{{ alert.severity }}">
+                                        {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity ==
+                                        'warning' %}⚠️ Alerta{% else %}💡 Sugestão{% endif %}
+                                    </span>
+                                    <span class="badge-type badge-type-{{ alert.type }}">
+                                        {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational'
+                                        %}Interpessoal{% else %}Temático{% endif %}
+                                    </span>
+                                </div>
+                                <h4 class="alert-title">{{ alert.title }}</h4>
+                                <p class="alert-description">{{ alert.description | safe }}</p>
+                                <div class="alert-action-box">
+                                    <strong>Ação proposta:</strong> {{ alert.action }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- General / Group-level alerts -->
+                    {% set ns_general = namespace(has_general=false) %}
+                    {% for alert in alerts %}
+                    {% if not alert.patient %}
+                    {% set ns_general.has_general = true %}
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if ns_general.has_general %}
+                    <div class="patient-alert-group-container general-group">
+                        <div class="patient-alert-group-header">
+                            <span class="patient-avatar-mini general-avatar">👥</span>
+                            <div class="patient-header-details">
+                                <h4 class="patient-group-title">Alertas do Grupo / Geral</h4>
+                                <span class="patient-group-subtitle">Alertas que afetam múltiplos membros ou dinâmicas
+                                    gerais do grupo</span>
+                            </div>
+                        </div>
+                        <div class="interventions-grid">
+                            {% for alert in alerts %}
+                            {% if not alert.patient %}
+                            <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
+                                <div class="alert-badge-row">
+                                    <span class="badge-severity badge-{{ alert.severity }}">
+                                        {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity ==
+                                        'warning' %}⚠️ Alerta{% else %}💡 Sugestão{% endif %}
+                                    </span>
+                                    <span class="badge-type badge-type-{{ alert.type }}">
+                                        {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational'
+                                        %}Interpessoal{% else %}Temático{% endif %}
+                                    </span>
+                                </div>
+                                <h4 class="alert-title">{{ alert.title }}</h4>
+                                <p class="alert-description">{{ alert.description | safe }}</p>
+                                <div class="alert-action-box">
+                                    <strong>Ação proposta:</strong> {{ alert.action }}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- 2. Aggregated Consolidated View -->
+                <div id="alerts-aggregated-view" class="interventions-grid" style="display: none;">
                     {% for alert in alerts %}
                     <div class="intervention-alert-card border-{{ alert.severity }} type-{{ alert.type }}">
                         <div class="alert-badge-row">
@@ -164,6 +268,17 @@
                                 {% if alert.type == 'individual' %}Individual{% elif alert.type == 'relational'
                                 %}Interpessoal{% else %}Temático{% endif %}
                             </span>
+                            {% if alert.patient %}
+                            <span class="badge-patient-indicator"
+                                style="background: rgba(59, 130, 246, 0.1); color: var(--primary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 0.04em;">
+                                👤 {{ alert.patient }}
+                            </span>
+                            {% else %}
+                            <span class="badge-patient-indicator"
+                                style="background: rgba(148, 163, 184, 0.1); color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 0.04em;">
+                                👥 Grupo
+                            </span>
+                            {% endif %}
                         </div>
                         <h4 class="alert-title">{{ alert.title }}</h4>
                         <p class="alert-description">{{ alert.description | safe }}</p>
