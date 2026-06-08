@@ -822,7 +822,7 @@ def api_save_clinical_synthesis(eval_id: int):
             transcript_id = row["transcript_id"]
             
         orm.update_session_synthesis(transcript_id, note)
-        return jsonify({"message": "Minuta da sessão salva com sucesso!"}), 200
+        return jsonify({"message": "Resumo de tópicos da sessão salvo com sucesso!"}), 200
     except Exception as e:
         print(f"Error saving clinical synthesis: {e}")
         return jsonify({"error": str(e)}), 500
