@@ -57,7 +57,7 @@ def process_transcript_pipeline(
         db_conn.row_factory = sqlite3.Row
 
         # STEP 3a: Text Extraction
-        add_log(f"Iniciando pré-processamento de {filepath.name}")
+        add_log("(1/4) Executando pré-processamento")
         transcript_id = extract_text_and_create_transcript(
             filepath=filepath,
             therapy_session_id=therapy_session_id,
@@ -66,7 +66,7 @@ def process_transcript_pipeline(
         )
 
         # STEP 3b: Local Anonymization & Patients creation
-        add_log("Executando etapa de anonimização local")
+        add_log("(2/4) Executando anonimização local")
         mappings = anonymize_transcript(
             transcript_id=transcript_id,
             db_conn=db_conn
@@ -96,7 +96,7 @@ def process_transcript_pipeline(
             )
 
         # STEP 5: TDPM-20 Clinical scoring
-        add_log("Iniciando análise clínica automatizada de sintomas TDPM-20")
+        add_log("(3/4) Executando avaliação clínica (TDPM-20) com IA")
         tdpm_analysis_with_llm(
             transcript_id=transcript_id,
             blocks_per_call=100,
@@ -105,13 +105,13 @@ def process_transcript_pipeline(
         )
 
         # STEP 6: Clinical Synthesis
-        add_log("Iniciando síntese clínica qualitativa da sessão com IA (LLM)")
+        add_log("(4/4) Executando síntese qualitativa com IA")
         generate_clinical_synthesis(
             transcript_id=transcript_id,
             db_conn=db_conn
         )
 
-        add_log("Processamento e análise concluídos com sucesso.")
+        add_log("Sessão registrada e análise com IA finalizada")
         task["status"] = "completed"
 
     except Exception as e:

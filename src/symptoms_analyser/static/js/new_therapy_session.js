@@ -42,12 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to toggle form fields disabled state when auto-extracting metadata
     function updateFormDisabledState() {
         const isAutoExtract = enableImportOpt.checked && autoExtractInfoOpt.checked;
-        
+
         sessionName.disabled = isAutoExtract;
         sessionStart.disabled = isAutoExtract;
         sessionDuration.disabled = isAutoExtract;
         sessionPatients.disabled = isAutoExtract;
-        
+
         if (isAutoExtract) {
             if (!sessionName.value.trim() || sessionName.value.startsWith('Sessão:')) {
                 sessionName.value = 'Auto-detectado pela transcrição';
@@ -243,8 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (spinner) spinner.style.display = 'none';
                 statusTitle.textContent = 'Sessão registrada e analisada!';
                 statusTitle.style.color = '#10b981';
-                statusDesc.textContent = 'A transcrição foi processada, os dados relacionais salvos e o laudo de sintomas está disponível.';
-                addLog('Sessão registrada e pontuação clínica TDPM-20 finalizada com sucesso.', 'success');
+                statusDesc.textContent = 'A transcrição foi processada e os dados relacionais salvos';
+                addLog('Sessão registrada e transcrição analisada com sucesso', 'success');
                 if (createdSessionId) {
                     viewResultsBtn.href = `/therapy_sessions/${createdSessionId}`;
                     viewResultsBtn.textContent = 'Visualizar detalhes da sessão';
