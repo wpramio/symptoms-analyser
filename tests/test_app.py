@@ -480,3 +480,41 @@ def test_revise_evaluation_api(client, mock_get_db):
         assert resp.status_code == 400
         assert resp.json["success"] is False
 
+
+def test_admin_therapy_sessions_form_actions(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         
+        # 1. Update Session POST Success
+        resp = client.post("/admin/therapy_sessions", data={
+            "session_id": "1",
+            "name": "Sessão Atualizada",
+            "start_at": "2026-06-08T10:00",
+            "duration": "90",
+            "therapy_group_id": ""
+        })
+        assert resp.status_code == 302  # redirects
+        
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT name, duration FROM therapy_sessions WHERE id = 1").fetchone()
+            assert row["name"] == "Sessão Atualizada"
+            assert row["duration"] == 90
+
+        # 2. Update Session PATCH Success
+        resp = client.patch("/admin/therapy_sessions", json={
+            "session_id": "1",
+            "name": "Sessão Atualizada PATCH",
+            "start_at": "2026-06-08T10:30",
+            "duration": "120",
+            "therapy_group_id": ""
+        })
+        assert resp.status_code == 200
+        assert resp.json["message"] == "Sessão atualizada com sucesso"
+        
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT name, duration FROM therapy_sessions WHERE id = 1").fetchone()
+            assert row["name"] == "Sessão Atualizada PATCH"
+            assert row["duration"] == 120
+
+
