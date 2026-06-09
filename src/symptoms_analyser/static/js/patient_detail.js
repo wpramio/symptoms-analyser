@@ -65,12 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderDimensionChart(selectedKeys) {
+    function renderDimensionChart() {
         if (chartInstance) chartInstance.destroy();
 
         const ctx = chartCanvas.getContext('2d');
         const datasets = chartDimensions
-            .filter(d => selectedKeys.includes(d.key))
             .map((d, i) => {
                 const color = HSL_COLORS[i % HSL_COLORS.length];
                 return {
@@ -132,62 +131,26 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Render on load
-    renderTotalChart();
-
     // =========================================================================
-    // 2. Metric selector
+    // 2. Metric selector & initialization
     // =========================================================================
     const chartMetricSelect = document.getElementById('chartMetricSelect');
-    const dimCheckboxContainer = document.getElementById('dimensionCheckboxContainer');
 
-    chartMetricSelect.addEventListener('change', () => {
-        if (chartMetricSelect.value === 'dimensions') {
-            buildDimensionCheckboxes();
-            dimCheckboxContainer.style.display = 'grid';
-        } else {
-            dimCheckboxContainer.style.display = 'none';
-            renderTotalChart();
-        }
-    });
-
-    function buildDimensionCheckboxes() {
-        if (dimCheckboxContainer.dataset.built) {
-            // Already built — just re-render chart with current selections
-            updateDimensionChart();
-            return;
-        }
-        dimCheckboxContainer.innerHTML = '';
-
-        if (chartDimensions.length === 0) {
-            dimCheckboxContainer.innerHTML = '<p style="grid-column:1/-1;color:var(--text-muted);font-size:0.85rem;">Nenhum sintoma ativo para este paciente.</p>';
-            return;
-        }
-
-        chartDimensions.forEach((dim, i) => {
-            const label = document.createElement('label');
-            label.className = 'checkbox-label';
-
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.value = dim.key;
-            cb.checked = true;
-            cb.addEventListener('change', updateDimensionChart);
-
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(dim.name));
-            dimCheckboxContainer.appendChild(label);
-        });
-
-        dimCheckboxContainer.dataset.built = '1';
-        updateDimensionChart();
+    // Render on load based on current selection
+    if (chartMetricSelect && chartMetricSelect.value === 'dimensions') {
+        renderDimensionChart();
+    } else {
+        renderTotalChart();
     }
 
-    function updateDimensionChart() {
-        const selected = Array.from(
-            dimCheckboxContainer.querySelectorAll('input:checked')
-        ).map(cb => cb.value);
-        renderDimensionChart(selected);
+    if (chartMetricSelect) {
+        chartMetricSelect.addEventListener('change', () => {
+            if (chartMetricSelect.value === 'dimensions') {
+                renderDimensionChart();
+            } else {
+                renderTotalChart();
+            }
+        });
     }
 
     // =========================================================================
