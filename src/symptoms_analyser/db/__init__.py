@@ -19,6 +19,7 @@ from .orm import (
     update_patient,
     create_session_synthesis,
     update_session_synthesis,
+    delete_transcript,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "update_patient",
     "create_session_synthesis",
     "update_session_synthesis",
+    "delete_transcript",
 ]

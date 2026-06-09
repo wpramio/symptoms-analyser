@@ -12,12 +12,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (jobsTableBody) {
         jobsTableBody.addEventListener('click', (e) => {
             const badge = e.target.closest('.status-badge[data-status="failed"]');
-            if (!badge) return;
+            if (badge) {
+                const errMsg = badge.dataset.error;
+                if (errMsg) {
+                    tracebackContent.textContent = errMsg;
+                    tracebackModal.style.display = 'flex';
+                }
+                return;
+            }
 
-            const errMsg = badge.dataset.error;
-            if (errMsg) {
-                tracebackContent.textContent = errMsg;
-                tracebackModal.style.display = 'flex';
+            const deleteBtn = e.target.closest('.delete-transcript-btn');
+            if (deleteBtn) {
+                const transcriptId = deleteBtn.dataset.id;
+                if (!transcriptId) return;
+
+                const confirmed = confirm(`Deseja realmente excluir a transcrição ID ${transcriptId} e todas as suas análises associadas? Esta ação é irreversível.`);
+                if (!confirmed) return;
+
+                // Disable button
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = 'Excluindo...';
+
+                fetch(`/api/admin/transcripts/${transcriptId}`, {
+                    method: 'DELETE',
+                })
+                .then(response => response.json().then(result => ({ response, result })))
+                .then(({ response, result }) => {
+                    if (response.ok && result.success) {
+                        window.location.reload();
+                    } else {
+                        alert(`Erro ao excluir transcrição: ${result.error || 'Erro desconhecido'}`);
+                        deleteBtn.disabled = false;
+                        deleteBtn.textContent = 'Excluir';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting transcript:', error);
+                    alert('Ocorreu um erro de rede ao tentar excluir a transcrição.');
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = 'Excluir';
+                });
             }
         });
     }

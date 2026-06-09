@@ -758,6 +758,24 @@ def api_admin_transcripts():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/admin/transcripts/<int:transcript_id>", methods=["DELETE"])
+def api_delete_transcript(transcript_id):
+    try:
+        import symptoms_analyser.db as orm
+        from symptoms_analyser.db import get_db
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM transcripts WHERE id = ?", (transcript_id,))
+            if not cursor.fetchone():
+                return jsonify({"error": "Transcrição não encontrada"}), 404
+            
+        orm.delete_transcript(transcript_id)
+        return jsonify({"success": True, "message": "Transcrição excluída com sucesso!"}), 200
+    except Exception as e:
+        print(f"Error deleting transcript {transcript_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/admin/telemetry")
 def api_admin_telemetry():
     try:

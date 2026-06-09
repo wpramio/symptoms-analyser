@@ -518,3 +518,37 @@ def test_admin_therapy_sessions_form_actions(client, mock_get_db):
             assert row["duration"] == 120
 
 
+def test_delete_transcript_api(client, mock_get_db):
+    with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         
+        # Ensure transcript exists first
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT id FROM transcripts WHERE id = 1").fetchone()
+            assert row is not None
+            
+        # Delete transcript
+        resp = client.delete("/api/admin/transcripts/1")
+        assert resp.status_code == 200
+        assert resp.json["success"] is True
+        
+        # Verify it was deleted
+        with mock_get_db() as conn:
+            row = conn.execute("SELECT id FROM transcripts WHERE id = 1").fetchone()
+            assert row is None
+            
+            # Cascade: check telemetry is deleted
+            tel = conn.execute("SELECT id FROM sanitization_telemetry WHERE transcript_id = 1").fetchone()
+            assert tel is None
+            
+            # Cascade: check evaluation is deleted
+            ev = conn.execute("SELECT id FROM tdpm_evaluations WHERE transcript_id = 1").fetchone()
+            assert ev is None
+            
+        # Delete non-existent transcript returns 404
+        resp = client.delete("/api/admin/transcripts/999")
+        assert resp.status_code == 404
+
+
+

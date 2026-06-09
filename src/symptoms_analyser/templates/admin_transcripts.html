@@ -17,11 +17,12 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-10">ID</th>
-                        <th class="col-width-40">Nome do arquivo</th>
+                        <th class="col-width-5">ID</th>
+                        <th class="col-width-35">Nome do arquivo</th>
                         <th class="col-width-15">Tamanho</th>
                         <th class="col-width-20">Status</th>
                         <th class="col-width-15">Data de upload</th>
+                        <th class="col-width-10 text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="jobsTableBody">
@@ -57,11 +58,16 @@
                             {% endif %}
                         </td>
                         <td class="text-muted text-medium">{{ job.created_at | format_datetime }}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-secondary btn-remove-file delete-transcript-btn" data-id="{{ job.id }}">
+                                Excluir
+                            </button>
+                        </td>
                     </tr>
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted padding-large">Nenhuma transcrição registrada no
+                        <td colspan="6" class="text-center text-muted padding-large">Nenhuma transcrição registrada no
                             banco de dados.</td>
                     </tr>
                     {% endif %}

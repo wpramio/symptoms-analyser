@@ -512,3 +512,19 @@ def update_session_synthesis(
             db_conn_to_use.execute(sql, (group_progress_note, transcript_id))
             db_conn_to_use.commit()
 
+
+def delete_transcript(
+    transcript_id: int,
+    db_conn: Optional[sqlite3.Connection] = None
+) -> None:
+    """Delete a transcript and its cascade entities (evaluations, telemetry, syntheses, etc.)."""
+    sql = "DELETE FROM transcripts WHERE id = ?"
+    if db_conn:
+        db_conn.execute(sql, (transcript_id,))
+        db_conn.commit()
+    else:
+        with get_db() as conn:
+            conn.execute(sql, (transcript_id,))
+            conn.commit()
+
+
