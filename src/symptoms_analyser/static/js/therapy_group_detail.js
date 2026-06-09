@@ -796,11 +796,99 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // =========================================================================
-    // Alert View Switcher (Per-Patient vs. Aggregated)
+    // Alert View Switcher (Per-Patient vs. Aggregated) and Severity Filtering
     // =========================================================================
     const switcherRadios = document.querySelectorAll('input[name="alert-view-toggle"]');
     const perPatientView = document.getElementById('alerts-per-patient-view');
     const aggregatedView = document.getElementById('alerts-aggregated-view');
+    const filterPills = document.querySelectorAll('.dashboard-card .filter-pill');
+    const patientContainers = document.querySelectorAll('.patient-alert-group-container');
+    const emptyState = document.getElementById('alerts-filtered-empty-state');
+
+    function applySeverityFilter() {
+        const activePill = document.querySelector('.dashboard-card .filter-pill.active');
+        if (!activePill) return;
+        const severity = activePill.dataset.severity; // 'all', 'critical', 'warning', 'info'
+
+        let totalVisible = 0;
+
+        // 1. Filter per-patient view
+        if (perPatientView) {
+            patientContainers.forEach(container => {
+                let visibleInContainer = 0;
+                const cards = container.querySelectorAll('.intervention-alert-card');
+                cards.forEach(card => {
+                    const matches = (severity === 'all' || card.classList.contains(`border-${severity}`));
+                    if (matches) {
+                        card.style.display = '';
+                        visibleInContainer++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                if (visibleInContainer > 0) {
+                    container.style.display = '';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+        }
+
+        // 2. Filter aggregated view
+        if (aggregatedView) {
+            const aggCards = aggregatedView.querySelectorAll('.intervention-alert-card');
+            aggCards.forEach(card => {
+                const matches = (severity === 'all' || card.classList.contains(`border-${severity}`));
+                if (matches) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Determine active view and count visible items in it
+        const activeViewVal = document.querySelector('input[name="alert-view-toggle"]:checked')?.value || 'per-patient';
+        
+        if (activeViewVal === 'per-patient') {
+            if (perPatientView) {
+                const perPatientCards = perPatientView.querySelectorAll('.intervention-alert-card');
+                perPatientCards.forEach(card => {
+                    if (card.style.display !== 'none') {
+                        totalVisible++;
+                    }
+                });
+            }
+        } else {
+            if (aggregatedView) {
+                const aggCards = aggregatedView.querySelectorAll('.intervention-alert-card');
+                aggCards.forEach(card => {
+                    if (card.style.display !== 'none') {
+                        totalVisible++;
+                    }
+                });
+            }
+        }
+
+        // 3. Show/hide empty state
+        if (emptyState) {
+            if (totalVisible === 0) {
+                emptyState.style.display = 'block';
+                if (perPatientView) perPatientView.style.display = 'none';
+                if (aggregatedView) aggregatedView.style.display = 'none';
+            } else {
+                emptyState.style.display = 'none';
+                if (activeViewVal === 'per-patient') {
+                    if (perPatientView) perPatientView.style.display = 'flex';
+                    if (aggregatedView) aggregatedView.style.display = 'none';
+                } else {
+                    if (perPatientView) perPatientView.style.display = 'none';
+                    if (aggregatedView) aggregatedView.style.display = 'grid';
+                }
+            }
+        }
+    }
 
     if (switcherRadios.length > 0) {
         switcherRadios.forEach(radio => {
@@ -816,13 +904,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     label.classList.add('active');
                 }
 
-                if (e.target.value === 'per-patient') {
-                    if (perPatientView) perPatientView.style.display = 'flex';
-                    if (aggregatedView) aggregatedView.style.display = 'none';
-                } else {
-                    if (perPatientView) perPatientView.style.display = 'none';
-                    if (aggregatedView) aggregatedView.style.display = 'grid';
-                }
+                applySeverityFilter();
+            });
+        });
+    }
+
+    // Filter pills click handler
+    if (filterPills.length > 0) {
+        filterPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                applySeverityFilter();
             });
         });
     }

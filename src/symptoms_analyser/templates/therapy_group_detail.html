@@ -109,30 +109,6 @@
             {% endif %}
             {% endfor %}
 
-            <div class="metrics-grid metrics-grid-index" style="margin-bottom: 1.5rem;">
-                <div class="metric-card metric-card-compact metric-card-critical">
-                    <div class="metric-label metric-label-index">
-                        <span>Alertas críticos</span>
-                        <span class="metric-badge-critical">🚨 Ação imediata</span>
-                    </div>
-                    <div class="metric-value">{{ ns.critical }}</div>
-                </div>
-                <div class="metric-card metric-card-compact metric-card-warning">
-                    <div class="metric-label metric-label-index">
-                        <span>Avisos e atenções</span>
-                        <span class="metric-badge-warning">⚠️ Clínico/social</span>
-                    </div>
-                    <div class="metric-value">{{ ns.warning }}</div>
-                </div>
-                <div class="metric-card metric-card-compact metric-card-info">
-                    <div class="metric-label metric-label-index">
-                        <span>Sugestões de manejo</span>
-                        <span class="metric-badge-info">💡 Oportunidades</span>
-                    </div>
-                    <div class="metric-value">{{ ns.info }}</div>
-                </div>
-            </div>
-
             <div class="dashboard-card">
                 <div class="synthesis-card-header">
                     <div class="synthesis-title-container">
@@ -160,6 +136,26 @@
                             <span>Consolidado</span>
                         </label>
                     </div>
+                </div>
+
+                <!-- Severity Filter Pills -->
+                <div class="category-filters-container" style="margin-bottom: 1.25rem;">
+                    <button class="filter-pill active" data-severity="all">
+                        <span class="pill-dot" style="background-color: var(--text-muted);"></span>
+                        Todos ({{ alerts|length }})
+                    </button>
+                    <button class="filter-pill" data-severity="critical">
+                        <span class="pill-dot" style="background-color: #ef4444;"></span>
+                        Críticos ({{ ns.critical }})
+                    </button>
+                    <button class="filter-pill" data-severity="warning">
+                        <span class="pill-dot" style="background-color: #f59e0b;"></span>
+                        Avisos ({{ ns.warning }})
+                    </button>
+                    <button class="filter-pill" data-severity="info">
+                        <span class="pill-dot" style="background-color: #3b82f6;"></span>
+                        Sugestões ({{ ns.info }})
+                    </button>
                 </div>
 
                 <!-- 1. Per-Patient Grouped View -->
@@ -287,6 +283,16 @@
                         </div>
                     </div>
                     {% endfor %}
+                </div>
+
+                <!-- Empty state for filtered alerts -->
+                <div id="alerts-filtered-empty-state" style="display: none; text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px; margin: 0 auto 1rem; opacity: 0.5;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                    <p style="font-weight: 600; font-size: 1rem; margin-bottom: 0.25rem;">Nenhum alerta encontrado</p>
+                    <p style="font-size: 0.875rem;">Não há alertas com a gravidade selecionada para este grupo.</p>
                 </div>
             </div>
             {% else %}
