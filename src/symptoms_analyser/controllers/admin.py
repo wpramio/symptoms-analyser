@@ -260,7 +260,7 @@ def get_transcripts() -> list[dict]:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT t.id, t.filename, t.file_type, t.file_size_bytes, t.status, t.progress_percent, t.error_message, t.created_at,
-                   s.name as session_name
+                   t.therapy_session_id, s.name as session_name
             FROM transcripts t
             LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
             ORDER BY t.created_at DESC
@@ -275,6 +275,7 @@ def get_transcripts() -> list[dict]:
                 "progress_percent": r["progress_percent"],
                 "error_message": r["error_message"],
                 "created_at": r["created_at"],
+                "therapy_session_id": r["therapy_session_id"],
                 "session_name": r["session_name"] or "Sem sessão vinculada",
             }
             for r in cursor.fetchall()

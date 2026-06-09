@@ -1151,6 +1151,10 @@ select:focus {
 }
 
 /* Administrative UI Utilities (Removing Inline CSS) */
+.col-width-5 {
+    width: 5%;
+}
+
 .col-width-10 {
     width: 10%;
 }

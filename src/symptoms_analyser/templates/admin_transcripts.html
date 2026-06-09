@@ -18,9 +18,10 @@
                 <thead>
                     <tr>
                         <th class="col-width-5">ID</th>
-                        <th class="col-width-35">Nome do arquivo</th>
-                        <th class="col-width-15">Tamanho</th>
-                        <th class="col-width-20">Status</th>
+                        <th class="col-width-25">Nome do arquivo</th>
+                        <th class="col-width-20">Sessão</th>
+                        <th class="col-width-10">Tamanho</th>
+                        <th class="col-width-15">Status</th>
                         <th class="col-width-15">Data de upload</th>
                         <th class="col-width-10 text-center">Ações</th>
                     </tr>
@@ -31,6 +32,10 @@
                     <tr>
                         <td><strong class="text-primary">{{ job.id }}</strong></td>
                         <td>{{ job.filename }}</td>
+                        <td class="text-medium">
+                            <strong>{{ job.session_name }}</strong><br>
+                            <span class="text-muted text-small">ID Sessão: {{ job.therapy_session_id or '-' }}</span>
+                        </td>
                         <td>{{ job.file_size_bytes | format_bytes }}</td>
                         <td>
                             <div class="status-badge {% if job.status == 'failed' %}cursor-pointer{% endif %}"
@@ -67,7 +72,7 @@
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted padding-large">Nenhuma transcrição registrada no
+                        <td colspan="7" class="text-center text-muted padding-large">Nenhuma transcrição registrada no
                             banco de dados.</td>
                     </tr>
                     {% endif %}
@@ -240,10 +245,11 @@
             <table class="cost-table">
                 <thead>
                     <tr>
-                        <th class="col-width-30">Sessão / Transcrição</th>
-                        <th class="col-width-25">Configuração IA</th>
-                        <th class="col-width-25">Tokens consumidos</th>
-                        <th class="col-width-20">Tempo e data</th>
+                        <th class="col-width-25">Sessão / Transcrição</th>
+                        <th class="col-width-30">Configuração IA</th>
+                        <th class="col-width-20">Tokens consumidos</th>
+                        <th class="col-width-10">Status</th>
+                        <th class="col-width-15">Tempo e data</th>
                     </tr>
                 </thead>
                 <tbody id="synthesisTelemetryTableBody">
@@ -269,6 +275,11 @@
                             {% else %}
                             <span class="text-muted">-</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <div class="status-badge" data-status="completed">
+                                Concluída
+                            </div>
                         </td>
                         <td class="text-medium">
                             <strong>{% if tele.processing_time %}{{ tele.processing_time }}s{% else %}-{% endif
