@@ -9,5 +9,5 @@ OpenAI,GPT-5.4,1.25,7.50
 OpenAI,GPT-5.5,2.50,15.00
 Anthropic,Claude Haiku 4.5,1.00,5.00
 Anthropic,Claude Sonnet 4.6,3.00,15.00
-Anthropic,Claude Opus 4.6,5.00,25.00
+Anthropic,Claude Opus 4.8,5.00,25.00
 Local / Open Weights,Gemma 4 (Local via Ollama),0.00,0.00

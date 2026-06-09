@@ -7,67 +7,64 @@
 <div id="calculatorView" class="calculator-view">
     <div class="calc-header">
         <h2>Calculadora de Custos de Pipeline</h2>
-        <p>Estime os custos de API baseando-se nos tokens consumidos nas etapas de sanitização e análise.</p>
     </div>
 
     <div class="calc-grid">
         <div class="calc-card">
-            <h3>Parâmetros de sanitização</h3>
+            <h3>Custo da análise TDPM-20</h3>
             <div class="input-group">
                 <label for="calcPrepPrompt">Tokens de prompt (média):</label>
                 <input type="number" id="calcPrepPrompt" value="21000" step="1000">
             </div>
             <div class="input-group">
                 <label for="calcPrepComp">Tokens de resposta (média):</label>
-                <input type="number" id="calcPrepComp" value="16000" step="1000">
+                <input type="number" id="calcPrepComp" value="750" step="1000">
             </div>
         </div>
 
         <div class="calc-card">
-            <h3>Parâmetros de análise</h3>
+            <h3>Custo da síntese qualitativa</h3>
             <div class="input-group">
                 <label for="calcAnaPrompt">Tokens de prompt (média):</label>
-                <input type="number" id="calcAnaPrompt" value="20000" step="1000">
+                <input type="number" id="calcAnaPrompt" value="21000" step="1000">
             </div>
             <div class="input-group">
                 <label for="calcAnaComp">Tokens de resposta (média):</label>
-                <input type="number" id="calcAnaComp" value="600" step="100">
+                <input type="number" id="calcAnaComp" value="1000" step="100">
             </div>
         </div>
 
         <div class="calc-card">
-            <h3>Configurações de Escala</h3>
+            <h3>Configurações de escala</h3>
             <div class="input-group">
-                <label for="calcSessions">Número de Sessões (Total):</label>
+                <label for="calcSessions">Número de sessões (total):</label>
                 <input type="number" id="calcSessions" value="50" step="10">
             </div>
         </div>
-    </div>
 
-    <div class="calc-hybrid">
-        <h3>Custo híbrido personalizado</h3>
-        <div class="calc-hybrid-grid">
+        <div class="calc-card calc-hybrid-card">
+            <h3>Custo personalizado</h3>
             <div class="input-group">
-                <label for="hybridPrepSelect">Modelo para sanitização:</label>
+                <label for="hybridPrepSelect">Modelo para análise TDPM-20:</label>
                 <select id="hybridPrepSelect">
                     <!-- Populated by JS -->
                 </select>
             </div>
             <div class="input-group">
-                <label for="hybridAnaSelect">Modelo para análise:</label>
+                <label for="hybridAnaSelect">Modelo para síntese qualitativa:</label>
                 <select id="hybridAnaSelect">
                     <!-- Populated by JS -->
                 </select>
             </div>
-        </div>
-        <div class="calc-hybrid-totals">
-            <div>
-                <span>Custo de 1 sessão (híbrida)</span>
-                <strong id="hybridSessionCost">$-</strong>
-            </div>
-            <div>
-                <span>Custo total (híbrido)</span>
-                <strong id="hybridTotalCost">$-</strong>
+            <div class="calc-hybrid-totals">
+                <div>
+                    <span>Custo por sessão</span>
+                    <strong id="hybridSessionCost">$-</strong>
+                </div>
+                <div>
+                    <span>Custo total</span>
+                    <strong id="hybridTotalCost">$-</strong>
+                </div>
             </div>
         </div>
     </div>
@@ -91,6 +88,8 @@
                 </tbody>
             </table>
         </div>
+        <p class="calc-table-note">* Os preços exibidos para os provedores Google e OpenAI referem-se ao Flex Tier
+            (nível flexível), que contempla 50% de desconto.</p>
     </div>
 </div>
 {% endblock %}

@@ -32,14 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 hybridPrepSelect.innerHTML = '';
                 hybridAnaSelect.innerHTML = '';
                 pricingData.forEach((item, index) => {
+                    const isFlexTier = item.provider === 'Google' || item.provider === 'OpenAI';
+                    const providerName = isFlexTier ? `${item.provider}*` : item.provider;
+
                     const opt1 = document.createElement('option');
                     opt1.value = index;
-                    opt1.textContent = `${item.provider} - ${item.model}`;
+                    opt1.textContent = `${providerName} - ${item.model}`;
                     hybridPrepSelect.appendChild(opt1);
 
                     const opt2 = document.createElement('option');
                     opt2.value = index;
-                    opt2.textContent = `${item.provider} - ${item.model}`;
+                    opt2.textContent = `${providerName} - ${item.model}`;
                     hybridAnaSelect.appendChild(opt2);
                 });
 
@@ -93,9 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const sessionCost = inputCost + outputCost;
             const totalCost = sessionCost * sessions;
 
+            const isFlexTier = item.provider === 'Google' || item.provider === 'OpenAI';
+            const providerName = isFlexTier ? `${item.provider}*` : item.provider;
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="provider-cell">${item.provider}</td>
+                <td class="provider-cell">${providerName}</td>
                 <td>${item.model}</td>
                 <td>$${item.inputPrice.toFixed(3).replace('.', ',')}</td>
                 <td>$${item.outputPrice.toFixed(3).replace('.', ',')}</td>

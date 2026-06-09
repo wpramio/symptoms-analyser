@@ -659,16 +659,33 @@ select:focus {
     color: var(--text-muted);
 }
 
-.dashboard-grid,
-.calc-grid {
+.dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2.5rem;
 }
 
-.dashboard-card,
-.calc-card {
+.calc-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+}
+
+@media (min-width: 640px) {
+    .calc-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .calc-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.dashboard-card {
     background-color: var(--card-bg);
     padding: 1.5rem;
     border-radius: var(--radius);
@@ -676,11 +693,49 @@ select:focus {
     box-shadow: var(--shadow);
 }
 
-.dashboard-card h3,
-.calc-card h3 {
+.dashboard-card h3 {
     font-size: 1.1rem;
     margin-bottom: 1rem;
     color: var(--text-main);
+}
+
+.calc-card {
+    background-color: var(--card-bg);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.calc-card h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.calc-card .input-group {
+    margin-bottom: 0.75rem;
+}
+
+.calc-card .input-group label {
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.calc-card .input-group input,
+.calc-card .input-group select {
+    height: 34px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 6px;
 }
 
 .input-group {
@@ -781,53 +836,45 @@ select:focus {
 }
 
 /* Hybrid Calculator Styles */
-.calc-hybrid {
-    margin-bottom: 2.5rem;
-    background-color: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-}
-
-.calc-hybrid h3 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-}
-
-.calc-hybrid-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.calc-hybrid .input-group select {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    min-width: auto;
-}
-
 .calc-hybrid-totals {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
+    justify-content: space-between;
     align-items: center;
     background: var(--bg-color);
-    padding: 1.25rem;
+    padding: 0.75rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
+    margin-top: auto;
+}
+
+.calc-hybrid-totals > div {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
 }
 
 .calc-hybrid-totals span {
     display: block;
-    font-size: 0.875rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     font-weight: 500;
+    line-height: 1.25;
 }
 
 .calc-hybrid-totals strong {
-    font-size: 1.5rem;
+    font-size: 1.15rem;
     color: var(--primary);
+    line-height: 1.25;
+    margin-top: 0.10rem;
+}
+
+.calc-table-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+    font-style: italic;
+    line-height: 1.4;
 }
 
 /* Administrative Dashboard Components */
