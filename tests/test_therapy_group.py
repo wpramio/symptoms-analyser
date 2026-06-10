@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 from bs4 import BeautifulSoup
 from symptoms_analyser.app import app
-from symptoms_analyser.controllers.admin import get_cohort_evolution_data, get_group_dynamics_data
+from symptoms_analyser.controllers.admin import get_group_dynamics_data
 
 @pytest.fixture
 def schema_sql():
@@ -156,55 +156,7 @@ def client():
     with app.test_client() as client:
         yield client
 
-def test_get_cohort_evolution_data(mock_get_db):
-    with mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
-        data = get_cohort_evolution_data()
-        
-        # Verify structure
-        assert "timeline" in data
-        assert "kpis" in data
-        assert "heatmap_dims" in data
-        assert "critical_sessions" in data
-        
-        timeline = data["timeline"]
-        assert len(timeline) == 2
-        
-        # Verify Session 1 scores (means and medians)
-        # Paciente1 Dim1 = 4, Dim16 = 2
-        # Paciente2 Dim1 = 2, Dim16 = 4
-        # Total scores: Paciente 1 = 6, Paciente 2 = 6
-        # Mean Total: 6.0, Median Total: 6.0
-        assert timeline[0]["mean_total"] == 6.0
-        assert timeline[0]["median_total"] == 6.0
-        assert timeline[0]["mean_dimensions"]["1"] == 3.0
-        assert timeline[0]["median_dimensions"]["1"] == 3.0
-        assert timeline[0]["mean_dimensions"]["16"] == 3.0
-        assert timeline[0]["median_dimensions"]["16"] == 3.0
-        
-        # Verify Session 2 scores
-        # Paciente1 Dim1 = 6, Dim16 = 8
-        # Paciente2 Dim1 = 4, Dim16 = 6
-        # Total scores: Paciente 1 = 14, Paciente 2 = 10
-        # Mean Total: 12.0, Median Total: 12.0
-        assert timeline[1]["mean_total"] == 12.0
-        assert timeline[1]["median_total"] == 12.0
-        assert timeline[1]["mean_dimensions"]["1"] == 5.0
-        assert timeline[1]["mean_dimensions"]["16"] == 7.0
-        
-        # Verify KPIs
-        kpis = data["kpis"]
-        assert kpis["total_sessions"] == 2
-        assert kpis["peak_score"] == 12.0
-        assert "piora clínica coletiva" in kpis["trend_desc"].lower()
-        
-        # Verify critical sessions detection
-        critical = data["critical_sessions"]
-        assert len(critical) == 1
-        reasons_concat = " ".join(critical[0]["reasons"]).lower()
-        assert "aumento repentino" in reasons_concat
-        assert "pico agudo na dimensão" in reasons_concat
-
-def test_cohort_analytics_page_route(client, mock_get_db):
+def test_therapy_group_detail_route(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
@@ -224,11 +176,6 @@ def test_cohort_analytics_page_route(client, mock_get_db):
         h2 = soup.find("h2", class_="compact-header-title")
         assert h2 is not None
         assert "grupo" in h2.text.lower()
-        
-        # Check KPI cards rendering
-        metric_values = [v.text.strip() for v in soup.find_all(class_="metric-value")]
-        assert "2" in metric_values  # Total sessions
-        assert "12" in metric_values or "12.0" in metric_values  # Peak severity
 
 
 def test_get_group_dynamics_data(mock_get_db):

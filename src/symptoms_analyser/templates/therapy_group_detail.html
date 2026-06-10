@@ -82,13 +82,6 @@
                 </svg>
                 Sessões passadas
             </button>
-            <button class="session-tab-btn" data-target="tab-indicators">
-                <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-                Indicadores-chave
-            </button>
         </div>
     </div>
 
@@ -537,50 +530,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Tab 3: Key Indicators -->
-        <div class="session-tab-panel" id="tab-indicators">
-            {% if not kpis %}
-            <div class="welcome-message">
-                <span style="font-size: 3rem;">📁</span>
-                <h3>Sem dados de coorte</h3>
-                <p>Ainda não há sessões de terapia com avaliações clínicas processadas para gerar a análise coletiva do
-                    grupo.</p>
-            </div>
-            {% else %}
-            <!-- Evolution Dashboard -->
-            <div class="evolution-dashboard cohort-dashboard" style="display: flex; flex-direction: column; gap: 2rem;">
-
-                <!-- KPI Cards Grid -->
-                <div class="metrics-grid" style="margin-top: 0;">
-                    <div class="metric-card">
-                        <span class="metric-label">Sessões do grupo</span>
-                        <span class="metric-value">{{ kpis.total_sessions }}</span>
-                        <span class="metric-desc">Sessões avaliadas</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Pico de severidade média</span>
-                        <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
-                        <span class="metric-desc">Na sessão de: {{ kpis.peak_date }}</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Tendência sistêmica</span>
-                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
-                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Dimensão mais crítica</span>
-                        <span class="metric-value text-primary metric-value-dimension">
-                            {{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}
-                        </span>
-                        <span class="metric-desc">Média geral: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
-                    </div>
-                </div>
-
-            </div><!-- /evolution-dashboard -->
-            {% endif %}
-        </div>
-
     </div>
 </div>
 {% endblock %}

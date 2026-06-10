@@ -13,7 +13,6 @@ from symptoms_analyser.controllers.admin import (
     get_transcripts,
     get_patients_list_with_stats,
     get_patient_evolution_data,
-    get_cohort_evolution_data,
     update_patient,
     get_tdpm_table_data,
     get_group_dynamics_data,
@@ -347,9 +346,6 @@ def therapy_group_detail(group_id):
         
         # Second tab: Sessões passadas
         sessions = get_therapy_sessions(group_id=group_id)
-        
-        # Third tab: Indicadores-chave
-        cohort_data = get_cohort_evolution_data(group_id=group_id)
 
         # Dynamics data (historically aggregated)
         dynamics_data = get_group_dynamics_data(group_id=group_id)
@@ -360,14 +356,6 @@ def therapy_group_detail(group_id):
             patients=patients,
             alerts=alerts,
             sessions=sessions,
-            timeline=cohort_data["timeline"],
-            kpis=cohort_data["kpis"],
-            heatmap_dims=cohort_data["heatmap_dims"],
-            critical_sessions=cohort_data["critical_sessions"],
-            chart_labels=cohort_data["chart_labels"],
-            chart_mean_totals=cohort_data["chart_mean_totals"],
-            chart_median_totals=cohort_data["chart_median_totals"],
-            chart_dimensions=cohort_data["chart_dimensions"],
             airtime=dynamics_data.get("airtime"),
             synthesis=dynamics_data.get("synthesis"),
             graph_data=dynamics_data.get("graph_data"),
