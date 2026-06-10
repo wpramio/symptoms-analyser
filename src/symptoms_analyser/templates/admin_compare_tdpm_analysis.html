@@ -309,15 +309,15 @@
                         <div class="dimension-header compare-header">
                             <span class="dimension-name">{{ dim.key }}. {{ dim.name }}</span>
                             <div class="compare-badge-pair">
-                                <span class="score-badge" data-severity="{{ dim.sev1 }}">
-                                    {% if dim.sev1 > 0 %}{{ dim.score1 }}/{{ dim.max_size }}{% else %}-{% endif %}
+                                <span class="score-badge" data-severity="{{ dim.sev1 }}" {% if dim.sev1 > 0 %}title="Soma original: {{ (dim.score1 * (dim.max_size / 4)) | round | int }}/{{ dim.max_size }}"{% endif %}>
+                                    {% if dim.sev1 > 0 %}Média: {{ "%.1f"|format(dim.score1) | replace('.', ',') }}{% else %}-{% endif %}
                                 </span>
                                 <span class="compare-trend-indicator {{ dim.change_class }}"
                                     title="{{ dim.change_label }}">
                                     {{ dim.change_symbol }}
                                 </span>
-                                <span class="score-badge" data-severity="{{ dim.sev2 }}">
-                                    {% if dim.sev2 > 0 %}{{ dim.score2 }}/{{ dim.max_size }}{% else %}-{% endif %}
+                                <span class="score-badge" data-severity="{{ dim.sev2 }}" {% if dim.sev2 > 0 %}title="Soma original: {{ (dim.score2 * (dim.max_size / 4)) | round | int }}/{{ dim.max_size }}"{% endif %}>
+                                    {% if dim.sev2 > 0 %}Média: {{ "%.1f"|format(dim.score2) | replace('.', ',') }}{% else %}-{% endif %}
                                 </span>
                             </div>
                         </div>

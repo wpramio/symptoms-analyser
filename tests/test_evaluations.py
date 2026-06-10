@@ -95,8 +95,8 @@ def test_align_evaluations_comparison():
     # Sort or check order: dimensions should be sorted by key (1, 2, 3)
     # Check Dim 1 (Increased: 4 -> 6)
     assert dims[0]["key"] == "1"
-    assert dims[0]["score1"] == 4
-    assert dims[0]["score2"] == 6
+    assert dims[0]["score1"] == 2.0
+    assert dims[0]["score2"] == 3.0
     assert dims[0]["max_size"] == 8
     assert dims[0]["change_class"] == "increased"
     assert dims[0]["change_symbol"] == "▲"
@@ -105,15 +105,15 @@ def test_align_evaluations_comparison():
     
     # Check Dim 2 (Decreased: 6 -> 3)
     assert dims[1]["key"] == "2"
-    assert dims[1]["score1"] == 6
-    assert dims[1]["score2"] == 3
+    assert dims[1]["score1"] == 3.0
+    assert dims[1]["score2"] == 1.5
     assert dims[1]["change_class"] == "decreased"
     assert dims[1]["change_symbol"] == "▼"
     
     # Check Dim 3 (Stable: 5 -> 5)
     assert dims[2]["key"] == "3"
-    assert dims[2]["score1"] == 5
-    assert dims[2]["score2"] == 5
+    assert dims[2]["score1"] == 2.5
+    assert dims[2]["score2"] == 2.5
     assert dims[2]["change_class"] == "stable"
     assert dims[2]["change_symbol"] == "●"
 

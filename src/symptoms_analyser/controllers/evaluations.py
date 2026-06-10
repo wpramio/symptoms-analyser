@@ -86,6 +86,23 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
             }
         else:
             payload["synthesis"] = None
+
+        # Post-process for backward compatibility of dimension_average
+        patients = payload.get("aggregated", {}).get("patients", {})
+        for p_name, p_data in patients.items():
+            dims = p_data.get("dimensions", {})
+            for d_key, d_val in dims.items():
+                if "dimension_average" not in d_val:
+                    total = d_val.get("dimension_sum", 0)
+                    count_items = 3 if d_key == "16" else 2
+                    d_val["dimension_average"] = round(total / count_items, 2)
+            
+            top3 = p_data.get("top3", [])
+            for t_item in top3:
+                if "average" not in t_item:
+                    total = t_item.get("sum", 0)
+                    count_items = 3 if t_item.get("dim") == "16" else 2
+                    t_item["average"] = round(total / count_items, 2)
             
         return payload
     return None
@@ -147,19 +164,26 @@ def align_evaluations(data1: dict | None, data2: dict | None) -> list[dict]:
             if p2 and "dimensions" in p2:
                 d2 = next((d for d in p2["dimensions"].values() if d["name"] == d_name), None)
 
-            score1 = d1.get("dimension_sum", 0) if d1 else 0
-            score2 = d2.get("dimension_sum", 0) if d2 else 0
+            if d1:
+                score1 = d1.get("dimension_average", round(d1.get("dimension_sum", 0) / (3 if d_key == "16" else 2), 2))
+            else:
+                score1 = 0.0
+
+            if d2:
+                score2 = d2.get("dimension_average", round(d2.get("dimension_sum", 0) / (3 if d_key == "16" else 2), 2))
+            else:
+                score2 = 0.0
 
             if score1 == 0 and score2 == 0:
                 continue
 
             max_size = 12 if d_key == "16" else 8
             
-            sev1 = math.ceil((score1 / max_size) * 4) if d1 else 0
+            sev1 = math.ceil(score1) if d1 else 0
             if d1 and sev1 < 1:
                 sev1 = 1
                 
-            sev2 = math.ceil((score2 / max_size) * 4) if d2 else 0
+            sev2 = math.ceil(score2) if d2 else 0
             if d2 and sev2 < 1:
                 sev2 = 1
 

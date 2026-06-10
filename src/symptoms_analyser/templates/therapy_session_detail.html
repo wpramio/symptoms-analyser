@@ -402,42 +402,36 @@
                                 {% if p_data.top3 %}
                                 {% for dim in p_data.top3 %}
                                 {% set max_size = 12 if dim.dim == "16" else 8 %}
-                                {% set severity = ((dim.sum / max_size) * 4) | round(method='ceil') | int %}
-                                {% if severity < 1 %}{% set severity=1 %}{% endif %} <div class="top3-card">
+                                {% set severity = dim.average | round(method='ceil') | int %}
+                                {% if severity < 1 %}{% set severity=1 %}{% endif %}
+                                <div class="top3-card">
                                     <div class="top3-rank">Prioridade #{{ loop.index }}</div>
                                     <div class="top3-title">{{ dim.name }}</div>
-                                    <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{ dim.sum }}/{{
-                                        max_size
-                                        }}</div>
+                                    <div class="score-badge" data-severity="{{ severity }}" title="Soma original: {{ (dim.average * (max_size / 4)) | round | int }}/{{ max_size }}">Média: {{ "%.1f"|format(dim.average) | replace('.', ',') }}</div>
+                                </div>
+                                {% endfor %}
+                                {% else %}
+                                 <p class="text-muted text-medium">Nenhuma dimensão prioritária ativa para este paciente nesta sessão.</p>
+                                {% endif %}
                             </div>
-                            {% endfor %}
-                            {% else %}
-                            <p class="text-muted text-medium">Nenhuma dimensão prioritária ativa para este paciente
-                                nesta
-                                sessão.</p>
-                            {% endif %}
-                        </div>
 
                         <div class="section-header section-header-major">
                             <h3>Detalhamento das dimensões clínicas</h3>
-                            <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.
-                            </p>
+                            <p>Pontuações obtidas e trechos da fala de evidência extraídos pela inteligência artificial.</p>
                         </div>
                         <div class="dimensions-list">
                             {% if p_data.dimensions %}
-                            {% set sorted_dims = p_data.dimensions.items() | sort(attribute='1.dimension_sum',
-                            reverse=True) %}
+                            {% set sorted_dims = p_data.dimensions.items() | sort(attribute='1.dimension_average', reverse=True) %}
                             {% for dim_key, dim in sorted_dims %}
                             {% set max_size = 12 if dim_key == "16" else 8 %}
-                            {% set severity = ((dim.dimension_sum / max_size) * 4) | round(method='ceil') | int %}
-                            {% if severity < 1 %}{% set severity=1 %}{% endif %} <div class="dimension-item">
+                            {% set severity = dim.dimension_average | round(method='ceil') | int %}
+                            {% if severity < 1 %}{% set severity=1 %}{% endif %}
+                            <div class="dimension-item">
                                 <div class="dimension-header">
                                     <div class="dimension-title-group flex-align-center-gap">
                                         <span class="dimension-name">{{ dim_key }}. {{ dim.name }}</span>
                                     </div>
-                                    <div class="score-badge" data-severity="{{ severity }}">Pontuação: {{
-                                        dim.dimension_sum
-                                        }}/{{ max_size }}</div>
+                                    <div class="score-badge" data-severity="{{ severity }}" title="Soma original: {{ (dim.dimension_average * (max_size / 4)) | round | int }}/{{ max_size }}">Média: {{ "%.1f"|format(dim.dimension_average) | replace('.', ',') }}</div>
                                 </div>
                                 <div class="dimension-body">
                                     {% for item_id, item in p_data['items'].items() %}

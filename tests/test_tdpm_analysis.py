@@ -116,18 +116,18 @@ def test_aggregate_chunk_results():
     assert items["3.1"]["evidence"] == ["00:05:00 Ev6"]
     
     dimensions = pat_data["dimensions"]
-    assert dimensions["1"]["dimension_sum"] == 6
-    assert dimensions["2"]["dimension_sum"] == 2
-    assert dimensions["3"]["dimension_sum"] == 4
+    assert dimensions["1"]["dimension_average"] == 3.0
+    assert dimensions["2"]["dimension_average"] == 1.0
+    assert dimensions["3"]["dimension_average"] == 2.0
     
     top3 = pat_data["top3"]
     assert len(top3) == 3
     assert top3[0]["dim"] == "1"
-    assert top3[0]["sum"] == 6
+    assert top3[0]["average"] == 3.0
     assert top3[1]["dim"] == "3"
-    assert top3[1]["sum"] == 4
+    assert top3[1]["average"] == 2.0
     assert top3[2]["dim"] == "2"
-    assert top3[2]["sum"] == 2
+    assert top3[2]["average"] == 1.0
 
 def test_load_prompt(tmp_path):
     prompt_file = tmp_path / "prompt.md"

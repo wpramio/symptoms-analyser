@@ -175,8 +175,8 @@
                                     <td><strong>{{ dim.key }}</strong> - {{ dim.name }}</td>
                                     {% for cell in dim.cells %}
                                     <td class="heatmap-cell" data-severity="{{ cell.severity }}"
-                                        title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Pontuação: {{ cell.score }}/{{ cell.max }}">
-                                        {{ cell.score }}/{{ cell.max }}
+                                        title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Média: {% if cell.average == 0 %}0{% else %}{{ '%.1f'|format(cell.average) | replace('.', ',') }}{% endif %} (Soma original: {{ cell.orig_sum }}/{{ cell.max }})">
+                                        {% if cell.average == 0 %}0{% else %}{{ "%.1f"|format(cell.average) | replace('.', ',') }}{% endif %}
                                     </td>
                                     {% endfor %}
                                 </tr>
@@ -289,7 +289,7 @@
                             {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{%
                             endif %}
                         </span>
-                        <span class="metric-desc">Média: {{ kpis.top_dim_avg }} / {{ kpis.top_dim_max }}</span>
+                        <span class="metric-desc">Média: {{ "%.1f"|format(kpis.top_dim_avg) | replace('.', ',') }} / {{ "%.1f"|format(kpis.top_dim_max) | replace('.', ',') }}</span>
                     </div>
                 </div>
             </div>

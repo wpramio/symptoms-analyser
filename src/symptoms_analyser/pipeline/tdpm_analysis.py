@@ -123,17 +123,18 @@ def aggregate_chunk_results(chunk_results: List[Dict[str, Any]]) -> Dict[str, An
             
         dimensions = {}
         for dim_str, total in dim_acc.items():
+            count_items = sum(1 for item_id in TDPM_ITEMS if item_id.split('.')[0] == dim_str)
             dimensions[dim_str] = {
                 "name": TDPM_DIMENSIONS.get(dim_str, "Desconhecido"),
-                "dimension_sum": total
+                "dimension_average": round(total / count_items, 2)
             }
             
         top3 = sorted(
-            [(d, info["dimension_sum"]) for d, info in dimensions.items()],
+            [(d, info["dimension_average"]) for d, info in dimensions.items()],
             key=lambda x: x[1], reverse=True,
         )[:3]
         
-        top3_list = [{"dim": d, "name": TDPM_DIMENSIONS.get(d, "Desconhecido"), "sum": m} for d, m in top3]
+        top3_list = [{"dim": d, "name": TDPM_DIMENSIONS.get(d, "Desconhecido"), "average": m} for d, m in top3]
         
         patient_summaries[patient_id] = {
             "items": items,

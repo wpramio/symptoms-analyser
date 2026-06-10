@@ -107,7 +107,7 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
                 baseline_items[item_code]["score"] = score
                 baseline_items[item_code]["evidence"] = evidence
 
-    # 3. Recalculate Dimension Sums and Top-3 Priorities for all patients in baseline
+    # 3. Recalculate Dimension Averages and Top-3 Priorities for all patients in baseline
     for p_name, p_payload in baseline_patients.items():
         items_dict = p_payload.get("items", {})
         
@@ -120,17 +120,18 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
         # Build dimensions payload
         dimensions = {}
         for dim_key, d_sum in dim_sums.items():
+            count_items = sum(1 for item_id in TDPM_ITEMS if item_id.split('.')[0] == dim_key)
             dimensions[dim_key] = {
                 "name": TDPM_DIMENSIONS.get(dim_key, "Desconhecido"),
-                "dimension_sum": d_sum
+                "dimension_average": round(d_sum / count_items, 2) if count_items else 0.0
             }
         p_payload["dimensions"] = dimensions
 
-        # Calculate Top 3 active dimensions (sum > 0) sorted descending
+        # Calculate Top 3 active dimensions (average > 0) sorted descending
         active_dims = [
-            (d_key, info["dimension_sum"])
+            (d_key, info["dimension_average"])
             for d_key, info in dimensions.items()
-            if info["dimension_sum"] > 0
+            if info["dimension_average"] > 0
         ]
         sorted_dims = sorted(active_dims, key=lambda x: x[1], reverse=True)[:3]
         
@@ -138,9 +139,9 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
             {
                 "dim": d_key,
                 "name": TDPM_DIMENSIONS.get(d_key, "Desconhecido"),
-                "sum": m_sum
+                "average": m_avg
             }
-            for d_key, m_sum in sorted_dims
+            for d_key, m_avg in sorted_dims
         ]
         p_payload["top3"] = top3_list
 

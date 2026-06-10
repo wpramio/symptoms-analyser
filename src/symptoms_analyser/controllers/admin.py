@@ -688,11 +688,25 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         dimensions_raw = p_data.get("dimensions", {})
         items_raw = p_data.get("items", {})
 
-        total_score = sum(d.get("dimension_sum", 0) for d in dimensions_raw.values())
+        if items_raw:
+            total_score = sum(int(it.get("score", 0)) for it in items_raw.values())
+        else:
+            total_score = 0
+            for k, d in dimensions_raw.items():
+                if "dimension_average" in d:
+                    count_items = 3 if k == "16" else 2
+                    total_score += round(d["dimension_average"] * count_items)
+                else:
+                    total_score += d.get("dimension_sum", 0)
 
         dims = {}
         for dim_key, dim_val in dimensions_raw.items():
-            dims[dim_key] = dim_val.get("dimension_sum", 0)
+            if "dimension_average" in dim_val:
+                dims[dim_key] = dim_val["dimension_average"]
+            else:
+                total = dim_val.get("dimension_sum", 0)
+                count_items = 3 if dim_key == "16" else 2
+                dims[dim_key] = round(total / count_items, 2)
 
         date_str = format_date_dmyy(row["start_at"])
         timeline.append({
@@ -727,8 +741,8 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         for dim_key, score in entry["dimensions"].items():
             dim_sums[dim_key] = dim_sums.get(dim_key, 0) + score
     top_dim_key = max(dim_sums, key=lambda k: dim_sums[k]) if dim_sums else None
-    top_dim_avg = (dim_sums[top_dim_key] / len(timeline)) if top_dim_key else 0
-    top_dim_max = (3 if top_dim_key == "16" else 2) * 4 if top_dim_key else 8
+    top_dim_avg = (dim_sums[top_dim_key] / len(timeline)) if top_dim_key else 0.0
+    top_dim_max = 4.0
 
     if diff < 0:
         trend_value = f"▼ {abs(diff)}"
@@ -766,15 +780,23 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
     heatmap_dims = []
     for i in range(1, 21):
         dim_key = str(i)
-        max_size = (3 if dim_key == "16" else 2) * 4
         cells = []
         has_score = False
         for entry in timeline:
-            score = entry["dimensions"].get(dim_key, 0)
+            score = entry["dimensions"].get(dim_key, 0.0)
             if score > 0:
                 has_score = True
-            severity = min(4, round((score / max_size) * 4)) if score > 0 else 0
-            cells.append({"score": score, "max": max_size, "severity": severity, "date": entry["date"]})
+            severity = min(4, round(score)) if score > 0 else 0
+            count_items = 3 if dim_key == "16" else 2
+            orig_sum = int(round(score * count_items))
+            max_size = count_items * 4
+            cells.append({
+                "average": score,
+                "orig_sum": orig_sum,
+                "max": max_size,
+                "severity": severity,
+                "date": entry["date"]
+            })
         heatmap_dims.append({
             "key": dim_key,
             "name": ONTOLOGY_DIMENSIONS.get(dim_key, dim_key),

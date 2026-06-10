@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chartInstance = new Chart(ctx, {
             type: 'line',
             data: { labels: chartLabels, datasets },
-            options: chartOptions({ stepSize: 1, suggestedMax: 8, legendSize: 11 }),
+            options: chartOptions({ stepSize: 1, suggestedMax: 4, legendSize: 11 }),
         });
     }
 
