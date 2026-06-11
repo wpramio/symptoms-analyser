@@ -848,7 +848,7 @@ select:focus {
     margin-top: auto;
 }
 
-.calc-hybrid-totals > div {
+.calc-hybrid-totals>div {
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -6075,4 +6075,272 @@ select:focus {
 .metric-card-compact .metric-label-index span[class^="metric-badge-"],
 .metric-card-compact .metric-label-index span[class*=" metric-badge-"] {
     font-size: 0.7rem;
+}
+
+/* ==========================================================================
+   Patient Overview Tab Styling
+   ========================================================================== */
+.overview-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .overview-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .overview-grid.no-alerts {
+        grid-template-columns: 1fr;
+    }
+}
+
+.radar-chart-card {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Overview Interventions List */
+.overview-interventions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.overview-intervention-item {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.overview-intervention-item:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+    background: white;
+}
+
+.overview-intervention-item.border-critical {
+    border-left-color: #ef4444;
+}
+
+.overview-intervention-item.border-warning {
+    border-left-color: #f59e0b;
+}
+
+.overview-intervention-item.border-info {
+    border-left-color: #3b82f6;
+}
+
+.intervention-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.intervention-item-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+}
+
+.intervention-item-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.intervention-item-action {
+    font-size: 0.8rem;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    color: var(--text-main);
+    margin-top: 0.25rem;
+}
+
+.intervention-item-action strong {
+    color: var(--primary);
+}
+
+/* Radar Card Layout - side by side */
+.radar-card-header {
+    margin-bottom: 1.5rem;
+}
+
+.radar-card-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    align-items: stretch;
+}
+
+.radar-info-side {
+    display: flex;
+    flex-direction: column;
+}
+
+.radar-categories-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    padding-left: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0.15rem;
+}
+
+.legend-item.physio {
+    border-left: 4px solid #0284c7;
+}
+
+.legend-item.cognitive {
+    border-left: 4px solid #4f46e5;
+}
+
+.legend-item.behavioral {
+    border-left: 4px solid #d97706;
+}
+
+.legend-item.affective {
+    border-left: 4px solid #db2777;
+}
+
+.legend-label {
+    display: block;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.legend-item.physio .legend-label {
+    color: #0284c7;
+}
+
+.legend-item.cognitive .legend-label {
+    color: #4f46e5;
+}
+
+.legend-item.behavioral .legend-label {
+    color: #d97706;
+}
+
+.legend-item.affective .legend-label {
+    color: #db2777;
+}
+
+.legend-desc {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.radar-chart-side {
+    width: 100%;
+}
+
+.radar-chart-side .chart-wrapper {
+    width: 100%;
+    height: 420px;
+}
+
+@media (max-width: 1024px) {
+    .radar-card-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+}
+
+/* Compact Dimensions Table styling */
+.radar-dimensions-table-container {
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.table-compact-dimensions {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.table-compact-dimensions th {
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.table-compact-dimensions td {
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+.table-compact-dimensions tr:last-child td {
+    border-bottom: none;
+}
+
+.table-compact-dimensions tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.badge-category-table {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.badge-category-table.category-physio {
+    background-color: rgba(2, 132, 199, 0.1);
+    color: #0284c7;
+    border: 1px solid rgba(2, 132, 199, 0.2);
+}
+
+.badge-category-table.category-cognitive {
+    background-color: rgba(79, 70, 229, 0.1);
+    color: #4f46e5;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+.badge-category-table.category-behavioral {
+    background-color: rgba(217, 119, 6, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.badge-category-table.category-affective {
+    background-color: rgba(219, 39, 119, 0.1);
+    color: #db2777;
+    border: 1px solid rgba(219, 39, 119, 0.2);
 }

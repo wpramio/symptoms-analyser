@@ -280,6 +280,35 @@ def patient_detail(patient_id):
         data = get_patient_evolution_data(patient_id)
         if not data:
             return "Patient not found", 404
+
+        # Get patient alerts/interventions
+        group_id = data["patient"].get("therapy_group_id")
+        patient_alerts = []
+        if group_id:
+            try:
+                from symptoms_analyser.controllers.interventions import get_group_interventions
+                res = get_group_interventions(group_id)
+                alerts = res.get("alerts", [])
+                patient_alerts = [a for a in alerts if a.get("patient") == patient_id]
+            except Exception as e:
+                print(f"Error fetching interventions for patient {patient_id}: {e}")
+
+        # Get latest dimensions for radar chart
+        import json
+        timeline = data.get("timeline", [])
+        latest_dimensions = []
+        from symptoms_analyser.controllers.admin import ONTOLOGY_DIMENSIONS
+        latest_entry_dims = {}
+        if timeline:
+            latest_entry_dims = timeline[-1].get("dimensions", {})
+        for i in range(1, 21):
+            dim_key = str(i)
+            latest_dimensions.append({
+                "key": dim_key,
+                "name": f"{dim_key}. {ONTOLOGY_DIMENSIONS.get(dim_key, dim_key)}",
+                "value": latest_entry_dims.get(dim_key, 0.0)
+            })
+
         return render_template(
             "patient_detail.html",
             patient=data["patient"],
@@ -290,6 +319,9 @@ def patient_detail(patient_id):
             chart_labels=data["chart_labels"],
             chart_totals=data["chart_totals"],
             chart_dimensions=data["chart_dimensions"],
+            patient_alerts=patient_alerts,
+            latest_dimensions=json.dumps(latest_dimensions),
+            latest_dimensions_raw=latest_dimensions,
         )
     except Exception as e:
         print(f"Error serving patient detail: {e}")

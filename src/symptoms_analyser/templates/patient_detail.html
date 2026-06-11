@@ -54,22 +54,23 @@
         </div>
     </div>
 
-    {% if not kpis %}
-    <!-- No clinical data state -->
-    <div class="welcome-message">
-        <span style="font-size: 2.5rem;">📁</span>
-        <h3>Sem dados clínicos</h3>
-        <p>Este paciente ainda não possui avaliações clínicas com sintomas quantificados.</p>
-    </div>
-
-    {% else %}
     <!-- Evolution Dashboard (server-rendered, immediately visible) -->
     <div class="evolution-dashboard" style="display: flex;">
 
         <!-- TAB NAVIGATION -->
         <div class="session-tabs-container">
             <div class="session-main-tabs">
-                <button class="session-tab-btn active" data-target="tab-trajectory">
+                <button class="session-tab-btn active" data-target="tab-overview">
+                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="9"></rect>
+                        <rect x="14" y="3" width="7" height="5"></rect>
+                        <rect x="14" y="12" width="7" height="9"></rect>
+                        <rect x="3" y="16" width="7" height="5"></rect>
+                    </svg>
+                    Visão geral
+                </button>
+                <button class="session-tab-btn" data-target="tab-trajectory">
                     <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -96,29 +97,146 @@
                     </svg>
                     Linha do tempo de evidências
                 </button>
-                <button class="session-tab-btn" data-target="tab-kpis">
-                    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                    Indicadores-chave
-                </button>
             </div>
         </div>
 
         <!-- TAB PANELS CONTENT -->
         <div class="session-tab-content">
+            <!-- PANEL 0: Visão Geral -->
+            <div class="session-tab-panel active" id="tab-overview">
+                <!-- Interventions Card -->
+                {% if patient_alerts %}
+                <div class="evolution-card interventions-overview-card" style="margin-bottom: 1.5rem;">
+                    <div class="card-header-flex" style="margin-bottom: 1rem;">
+                        <div>
+                            <h3 class="card-title">Intervenções recomendadas</h3>
+                            <p class="card-subtitle">Ações e alertas de manejo sugeridos para o paciente.</p>
+                        </div>
+                    </div>
+                    <div class="overview-interventions-list">
+                        {% for alert in patient_alerts %}
+                        <div class="overview-intervention-item border-{{ alert.severity }}">
+                            <div class="intervention-item-header">
+                                <span class="badge-severity badge-{{ alert.severity }}">
+                                    {% if alert.severity == 'critical' %}🚨 Crítico{% elif alert.severity == 'warning'
+                                    %}⚠️ Alerta{% else %}💡 Sugestão{% endif %}
+                                </span>
+                                <h4 class="intervention-item-title">{{ alert.title }}</h4>
+                            </div>
+                            <p class="intervention-item-desc">{{ alert.description | safe }}</p>
+                            <div class="intervention-item-action">
+                                <strong>Ação proposta:</strong> {{ alert.action }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- KPI Cards -->
+                <div class="metrics-grid" style="margin-top: 0.5rem; margin-bottom: 1.5rem;">
+                    <div class="metric-card">
+                        <span class="metric-label">Sessões analisadas</span>
+                        <span class="metric-value">{{ kpis.total_sessions }}</span>
+                        <span class="metric-desc">Total de participações do paciente</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Pico de gravidade</span>
+                        <span class="metric-value text-danger">{% if kpis.peak_score > 0 %}{{ kpis.peak_score }}
+                            {% else %}Nenhum{% endif %}</span>
+                        <span class="metric-desc">Na sessão: {{ kpis.peak_date }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Tendência geral</span>
+                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
+                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Dimensão mais ativa</span>
+                        <span class="metric-value text-primary metric-value-dimension">
+                            {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{%
+                            endif %}
+                        </span>
+                        <span class="metric-desc">Média: {{ "%.1f"|format(kpis.top_dim_avg) | replace('.', ',') }} / {{
+                            "%.1f"|format(kpis.top_dim_max) | replace('.', ',') }}</span>
+                    </div>
+                </div>
+
+                <!-- Radial Chart Card -->
+                {% if timeline %}
+                <div class="evolution-card radar-chart-card">
+                    <div class="radar-card-layout">
+                        <div class="radar-info-side">
+                            <div class="radar-card-header">
+                                <h3 class="card-title">Perfil clínico atual</h3>
+                                <p class="card-subtitle">Última avaliação de dimensões clínicas (TDPM-20).</p>
+                            </div>
+                            <div class="radar-dimensions-table-container">
+                                <table class="table-compact-dimensions">
+                                    <thead>
+                                        <tr>
+                                            <th>Desregulação</th>
+                                            <th>Dimensão clínica</th>
+                                            <th style="text-align: right;">Média</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% set active_dims_count = namespace(value=0) %}
+                                        {% for dim in latest_dimensions_raw %}
+                                        {% if dim.value > 0 %}
+                                        {% set active_dims_count.value = active_dims_count.value + 1 %}
+                                        {% set num = dim.key | int %}
+                                        {% if num >= 1 and num <= 5 %} {% set category_name='Neurofisiológica' %} {% set
+                                            badge_class='physio' %} {% elif num>= 6 and num <= 10 %} {% set
+                                                category_name='Neuropsicológica' %} {% set badge_class='cognitive' %} {%
+                                                elif num>= 11 and num <= 15 %} {% set category_name='Busca' %} {% set
+                                                    badge_class='behavioral' %} {% else %} {% set category_name='Alarme'
+                                                    %} {% set badge_class='affective' %} {% endif %} <tr>
+                                                    <td>
+                                                        <span class="badge-category-table category-{{ badge_class }}">{{
+                                                            category_name }}</span>
+                                                    </td>
+                                                    <td style="font-weight: 500;">{{ dim.name }}</td>
+                                                    <td
+                                                        style="text-align: center; font-weight: 700; color: var(--text-color);">
+                                                        {{ "%.1f"|format(dim.value) | replace('.', ',') }}
+                                                    </td>
+                                                    </tr>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                    {% if active_dims_count.value == 0 %}
+                                                    <tr>
+                                                        <td colspan="3"
+                                                            style="text-align: center; color: var(--text-muted); padding: 1.5rem; font-size: 0.85rem;">
+                                                            Nenhuma desregulação ativa detectada.
+                                                        </td>
+                                                    </tr>
+                                                    {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="radar-chart-side">
+                            <div class="chart-wrapper">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
             <!-- PANEL 1: Severity Trajectory -->
-            <div class="session-tab-panel active" id="tab-trajectory">
+            <div class="session-tab-panel" id="tab-trajectory">
                 <!-- Interactive Chart Card (Chart.js rendered client-side) -->
                 <div class="evolution-card chart-container-card">
                     <div class="card-header-flex">
                         <div>
                             <h3 class="card-title">Trajetória temporal de sintomas</h3>
                             <p class="card-subtitle">Visualização interativa da severidade total ou de dimensões
-                                específicas do
-                                TDPM-20.</p>
+                                específicas do TDPM-20.</p>
                         </div>
+                        {% if timeline %}
                         <div class="chart-controls">
                             <label for="chartMetricSelect">Visualizar:</label>
                             <select id="chartMetricSelect" class="selector-dropdown compact-select">
@@ -126,11 +244,23 @@
                                 <option value="dimensions" selected>Por dimensão clínica (comparativa)</option>
                             </select>
                         </div>
+                        {% endif %}
                     </div>
 
+                    {% if not timeline %}
+                    <div class="welcome-message"
+                        style="padding: 3rem 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; margin: 1.5rem;">
+                        <span style="font-size: 2.5rem; display: block; margin-bottom: 0.5rem;">📈</span>
+                        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Sem dados de trajetória
+                        </h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Este paciente ainda não possui sessões
+                            avaliadas para construir a trajetória temporal.</p>
+                    </div>
+                    {% else %}
                     <div class="chart-wrapper">
                         <canvas id="evolutionChart"></canvas>
                     </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -144,6 +274,7 @@
                             <p class="card-subtitle">Mapeamento geral de todas as 20 dimensões ao longo de cada sessão
                                 realizada.</p>
                         </div>
+                        {% if timeline %}
                         <div class="heatmap-header-controls">
                             <button type="button" id="btnToggleEmptyDimensions"
                                 class="btn btn-secondary btn-heatmap-toggle">
@@ -157,8 +288,19 @@
                                 <span class="legend-box" data-severity="4">4 (grave)</span>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
 
+                    {% if not timeline %}
+                    <div class="welcome-message"
+                        style="padding: 3rem 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; margin: 1.5rem;">
+                        <span style="font-size: 2.5rem; display: block; margin-bottom: 0.5rem;">📊</span>
+                        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Sem dados de matriz
+                        </h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma avaliação de sintomas
+                            registrada para gerar a matriz TDPM-20.</p>
+                    </div>
+                    {% else %}
                     <div class="heatmap-table-container">
                         <table class="heatmap-table" id="heatmapTable">
                             <thead>
@@ -176,7 +318,8 @@
                                     {% for cell in dim.cells %}
                                     <td class="heatmap-cell" data-severity="{{ cell.severity }}"
                                         title="Sessão: {{ cell.date }} | {{ dim.key }} - {{ dim.name }} | Média: {% if cell.average == 0 %}0{% else %}{{ '%.1f'|format(cell.average) | replace('.', ',') }}{% endif %} (Soma original: {{ cell.orig_sum }}/{{ cell.max }})">
-                                        {% if cell.average == 0 %}0{% else %}{{ "%.1f"|format(cell.average) | replace('.', ',') }}{% endif %}
+                                        {% if cell.average == 0 %}0{% else %}{{ "%.1f"|format(cell.average) |
+                                        replace('.', ',') }}{% endif %}
                                     </td>
                                     {% endfor %}
                                 </tr>
@@ -184,6 +327,7 @@
                             </tbody>
                         </table>
                     </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -195,9 +339,9 @@
                         <div>
                             <h3 class="card-title">Linha do tempo de evidências clínicas</h3>
                             <p class="card-subtitle">Relato cronológico de falas transcritas e justificativas
-                                diagnósticas de
-                                sintomas.</p>
+                                diagnósticas de sintomas.</p>
                         </div>
+                        {% if timeline %}
                         <div class="timeline-filters">
                             <select id="timelineDimensionFilter" class="selector-dropdown compact-select">
                                 <option value="all">Todas as dimensões</option>
@@ -208,15 +352,24 @@
                                 {% if dim_key not in active_dims.seen %}
                                 {% set active_dims.seen = active_dims.seen + [dim_key] %}
                                 <option value="{{ dim_key }}">{{ dim_key }}. {{ item.name.split(' - ')[0] if ' - ' in
-                                    item.name
-                                    else item.name }}</option>
+                                    item.name else item.name }}</option>
                                 {% endif %}
                                 {% endfor %}
                                 {% endfor %}
                             </select>
                         </div>
+                        {% endif %}
                     </div>
 
+                    {% if not timeline %}
+                    <div class="welcome-message"
+                        style="padding: 3rem 1rem; text-align: center; border: 1px dashed var(--border); border-radius: 8px; margin: 1.5rem;">
+                        <span style="font-size: 2.5rem; display: block; margin-bottom: 0.5rem;">🕒</span>
+                        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem;">Sem evidências</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">Nenhuma evidência clínica registrada
+                            para este paciente.</p>
+                    </div>
+                    {% else %}
                     <div class="vertical-timeline" id="evidenceTimeline">
                         {% for entry in timeline %}
                         {% set session_has_evidence = namespace(found=false) %}
@@ -253,63 +406,27 @@
                         </div>
                         {% endif %}
                         {% endfor %}
-
-                        {% if not timeline %}
-                        <p class="no-evidence-timeline"
-                            style="color: var(--text-muted); text-align: center; padding: 2rem;">
-                            Nenhuma evidência clínica disponível.
-                        </p>
-                        {% endif %}
                     </div>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- PANEL 4: Key Indicators -->
-            <div class="session-tab-panel" id="tab-kpis">
-                <!-- KPI Cards -->
-                <div class="metrics-grid" style="margin-top: 0.5rem;">
-                    <div class="metric-card">
-                        <span class="metric-label">Sessões analisadas</span>
-                        <span class="metric-value">{{ kpis.total_sessions }}</span>
-                        <span class="metric-desc">Total de participações do paciente</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Pico de gravidade</span>
-                        <span class="metric-value text-danger">{{ kpis.peak_score }}</span>
-                        <span class="metric-desc">Na sessão: {{ kpis.peak_date }}</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Tendência geral</span>
-                        <span class="metric-value {{ kpis.trend_class }}">{{ kpis.trend_value }}</span>
-                        <span class="metric-desc">{{ kpis.trend_desc }}</span>
-                    </div>
-                    <div class="metric-card">
-                        <span class="metric-label">Dimensão mais ativa</span>
-                        <span class="metric-value text-primary metric-value-dimension">
-                            {% if kpis.top_dim_key %}{{ kpis.top_dim_key }}. {{ kpis.top_dim_name }}{% else %}Nenhum{%
-                            endif %}
-                        </span>
-                        <span class="metric-desc">Média: {{ "%.1f"|format(kpis.top_dim_avg) | replace('.', ',') }} / {{ "%.1f"|format(kpis.top_dim_max) | replace('.', ',') }}</span>
-                    </div>
-                </div>
-            </div>
+
         </div>
 
     </div><!-- /evolution-dashboard -->
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
-{% if kpis %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script id="page-data" type="application/json">
 {
     "chartLabels": {{ chart_labels | safe }},
     "chartTotals": {{ chart_totals | safe }},
-    "chartDimensions": {{ chart_dimensions | safe }}
+    "chartDimensions": {{ chart_dimensions | safe }},
+    "latestDimensions": {{ latest_dimensions | safe }}
 }
 </script>
 <script src="/static/js/patient_detail.js"></script>
-{% endif %}
 {% endblock %}

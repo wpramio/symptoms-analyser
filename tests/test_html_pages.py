@@ -231,6 +231,10 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
         resp = client.get("/patients/Paciente1")
         assert resp.status_code == 200
         assert b"Grupo Alfa" in resp.data
+        assert b"Vis\xc3\xa3o geral" in resp.data
+        assert b"tab-overview" in resp.data
+        assert b"radarChart" in resp.data
+        assert b"latestDimensions" in resp.data
 
         # 4. Admin Transcripts Page
         resp = client.get("/admin/transcripts")

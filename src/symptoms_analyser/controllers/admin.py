@@ -722,7 +722,18 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             "patient": patient_data,
             "sessions": sessions,
             "timeline": [],
-            "kpis": None,
+            "kpis": {
+                "total_sessions": len(sessions),
+                "peak_score": 0.0,
+                "peak_date": "-",
+                "trend_value": "N/A",
+                "trend_class": "",
+                "trend_desc": "Sem avaliações clínicas",
+                "top_dim_key": None,
+                "top_dim_name": "Nenhuma",
+                "top_dim_avg": 0.0,
+                "top_dim_max": 4.0,
+            },
             "heatmap_dims": [],
             "chart_labels": "[]",
             "chart_totals": "[]",
@@ -763,7 +774,7 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         trend_desc = "Apenas 1 sessão registrada"
 
     kpis = {
-        "total_sessions": len(timeline),
+        "total_sessions": len(sessions),
         "peak_score": peak_entry["total_score"],
         "peak_date": peak_entry["date"],
         "trend_value": trend_value,

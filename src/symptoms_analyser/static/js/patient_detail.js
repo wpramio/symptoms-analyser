@@ -13,7 +13,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     const _page = JSON.parse(document.getElementById('page-data').textContent);
-    const { chartLabels, chartTotals, chartDimensions } = _page;
+    const { chartLabels, chartTotals, chartDimensions, latestDimensions } = _page;
 
     const HSL_COLORS = [
         'hsl(217, 91%, 60%)',
@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let chartInstance = null;
 
     function renderTotalChart() {
+        if (!chartCanvas) return;
         if (chartInstance) chartInstance.destroy();
 
         const ctx = chartCanvas.getContext('2d');
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderDimensionChart() {
+        if (!chartCanvas) return;
         if (chartInstance) chartInstance.destroy();
 
         const ctx = chartCanvas.getContext('2d');
@@ -113,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     padding: 12,
                     backgroundColor: 'rgba(30, 41, 59, 0.95)',
                     titleFont: { family: "'Inter', sans-serif", weight: '700' },
-                    bodyFont:  { family: "'Inter', sans-serif" },
+                    bodyFont: { family: "'Inter', sans-serif" },
                 },
             },
             scales: {
@@ -184,12 +186,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnToggle) {
         btnToggle.addEventListener('click', () => {
             const isShowingEmpty = btnToggle.textContent.includes('Ocultar');
-            
+
             const inactiveRows = document.querySelectorAll('.inactive-row');
             inactiveRows.forEach(row => {
                 row.classList.toggle('display-none', isShowingEmpty);
             });
-            
+
             btnToggle.textContent = isShowingEmpty
                 ? 'Mostrar dimensões sem sintomas'
                 : 'Ocultar dimensões sem sintomas';
@@ -223,4 +225,220 @@ document.addEventListener('DOMContentLoaded', () => {
             window.dispatchEvent(new Event('resize'));
         });
     });
+
+    // =========================================================================
+    // 6. Radar Chart rendering (latest session dimensions)
+    // =========================================================================
+    const radarCanvas = document.getElementById('radarChart');
+    if (radarCanvas && latestDimensions && latestDimensions.length > 0) {
+        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim() || '#e2e8f0';
+
+        const getCategoryColor = (key) => {
+            const num = parseInt(key, 10);
+            if (num >= 1 && num <= 5) return '#0284c7';      // Neurofisiológicas
+            if (num >= 6 && num <= 10) return '#4f46e5';     // Neuropsicológicas
+            if (num >= 11 && num <= 15) return '#d97706';    // Busca
+            if (num >= 16 && num <= 20) return '#db2777';    // Alarme
+            return '#3b82f6';
+        };
+
+        const pointColors = latestDimensions.map(d => getCategoryColor(d.key));
+        const pointRadii = latestDimensions.map(d => d.value > 0 ? 5.5 : 0);
+        const pointHoverRadii = latestDimensions.map(d => d.value > 0 ? 8 : 0);
+
+        const radarBgPlugin = {
+            id: 'radarCategoryBg',
+            beforeDatasetsDraw(chart) {
+                const { ctx, scales: { r } } = chart;
+                if (!r) return;
+
+                const x = r.xCenter;
+                const y = r.yCenter;
+                const radius = r.drawingArea;
+                const count = chart.data.labels.length;
+                if (count === 0) return;
+
+                const sectorColors = [
+                    'rgba(2, 132, 199, 0.25)',   // Neurofisiológicas: Blue
+                    'rgba(79, 70, 229, 0.25)',   // Neuropsicológicas: Indigo
+                    'rgba(217, 119, 6, 0.25)',    // Busca: Orange
+                    'rgba(219, 39, 119, 0.25)'    // Alarme: Pink
+                ];
+
+                ctx.save();
+                const startAngle = r.startAngle || -Math.PI / 2;
+                const sliceAngle = (2 * Math.PI) / count;
+
+                const labelsText = ['NEUROFISIOLÓGICA', 'NEUROPSICOLÓGICA', 'BUSCA', 'ALARME'];
+                const textColors = [
+                    'rgba(2, 132, 199, 0.7)',
+                    'rgba(79, 70, 229, 0.7)',
+                    'rgba(217, 119, 6, 0.7)',
+                    'rgba(219, 39, 119, 0.7)'
+                ];
+
+                for (let i = 0; i < 4; i++) {
+                    const angleStart = startAngle + (i * 5 - 0.5) * sliceAngle;
+                    const angleEnd = startAngle + (i * 5 + 4.5) * sliceAngle;
+
+                    // Draw sector slice background
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.arc(x, y, radius, angleStart, angleEnd);
+                    ctx.closePath();
+                    ctx.fillStyle = sectorColors[i];
+                    ctx.fill();
+
+                    // Draw sector text watermark label
+                    const midAngle = startAngle + (i * 5 + 2) * sliceAngle;
+                    const labelRadius = radius * 0.72;
+                    const tx = x + Math.cos(midAngle) * labelRadius;
+                    const ty = y + Math.sin(midAngle) * labelRadius;
+
+                    ctx.fillStyle = textColors[i];
+                    ctx.font = 'bold 9px "Inter", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelsText[i], tx, ty);
+                }
+                ctx.restore();
+            }
+        };
+
+        const radarCtx = radarCanvas.getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
+            plugins: [radarBgPlugin],
+            data: {
+                labels: latestDimensions.map(d => d.key),
+                datasets: [{
+                    label: 'Gravidade Média',
+                    data: latestDimensions.map(d => d.value),
+                    borderColor: (context) => {
+                        const chart = context.chart;
+                        const { ctx, scales: { r } } = chart;
+                        if (!ctx || !r || typeof ctx.createConicGradient !== 'function') {
+                            return '#475569';
+                        }
+                        const x = r.xCenter;
+                        const y = r.yCenter;
+                        if (x === undefined || y === undefined) return '#475569';
+                        try {
+                            const startAngle = r.startAngle !== undefined ? r.startAngle : -Math.PI / 2;
+                            const sliceAngle = (2 * Math.PI) / 20;
+                            const gradient = ctx.createConicGradient(startAngle - 0.5 * sliceAngle, x, y);
+                            gradient.addColorStop(0, '#0369a1');
+                            gradient.addColorStop(0.25, '#0369a1');
+                            gradient.addColorStop(0.2501, '#3730a3');
+                            gradient.addColorStop(0.5, '#3730a3');
+                            gradient.addColorStop(0.5001, '#b45309');
+                            gradient.addColorStop(0.75, '#b45309');
+                            gradient.addColorStop(0.7501, '#be185d');
+                            gradient.addColorStop(1, '#be185d');
+                            return gradient;
+                        } catch (err) {
+                            return '#475569';
+                        }
+                    },
+                    backgroundColor: (context) => {
+                        const chart = context.chart;
+                        const { ctx, scales: { r } } = chart;
+                        if (!ctx || !r || typeof ctx.createConicGradient !== 'function') {
+                            return 'rgba(148, 163, 184, 0.15)';
+                        }
+                        const x = r.xCenter;
+                        const y = r.yCenter;
+                        if (x === undefined || y === undefined) return 'rgba(148, 163, 184, 0.15)';
+                        try {
+                            const startAngle = r.startAngle !== undefined ? r.startAngle : -Math.PI / 2;
+                            const sliceAngle = (2 * Math.PI) / 20;
+                            const gradient = ctx.createConicGradient(startAngle - 0.5 * sliceAngle, x, y);
+                            gradient.addColorStop(0, 'rgba(2, 132, 199, 0.15)');
+                            gradient.addColorStop(0.25, 'rgba(2, 132, 199, 0.15)');
+                            gradient.addColorStop(0.2501, 'rgba(79, 70, 229, 0.15)');
+                            gradient.addColorStop(0.5, 'rgba(79, 70, 229, 0.15)');
+                            gradient.addColorStop(0.5001, 'rgba(217, 119, 6, 0.15)');
+                            gradient.addColorStop(0.75, 'rgba(217, 119, 6, 0.15)');
+                            gradient.addColorStop(0.7501, 'rgba(219, 39, 119, 0.15)');
+                            gradient.addColorStop(1, 'rgba(219, 39, 119, 0.15)');
+                            return gradient;
+                        } catch (err) {
+                            return 'rgba(148, 163, 184, 0.15)';
+                        }
+                    },
+                    borderWidth: 3,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: pointColors,
+                    pointRadius: pointRadii,
+                    pointHoverRadius: pointHoverRadii
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: {
+                            display: true,
+                            color: gridColor
+                        },
+                        grid: {
+                            color: gridColor
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 4,
+                        ticks: {
+                            stepSize: 1,
+                            font: { family: "'Inter', sans-serif", weight: '500' }
+                        },
+                        pointLabels: {
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 10,
+                                weight: '700'
+                            },
+                            color: pointColors
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        padding: 12,
+                        backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                        titleFont: { family: "'Inter', sans-serif", weight: '700' },
+                        bodyFont: { family: "'Inter', sans-serif" },
+                        filter: function (context) {
+                            return context.raw > 0;
+                        },
+                        callbacks: {
+                            title: function (context) {
+                                if (!context || !context[0] || context[0].dataIndex === undefined) return '';
+                                const index = context[0].dataIndex;
+                                return latestDimensions[index] ? latestDimensions[index].name : '';
+                            },
+                            label: function (context) {
+                                if (!context || context.raw === undefined) return '';
+                                const valStr = context.raw.toFixed(1).replace('.', ',');
+                                return `Gravidade Média: ${valStr}`;
+                            },
+                            labelColor: function (context) {
+                                const index = context.dataIndex;
+                                const color = latestDimensions[index] ? getCategoryColor(latestDimensions[index].key) : '#3b82f6';
+                                return {
+                                    borderColor: color,
+                                    backgroundColor: color,
+                                    borderWidth: 1
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 });
