@@ -1,6 +1,6 @@
-# Database Schema Plan & Implementation Guide
+# Database Architecture
 
-This document outlines a robust, future-proof database schema for **Symptoms Analyser**. Building on the **Hybrid Document Store** approach, we combine schema-flexible JSON columns with a fully normalized relational structure. This enables fast clinical queries, transcript rendering, execution logging, and premium UI interactions (like hover-activated floating cards mapped to specific transcript speech turns).
+This document outlines the database schema for **Symptoms Analyser**. Building on the **Hybrid Document Store** approach, we combine schema-flexible JSON columns with a fully normalized relational structure. This enables fast clinical queries, transcript rendering, execution logging, and premium UI interactions (like hover-activated floating cards mapped to specific transcript speech turns).
 
 ---
 
@@ -358,9 +358,9 @@ CREATE INDEX IF NOT EXISTS idx_syntheses_session ON session_syntheses (therapy_s
 
 ---
 
-## 3. Addressing Your Specific Objectives
+## 3. Key Architectural Features & Design Decisions
 
-### Goal 1: Query Patient Evolution Over Time
+### 3.1. Query Patient Evolution Over Time
 Having indices on `patient_id` and `dimension_code` on the normalized tables lets the application serve instant evolution trends. 
 
 **SQL Query to render an evolution chart for "Tristeza / Depressão" (Dimension 19) for "Paciente1":**
@@ -379,23 +379,17 @@ ORDER BY e.created_at ASC;
 
 ---
 
-### Goal 2: Store Session Metadata and Analysis Results
+### 3.2. Store Session Metadata and Analysis Results
 Our structure retains the full flexibility of the JSON schema via `evaluation_telemetry.raw_payload` while extracting common properties:
 - Fast API queries scan structural columns across both clinical metadata (`evaluation_type`, `session_name`, `created_at` on `tdpm_evaluations`) and technical telemetry (`model`, `prompt_tokens`, `completion_tokens`, `total_elapsed_seconds` on `evaluation_telemetry`).
 - Complete data-rich views serve the structured JSON stored in `raw_payload` inside `evaluation_telemetry`.
 
----
-
-### Goal 3: Store Existing Preprocessing & Analysis Logs
-During our migration phase, a Python script will parse:
-1. `output/preprocess/preprocess.log.json` ➔ inserts into `sanitization_telemetry`.
-2. `output/tdpm_analysis/tdpm_analysis.log.json` ➔ inserts clinical metadata into `tdpm_evaluations` and execution performance metrics into `evaluation_telemetry`.
-
-All subsequent runs of `preprocess.py` and `tdpm_analysis.py` will record execution metrics directly into `sanitization_telemetry`, `tdpm_evaluations`, and `evaluation_telemetry` automatically.
+### 3.3. Store Preprocessing, Analysis, & Synthesis Logs
+The pipeline scripts (`preprocess.py`, `tdpm_analysis.py`, and `synthesis.py`) record execution and LLM telemetry metrics (such as model, token counts, and execution duration) directly into `sanitization_telemetry`, `evaluation_telemetry`, and `session_syntheses` automatically.
 
 ---
 
-### Goal 4: Show Complete Transcript with Floating Evidence Cards
+### 3.4. Show Complete Transcript with Floating Evidence Cards
 
 #### How We Link Evidence to Transcript Turns
 During ingestion or execution, when we parse the results JSON, we extract evidence snippets like `"00:03:18 me veio assim umas uma emoção..."`:
@@ -434,12 +428,12 @@ When loading the UI:
 
 ---
 
-### Goal 5: Store and Visualize Sanitization (Preprocessing) Results
+### 3.5. Store and Visualize Sanitization (Preprocessing) Results
 
 By storing sanitization quality details in the `sanitization_telemetry` execution log and keeping the core `transcripts` table lean, we achieve a clean division of responsibilities:
 
 #### 1. Ingesting Sanitization Logs
-When parsing `preprocess.log.json`, the migration script writes:
+During the preprocessing step, the system writes:
 - The aggregate sanitization telemetry (e.g., number of turns merged, filler words, corrections) directly into the columns of the `sanitization_telemetry` table for that specific run attempt.
 - The raw text (`raw_text`) and the resulting sanitized text (`sanitized_text`) into `transcripts`.
 
@@ -454,15 +448,15 @@ Skipping the sanitization step is fully supported by this design to save executi
 - **No Sanitization Entry:** If sanitization is bypassed, no record is added to `sanitization_telemetry`. The `transcripts.sanitized_text` column simply remains `NULL`.
 - **Graceful UI Degradation:** The UI parser dynamically detects if `sanitized_text` is present. If it is null, it gracefully hides the "Sanitization Analytics Panel" and the "Side-by-Side Diff Toggle", displaying the clinical analysis card overlays directly on the raw transcript.
 
-### Goal 6: Self-Contained Source of Truth (Decoupling the Filesystem)
+### 3.6. Self-Contained Source of Truth (Decoupling the Filesystem)
 
-Adding the root `transcripts` table completely solves the core challenge of transitioning to modern Dockerized node/cloud stacks:
+Adding the root `transcripts` table completely solves the challenge of running in Dockerized container environments or cloud stacks:
 
 - **Filesystem Isolation:** Once the clinician uploads a raw file (Word Doc or raw `.txt`), the backend extracts and writes its entire contents into `transcripts.raw_text`. From this moment, **the physical file is no longer needed.**
-- **Perfect Portability:** During migration or synchronization, transferring the SQLite file (or running the Postgres transition script) copies every raw transcript to the cloud. You do not need to worry about synchronizing massive nested local folders (`input/preprocess`, `output/preprocess`, etc.).
+- **Perfect Portability:** Storing the SQLite file (or database backups) completely preserves all data, removing the need to synchronize nested local folders on the filesystem (`input/preprocess`, `output/preprocess`, etc.).
 - **Clinical Audits:** You can always reconstruct or verify the original text that led to a specific dimension score, ensuring the system satisfies strict medical software audit standards.
 
-### Goal 7: Full Clinical Revision History (Human Overrides & Audits)
+### 3.7. Full Clinical Revision History (Human Overrides & Audits)
 
 By introducing the self-referencing foreign key **`parent_evaluation_id`** in the `tdpm_evaluations` table, we solve a critical clinical workflow challenge: **enabling clinicians to review, override, and revise automated AI assessments while maintaining a complete, legally compliant audit trail.**
 
@@ -487,7 +481,7 @@ When a clinician reviews an AI-generated evaluation:
     ```
 *   **Historical Version Control:** Since `parent_evaluation_id` is a self-referencing foreign key, you can chain multiple revisions together (`AI` ➔ `Resident Revision` ➔ `Senior Attending Revision`), forming a complete clinical genealogy tree.
 
-### Goal 8: Async Batch & Job Processing (State-Machine Architecture)
+### 3.8. Async Batch & Job Processing (State-Machine Architecture)
 
 In healthcare systems, processing long clinical audio transcripts through sanitization and LLM scoring is a time-consuming and resource-intensive workflow (often taking several minutes per file). To provide a responsive, lag-free user experience, **our database implements an asynchronous state-machine architecture directly on the `transcripts` table.**
 
@@ -508,7 +502,7 @@ The progress of a transcript through the AI pipeline is tracked by the `status` 
 *   **Decoupled Work Queueing**: Relational state columns allow you to use a simple polling background worker or scale up to high-performance task queues without changing the database layout.
 *   **Graceful Recovery**: If the server crashes mid-analysis, a startup diagnostic task scans the database for `preprocessing` or `analyzing` rows and automatically restarts them, maintaining system reliability.
 
-### Goal 9: HIPAA-Ready PHI Separation & Pseudonym Mapping
+### 3.9. HIPAA-Ready PHI Separation & Pseudonym Mapping
 
 In medical software architectures, protecting patient privacy is a legal and ethical imperative (governed by standards like HIPAA in the US and LGPD in Brazil). By completely separating Protected Health Information (PHI) from the clinical analytics pipeline, **our database achieves HIPAA-ready isolation.**
 
@@ -545,7 +539,7 @@ To ensure the local anonymization engine (Phase 1) has an accurate, secure dicti
 
 ---
 
-### Goal 10: Qualitative Whole-Session Syntheses & Group Interaction Analysis
+### 3.10. Qualitative Whole-Session Syntheses & Group Interaction Analysis
 
 To complement the item-level quantitative TDPM scoring system, the database architecture supports qualitative clinical synthesis at the whole-session level.
 
@@ -556,17 +550,3 @@ Unlike individual evaluations, group therapy relies heavily on interaction track
 
 #### 2. Technical Metadata & Performance Auditing
 To maintain performance records and monitor costs, the `session_syntheses` table stores LLM execution metadata (including model version, token counts, and processing time) for every generated synthesis. By using `transcript_id` as the primary key with a cascading foreign key to `transcripts`, each transcript maintains exactly one active clinical synthesis draft, preventing orphaned logs and ensuring data integrity.
-
----
-
-## 4. Next Steps & Action Plan
-
-1. **Verify Plan**: Review this database plan and confirm if the proposed tables, columns, and relations cover your expectations.
-2. **Database Initialization & Seed Script**: Write a Python migration script `migrate_to_db.py` to:
-   - Create all tables inside `data/analysis.db`.
-   - Ingest all historic raw transcript files into the new `transcripts` table.
-   - Ingest all historic `.tdpm.json` analysis files into `tdpm_evaluations` and `evaluation_telemetry`, linking them to their transcripts.
-   - Parse and populate patient records, clinical scores, and evidence links (with exact mapping logic).
-   - Ingest `preprocess.log.json` and `tdpm_analysis.log.json` telemetry.
-3. **Integrate Pipeline scripts**: Update `preprocess.py` and `tdpm_analysis.py` to write straight into SQLite database log and telemetry tables.
-4. **Refactor Backend API**: Update the server routes to serve the structured transcript, evolution endpoints, and interactive cards endpoints.
