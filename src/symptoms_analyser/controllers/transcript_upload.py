@@ -15,10 +15,9 @@ from werkzeug.utils import secure_filename
 
 from symptoms_analyser.utils import DB_PATH
 import symptoms_analyser.db as orm
-from symptoms_analyser.pipeline.preprocessing import extract_text_and_create_transcript, anonymize_transcript
+from symptoms_analyser.pipeline.preprocessing import extract_text, anonymize_text, create_transcript
 from symptoms_analyser.pipeline.sanitization import sanitize_text_with_llm
-from symptoms_analyser.pipeline.tdpm_evaluation import evaluate_symptoms_with_tdpm
-from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
+from symptoms_analyser.pipeline.llm_analysis import evaluate_symptoms_with_tdpm, generate_clinical_synthesis
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 UPLOAD_FOLDER = PROJECT_ROOT / "input/uploads"
@@ -56,19 +55,25 @@ def process_transcript_pipeline(
         db_conn.execute("PRAGMA foreign_keys=ON")
         db_conn.row_factory = sqlite3.Row
 
-        # STEP 3a: Text Extraction
-        add_log("(1/4) Executando pré-processamento")
-        transcript_id = extract_text_and_create_transcript(
-            filepath=filepath,
-            therapy_session_id=therapy_session_id,
-            extract_metadata_from_transcript=extract_metadata,
+        # STEP 3a: Text extraction
+        add_log("(1/4) Extraindo texto da transcrição")
+        metadata, raw_text = extract_text(filepath)
+
+        # STEP 3b: Local anonymization + name->pseudonym mappings
+        add_log("(2/4) Executando anonimização local")
+        anonymized_text, mappings = anonymize_text(
+            raw_text=raw_text,
             db_conn=db_conn
         )
 
-        # STEP 3b: Local Anonymization & Patients creation
-        add_log("(2/4) Executando anonimização local")
-        mappings = anonymize_transcript(
-            transcript_id=transcript_id,
+        # STEP 3c: Create transcript record
+        transcript_id = create_transcript(
+            filepath=filepath,
+            therapy_session_id=therapy_session_id,
+            raw_text=raw_text,
+            anonymized_text=anonymized_text,
+            metadata=metadata,
+            extract_metadata=extract_metadata,
             db_conn=db_conn
         )
 

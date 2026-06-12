@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import required tools
 from symptoms_analyser.utils import DB_PATH
-from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
+from symptoms_analyser.pipeline.llm_analysis import generate_clinical_synthesis
 
 def backfill():
     print(f"[*] Conectando ao banco de dados SQLite: {DB_PATH.resolve()}")

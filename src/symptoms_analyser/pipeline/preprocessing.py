@@ -126,38 +126,43 @@ def parse_estimated_start_time(metadata: Dict[str, str], session_name: str) -> s
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def extract_text_and_create_transcript(
-    filepath: Path,
-    therapy_session_id: int,
-    extract_metadata_from_transcript: bool = False,
-    db_conn: Optional[sqlite3.Connection] = None
-) -> int:
+def extract_text(filepath: Path) -> Tuple[Dict[str, str], str]:
     """
-    Step 3a: Extract text from physical docx/txt files and create initial transcript record in DB.
-    Optionally extracts metadata (duration, name, date) from text and updates the therapy session.
+    Extract text and metadata from physical docx/txt files.
     """
-    # 1. Text extraction
     metadata = {}
     if filepath.suffix.lower() == ".docx":
         metadata, raw_text = extract_text_from_docx(filepath)
     else:
         raw_text = filepath.read_text(encoding="utf-8")
+    return metadata, raw_text
 
-    # TODO: scan the text to avoid SQL injections
-    
-    # 2. Create transcript record in database
+
+def create_transcript(
+    filepath: Path,
+    therapy_session_id: int,
+    raw_text: str,
+    anonymized_text: str,
+    metadata: Dict[str, str],
+    extract_metadata: bool = False,
+    db_conn: Optional[sqlite3.Connection] = None
+) -> int:
+    """
+    Create initial transcript record in DB and optionally extract metadata 
+    (duration, name, date) from text and update the therapy session.
+    """
     file_size_bytes = filepath.stat().st_size
     transcript_id = orm.create_transcript(
         therapy_session_id=therapy_session_id,
         filename=filepath.name,
         file_type=filepath.suffix.lstrip("."),
         raw_text=raw_text,
+        sanitized_text=anonymized_text,
         file_size_bytes=file_size_bytes,
         db_conn=db_conn
     )
 
-    # 3. Handle optional metadata extraction
-    if extract_metadata_from_transcript:
+    if extract_metadata:
         duration = estimate_duration_from_text(raw_text)
         session_name_raw = filepath.stem
         start_at = parse_estimated_start_time(metadata, session_name_raw)
@@ -180,34 +185,31 @@ def extract_text_and_create_transcript(
     return transcript_id
 
 
-def anonymize_transcript(
-    transcript_id: int,
+def anonymize_text(
+    raw_text: str,
     db_conn: Optional[sqlite3.Connection] = None
-) -> List[Tuple[str, str]]:
+) -> Tuple[str, List[Tuple[str, str]]]:
     """
     Step 3b: Anonymization & patient creation mapping.
     Identifies real names in raw transcript and replaces them with pseudonyms.
     Reuses existing pseudonyms if patients are already registered in the DB.
     
     Returns:
-        List of tuples: [(real_name, pseudonym)]
+        Tuple: (anonymized_text, List of tuples [(real_name, pseudonym)])
     """
     if db_conn:
-        return _anonymize_with_conn(transcript_id, db_conn)
+        return _anonymize_with_conn(raw_text, db_conn)
     else:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
-            return _anonymize_with_conn(transcript_id, conn)
+            return _anonymize_with_conn(raw_text, conn)
 
 
-def _anonymize_with_conn(transcript_id: int, conn: sqlite3.Connection) -> List[Tuple[str, str]]:
+def _anonymize_with_conn(raw_text: str, conn: sqlite3.Connection) -> Tuple[str, List[Tuple[str, str]]]:
+    if not raw_text:
+        raise ValueError("Raw text is empty or None.")
+
     cursor = conn.cursor()
-    cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
-    row = cursor.fetchone()
-    if not row or not row["raw_text"]:
-        raise ValueError(f"Transcript ID {transcript_id} has no raw_text to anonymize.")
-
-    raw_text = row["raw_text"]
 
     # 1. Fetch all pseudonyms currently registered in the database to prevent collisions
     cursor.execute("SELECT pseudonym FROM patients")
@@ -322,11 +324,4 @@ def _anonymize_with_conn(transcript_id: int, conn: sqlite3.Connection) -> List[T
             flags=re.IGNORECASE
         )
     
-    # 2. Update sanitized_text column with the initial locally anonymized text
-    orm.update_transcript(
-        transcript_id=transcript_id,
-        sanitized_text=anonymized_text,
-        db_conn=conn
-    )
-
-    return mappings
+    return anonymized_text, mappings

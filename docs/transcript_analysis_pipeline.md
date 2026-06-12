@@ -42,25 +42,30 @@ sequenceDiagram
 
         Note over TU_Ctrl, Prep: Background Thread Spawned
         
-        TU_Ctrl->>Prep: extract_text_and_create_transcript(file, session_id)
+        TU_Ctrl->>Prep: extract_text(file)
         activate Prep
-        Prep->>ORM: create_transcript(session_id, filename, file_type, raw_text)
+        Prep-->>TU_Ctrl: metadata, raw_text
+        deactivate Prep
+
+        TU_Ctrl->>Prep: anonymize_text(raw_text)
+        activate Prep
+        Prep-->>TU_Ctrl: anonymized_text, mappings
+        deactivate Prep
+
+        TU_Ctrl->>Prep: create_transcript(file, session_id, raw_text, anonymized_text, metadata)
+        activate Prep
+        Prep->>ORM: create_transcript(session_id, filename, file_type, raw_text, anonymized_text)
         ORM->>DB: INSERT INTO transcripts (status='preprocessing')
         DB-->>ORM: transcript_id
         
-        alt extract_metadata_from_transcript == True
-            Prep->>Prep: Parse date and duration from raw text
+        alt extract_metadata == True
+            Prep->>Prep: Estimate duration and parse start time
             Prep->>ORM: update_therapy_session(session_id, name, start_at, duration)
             ORM->>DB: UPDATE therapy_sessions
         end
-        
-        Prep->>Prep: anonymize_transcript(transcript_id)
-        Note over Prep: Phase 1: Local name replacement & anonymized_text update
-        Prep->>ORM: update_transcript(transcript_id, anonymized_text)
-        Prep->>ORM: find_or_create_patient() [for newly detected pseudonyms]
-        Prep-->>TU_Ctrl: transcript_id & anonymized_text
+        Prep-->>TU_Ctrl: transcript_id
         deactivate Prep
-
+ 
         alt apply_sanitization == True
             TU_Ctrl->>Sanit: sanitize_text_with_llm(transcript_id)
             activate Sanit
@@ -74,21 +79,26 @@ sequenceDiagram
             TU_Ctrl->>ORM: Copy anonymized/raw text to sanitized_text
         end
 
-        TU_Ctrl->>TDPM: evaluate_symptoms_with_tdpm(transcript_id)
-        activate TDPM
-        TDPM->>DB: Update transcript status to 'analyzing'
-        TDPM->>TDPM: Chunk sanitized transcript, send to LLM, aggregate
-        TDPM->>ORM: create_tdpm_evaluation(transcript_id, session_id, clinician)
+        TU_Ctrl->>LLM_Ana: evaluate_symptoms_with_tdpm(transcript_id)
+        activate LLM_Ana
+        LLM_Ana->>DB: Update transcript status to 'analyzing'
+        LLM_Ana->>LLM_Ana: Chunk sanitized transcript, send to LLM, aggregate
+        LLM_Ana->>ORM: create_tdpm_evaluation(transcript_id, session_id, clinician)
         ORM->>DB: INSERT INTO tdpm_evaluations
         DB-->>ORM: evaluation_id
         
-        TDPM->>ORM: create_evaluation_telemetry(evaluation_id, metrics)
+        LLM_Ana->>ORM: create_evaluation_telemetry(evaluation_id, metrics)
         loop For each score
-            TDPM->>ORM: create_patient_item_score(evaluation_id, score_details)
+            LLM_Ana->>ORM: create_patient_item_score(evaluation_id, score_details)
         end
         
-        TDPM->>ORM: update_transcript(transcript_id, status='completed')
-        deactivate TDPM
+        LLM_Ana->>ORM: update_transcript(transcript_id, status='completed')
+        deactivate LLM_Ana
+
+        TU_Ctrl->>LLM_Ana: generate_clinical_synthesis(transcript_id)
+        activate LLM_Ana
+        LLM_Ana->>ORM: create_session_synthesis(transcript_id, group_progress_note, interactions_mapping)
+        deactivate LLM_Ana
         deactivate TU_Ctrl
     else No Transcript file
         TS_Ctrl-->>UI: Response with session_id (Direct redirect to dashboard)

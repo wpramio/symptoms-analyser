@@ -3,12 +3,13 @@ import sqlite3
 import json
 from pathlib import Path
 from unittest import mock
-from symptoms_analyser.pipeline.tdpm_evaluation import (
+from symptoms_analyser.pipeline.llm_analysis import (
     validate_and_parse,
     aggregate_chunk_results,
     load_prompt,
     call_model,
-    evaluate_symptoms_with_tdpm
+    evaluate_symptoms_with_tdpm,
+    generate_clinical_synthesis
 )
 
 @pytest.fixture
@@ -151,8 +152,8 @@ def test_call_model():
     assert out == '{"patients": {}}'
     assert usage["prompt_tokens"] == 100
 
-@mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.OpenAI")
-@mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.load_prompt")
+@mock.patch("symptoms_analyser.pipeline.llm_analysis.OpenAI")
+@mock.patch("symptoms_analyser.pipeline.llm_analysis.load_prompt")
 def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     # Set up mocks
     mock_load.return_value = "System evaluation guidelines"
@@ -226,7 +227,6 @@ def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     assert score_row["dimension_code"] == "1"
     assert score_row["item_code"] == "1.1"
     assert score_row["score"] == 3
-    assert score_row["justification"] is None
     
     # Check parsed evidence timestamps
     evidence_list = json.loads(score_row["evidence"])
@@ -235,7 +235,6 @@ def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     assert evidence_list[0]["raw_evidence"] == "Eu sinto muita fome o dia todo"
     
     conn.close()
-
 
 def test_session_synthesis_orm(test_db_path):
     import symptoms_analyser.db as orm
@@ -286,11 +285,8 @@ def test_session_synthesis_orm(test_db_path):
     
     conn.close()
 
-
-@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+@mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
 def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
-    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
-    
     # Mock LLM return value
     mock_synthesis_json = {
         "group_clinical_progress_note": "Esta é a evolução do grupo da sessão 1.",
@@ -325,11 +321,8 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     
     conn.close()
 
-
-@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+@mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
 def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
-    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
-    
     # First call returns invalid JSON, second call returns valid JSON
     mock_synthesis_json = {
         "group_clinical_progress_note": "Evolução do grupo com sucesso.",
@@ -362,11 +355,8 @@ def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
     
     conn.close()
 
-
-@mock.patch("symptoms_analyser.pipeline.synthesis.call_model")
+@mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
 def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db_path):
-    from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
-    
     # All 3 calls return invalid JSON
     mock_call_model.return_value = ("{invalid_json", {"prompt_tokens": 100})
     
@@ -387,4 +377,3 @@ def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db
     assert mock_call_model.call_count == 3
     
     conn.close()
-

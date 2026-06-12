@@ -1,11 +1,9 @@
 """
-pipeline/tdpm_evaluation.py
+pipeline/llm_analysis.py
 -------------------------
-STEP 5 of the symptoms-analyser pipeline:
-  - Splitting sanitized text into chunks
-  - Scoring symptoms via LLM completions in JSON format
-  - Aggregating multi-chunk evaluations
-  - Writing evaluations, telemetry, and patient scores to SQLite
+STEP 5 & 6 of the symptoms-analyser pipeline:
+  - evaluate_symptoms_with_tdpm: Splitting sanitized text into chunks, scoring symptoms via LLM completions, and writing patient scores to DB.
+  - generate_clinical_synthesis: Generates qualitative clinical synthesis of the session and saves to session_syntheses.
 """
 
 from datetime import datetime, timezone
@@ -28,7 +26,8 @@ from symptoms_analyser.utils import (
 import symptoms_analyser.db as orm
 
 
-PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "tdpm_evaluation.md"
+TDPM_PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "tdpm_evaluation.md"
+SYNTHESIS_PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "clinical_synthesis.md"
 ONTOLOGY_FILE = Path(__file__).resolve().parents[3] / "data" / "tdpm_ontology.json"
 MAX_RETRIES = 5
 
@@ -46,20 +45,29 @@ def load_prompt(prompt_file: Path) -> str:
     return prompt_file.read_text(encoding="utf-8")
 
 
-def call_model(client: OpenAI, system_prompt: str, user_text: str) -> Tuple[str, Dict[str, Any]]:
-    """Submit clinical scoring prompts to the LLM with rate limit retries."""
+def call_model(
+    client: OpenAI,
+    system_prompt: str,
+    user_text: str,
+    max_completion_tokens: Optional[int] = None
+) -> Tuple[str, Dict[str, Any]]:
+    """Submit prompts to the LLM with rate limit retries."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_text},
     ]
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            kwargs = {}
+            if max_completion_tokens is not None:
+                kwargs["max_completion_tokens"] = max_completion_tokens
+
             resp = client.chat.completions.create(
                 model=MODEL,
                 messages=messages,
                 temperature=0,
-                max_completion_tokens=20000,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                **kwargs
             )
             usage = resp.usage.model_dump() if resp.usage else {}
             return resp.choices[0].message.content.strip(), usage
@@ -197,7 +205,7 @@ def evaluate_symptoms_with_tdpm(
     base_chunks = split_into_chunks(text)
     chunks = merge_chunks(base_chunks, blocks_per_call)
 
-    system_prompt = load_prompt(PROMPT_FILE)
+    system_prompt = load_prompt(TDPM_PROMPT_FILE)
     client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
     print(f"  [2/2] Analysing with LLM ({MODEL}), chunk by chunk...")
@@ -214,7 +222,7 @@ def evaluate_symptoms_with_tdpm(
 
         label = f"Chunk {idx_str} [{chunk['timestamp']}]"
         with Spinner(label + "..."):
-            raw_out, usage = call_model(client, system_prompt, user_text)
+            raw_out, usage = call_model(client, system_prompt, user_text, max_completion_tokens=20000)
 
         try:
             parsed = validate_and_parse(raw_out)
@@ -222,7 +230,7 @@ def evaluate_symptoms_with_tdpm(
             logging.warning(f"First parse failed for chunk {i}, retrying: {e}")
             retry_user = ("Return only valid JSON matching the schema: \n" + system_prompt + "\n\n" + user_text)
             with Spinner(label + " (retry)..."):
-                raw_out, usage = call_model(client, system_prompt, retry_user)
+                raw_out, usage = call_model(client, system_prompt, retry_user, max_completion_tokens=20000)
             parsed = validate_and_parse(raw_out)
 
         for key in total_usage:
@@ -331,3 +339,103 @@ def evaluate_symptoms_with_tdpm(
 
     print(f"  DB Scoring Telemetry → sqlite.db (Evaluation ID: {eval_id})")
     return eval_id
+
+
+def generate_clinical_synthesis(
+    transcript_id: int,
+    db_conn: sqlite3.Connection
+) -> None:
+    """
+    Retrieve sanitized text of the transcript and its participating patients list,
+    query the LLM for qualitative session synthesis, and store the result in the 'session_syntheses' table.
+    """
+    # 1. Fetch transcript information
+    cursor = db_conn.cursor()
+    cursor.execute("""
+        SELECT sanitized_text, therapy_session_id 
+        FROM transcripts 
+        WHERE id = ?
+    """, (transcript_id,))
+    row = cursor.fetchone()
+    if not row:
+        raise ValueError(f"Transcript ID {transcript_id} not found in the database.")
+    
+    sanitized_text = row["sanitized_text"]
+    therapy_session_id = row["therapy_session_id"]
+    
+    if not sanitized_text:
+        # Fallback to raw text if sanitized_text is empty or not populated
+        cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
+        fallback_row = cursor.fetchone()
+        sanitized_text = fallback_row["raw_text"] if fallback_row else ""
+        
+    if not sanitized_text.strip():
+        # Nothing to analyze
+        return
+
+    # 2. Fetch participating patient pseudonyms
+    cursor.execute("""
+        SELECT p.pseudonym 
+        FROM patients p
+        JOIN therapy_session_patients tsp ON p.id = tsp.patient_id
+        WHERE tsp.therapy_session_id = ?
+    """, (therapy_session_id,))
+    patients = [r["pseudonym"] for r in cursor.fetchall()]
+    patients_list_str = ", ".join(patients) if patients else "Nenhum paciente identificado"
+
+    # 3. Formulate the LLM prompt context
+    system_prompt = load_prompt(SYNTHESIS_PROMPT_FILE)
+    
+    user_text = f"""
+Sessão de Terapia em Grupo:
+ID da Sessão: {therapy_session_id}
+Pacientes Participantes (Pseudônimos): {patients_list_str}
+
+Transcrição da Sessão:
+---
+{sanitized_text}
+---
+"""
+
+    # 4. Invoke LLM API
+    client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+    
+    max_json_retries = 3
+    synthesis_data = None
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
+    run_start = time.time()
+    
+    for parse_attempt in range(1, max_json_retries + 1):
+        response_content, usage = call_model(client, system_prompt, user_text)
+        if usage:
+            total_prompt_tokens += usage.get("prompt_tokens", 0)
+            total_completion_tokens += usage.get("completion_tokens", 0)
+        try:
+            synthesis_data = json.loads(response_content)
+            break
+        except json.JSONDecodeError as e:
+            if parse_attempt == max_json_retries:
+                raise ValueError(f"Failed to parse LLM response as JSON after {max_json_retries} attempts: {e}. Raw response: {response_content}")
+            print(f"\n  ⚠ Failed to parse LLM response as JSON (attempt {parse_attempt}/{max_json_retries}). Retrying...", flush=True)
+            time.sleep(2)
+        
+    processing_time = time.time() - run_start
+    group_note = synthesis_data.get("group_clinical_progress_note")
+    
+    # Safely serialize interactions network mapping placeholder
+    interactions = synthesis_data.get("interactions_mapping")
+    interactions_str = json.dumps(interactions, ensure_ascii=False) if interactions else None
+    
+    # Persist in DB using ORM
+    orm.create_session_synthesis(
+        transcript_id=transcript_id,
+        therapy_session_id=therapy_session_id,
+        group_progress_note=group_note,
+        interactions_mapping=interactions_str,
+        model=MODEL,
+        prompt_tokens=total_prompt_tokens,
+        completion_tokens=total_completion_tokens,
+        processing_time=round(processing_time, 2),
+        db_conn=db_conn
+    )

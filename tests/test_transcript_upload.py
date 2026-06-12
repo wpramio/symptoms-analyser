@@ -44,17 +44,19 @@ def test_allowed_file():
     assert allowed_file("test.docx") is True
     assert allowed_file("test.pdf") is False
 
-@mock.patch("symptoms_analyser.controllers.transcript_upload.extract_text_and_create_transcript")
-@mock.patch("symptoms_analyser.controllers.transcript_upload.anonymize_transcript")
+@mock.patch("symptoms_analyser.controllers.transcript_upload.extract_text")
+@mock.patch("symptoms_analyser.controllers.transcript_upload.anonymize_text")
+@mock.patch("symptoms_analyser.controllers.transcript_upload.create_transcript")
 @mock.patch("symptoms_analyser.controllers.transcript_upload.sanitize_text_with_llm")
 @mock.patch("symptoms_analyser.controllers.transcript_upload.evaluate_symptoms_with_tdpm")
 @mock.patch("symptoms_analyser.controllers.transcript_upload.generate_clinical_synthesis")
 def test_process_transcript_pipeline_success(
-    mock_synthesis, mock_tdpm, mock_sanitize, mock_anon, mock_extract, test_db_path
+    mock_synthesis, mock_tdpm, mock_sanitize, mock_create, mock_anon, mock_extract, test_db_path
 ):
     # Set up mocks
-    mock_extract.return_value = 1
-    mock_anon.return_value = [("Real Patient", "Paciente1")]
+    mock_extract.return_value = ({}, "Raw text")
+    mock_anon.return_value = ("Anonymized text", [("Real Patient", "Paciente1")])
+    mock_create.return_value = 1
     
     # Initialize task info
     task_id = "test-task-123"
@@ -90,7 +92,7 @@ def test_process_transcript_pipeline_success(
     assert join_row is not None
     conn.close()
 
-@mock.patch("symptoms_analyser.controllers.transcript_upload.extract_text_and_create_transcript")
+@mock.patch("symptoms_analyser.controllers.transcript_upload.extract_text")
 def test_process_transcript_pipeline_failure(mock_extract, test_db_path):
     mock_extract.side_effect = RuntimeError("Something went wrong with reading the file.")
     

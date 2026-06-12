@@ -8,8 +8,9 @@ from symptoms_analyser.pipeline.preprocessing import (
     estimate_duration_from_text,
     parse_estimated_start_time,
     extract_text_from_docx,
-    extract_text_and_create_transcript,
-    anonymize_transcript
+    extract_text,
+    anonymize_text,
+    create_transcript
 )
 
 @pytest.fixture
@@ -99,17 +100,29 @@ def test_extract_text_from_docx(mock_document):
     assert metadata["session_date"] == "16 de mar. de 2026"
     assert "\n00:01:23\nTerapeuta: Olá\nJust some text" in plain_text
 
-def test_extract_text_and_create_transcript_txt(tmp_path, test_db_path):
+def test_extract_text_txt(tmp_path):
+    txt_file = tmp_path / "test.txt"
+    txt_file.write_text("Hello text", encoding="utf-8")
+    metadata, text = extract_text(txt_file)
+    assert metadata == {}
+    assert text == "Hello text"
+
+def test_create_transcript_txt(tmp_path, test_db_path):
     txt_file = tmp_path / "session_2026_05_29.txt"
     txt_file.write_text("00:05:00\nPaciente1: Olá doutor.", encoding="utf-8")
     
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
-    transcript_id = extract_text_and_create_transcript(
+    metadata, raw_text = extract_text(txt_file)
+    
+    transcript_id = create_transcript(
         filepath=txt_file,
         therapy_session_id=1,
-        extract_metadata_from_transcript=True,
+        raw_text=raw_text,
+        anonymized_text="00:05:00\nPaciente1: Olá doutor.",
+        metadata=metadata,
+        extract_metadata=True,
         db_conn=conn
     )
     
@@ -118,6 +131,7 @@ def test_extract_text_and_create_transcript_txt(tmp_path, test_db_path):
     row = conn.execute("SELECT * FROM transcripts WHERE id = 1").fetchone()
     assert row["filename"] == "session_2026_05_29.txt"
     assert row["raw_text"] == "00:05:00\nPaciente1: Olá doutor."
+    assert row["sanitized_text"] == "00:05:00\nPaciente1: Olá doutor."
     
     session_row = conn.execute("SELECT * FROM therapy_sessions WHERE id = 1").fetchone()
     assert session_row["name"] == "Sessão 29/05/2026"
@@ -126,7 +140,7 @@ def test_extract_text_and_create_transcript_txt(tmp_path, test_db_path):
     conn.close()
 
 @mock.patch("symptoms_analyser.pipeline.preprocessing.extract_text_from_docx")
-def test_extract_text_and_create_transcript_docx(mock_extract, tmp_path, test_db_path):
+def test_create_transcript_docx(mock_extract, tmp_path, test_db_path):
     mock_extract.return_value = ({"session_date": "16 de mar. de 2026"}, "Sanitized content")
     docx_file = tmp_path / "dummy.docx"
     docx_file.write_text("content", encoding="utf-8")  # make it exist
@@ -134,51 +148,33 @@ def test_extract_text_and_create_transcript_docx(mock_extract, tmp_path, test_db
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
-    transcript_id = extract_text_and_create_transcript(
+    metadata, raw_text = extract_text(docx_file)
+    
+    transcript_id = create_transcript(
         filepath=docx_file,
         therapy_session_id=1,
-        extract_metadata_from_transcript=False,
+        raw_text=raw_text,
+        anonymized_text="Anonymized content",
+        metadata=metadata,
+        extract_metadata=False,
         db_conn=conn
     )
     
     assert transcript_id == 1
     row = conn.execute("SELECT * FROM transcripts WHERE id = 1").fetchone()
     assert row["raw_text"] == "Sanitized content"
+    assert row["sanitized_text"] == "Anonymized content"
     conn.close()
 
-def test_anonymize_transcript(test_db_path):
+def test_anonymize_text_empty(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
-    # Pre-seed transcript
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', 'Texto com Paciente e Terapeuta', 'queued')
-    """)
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
-    assert len(mappings) == 0
-    
-    row = conn.execute("SELECT * FROM transcripts WHERE id = 1").fetchone()
-    assert row["sanitized_text"] == "Texto com Paciente e Terapeuta"
+    with pytest.raises(ValueError, match="Raw text is empty or None"):
+        anonymize_text("", db_conn=conn)
     conn.close()
 
-def test_anonymize_transcript_no_text(test_db_path):
-    conn = sqlite3.connect(test_db_path)
-    conn.row_factory = sqlite3.Row
-    
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', '', 'queued')
-    """)
-    conn.commit()
-    
-    with pytest.raises(ValueError, match="has no raw_text to anonymize"):
-        anonymize_transcript(1, db_conn=conn)
-    conn.close()
-
-def test_anonymize_transcript_extract_speakers(test_db_path):
+def test_anonymize_text_extract_speakers(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
@@ -190,13 +186,7 @@ def test_anonymize_transcript_extract_speakers(test_db_path):
         "Paciente2: Olá doutor\n"
     )
     
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
-    """, (raw_text,))
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
+    anon_text, mappings = anonymize_text(raw_text, db_conn=conn)
     assert len(mappings) == 3
     assert mappings == [
         ("Nome Real de Paciente1", "Paciente1"),
@@ -205,7 +195,7 @@ def test_anonymize_transcript_extract_speakers(test_db_path):
     ]
     conn.close()
 
-def test_anonymize_transcript_real_names(test_db_path):
+def test_anonymize_text_real_names(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
@@ -217,20 +207,13 @@ def test_anonymize_transcript_real_names(test_db_path):
         "João da Silva: Pois é.\n"
     )
     
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
-    """, (raw_text,))
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
+    anon_text, mappings = anonymize_text(raw_text, db_conn=conn)
     assert len(mappings) == 2
     assert mappings == [
         ("João da Silva", "Paciente1"),
         ("Maria de Souza", "Paciente2"),
     ]
     
-    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
     expected_text = (
         "00:00:00\n"
         "Paciente1: me deu uma vontade de chorar\n"
@@ -238,10 +221,10 @@ def test_anonymize_transcript_real_names(test_db_path):
         "Paciente2: Eu também fiquei triste.\n"
         "Paciente1: Pois é.\n"
     )
-    assert row["sanitized_text"] == expected_text
+    assert anon_text == expected_text
     conn.close()
 
-def test_anonymize_transcript_reuse_existing(test_db_path):
+def test_anonymize_text_reuse_existing(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
@@ -259,13 +242,7 @@ def test_anonymize_transcript_reuse_existing(test_db_path):
         "Carlos Santos: Pois é.\n"
     )
     
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
-    """, (raw_text,))
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
+    anon_text, mappings = anonymize_text(raw_text, db_conn=conn)
     
     # Maria de Souza is mapped to her existing Paciente5.
     # Carlos Santos gets Paciente1 (as it is sorted first alphabetically).
@@ -277,17 +254,16 @@ def test_anonymize_transcript_reuse_existing(test_db_path):
         ("João da Silva", "Paciente2"),
     ]
     
-    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
     expected_text = (
         "00:00:00\n"
         "Paciente2: me deu uma vontade de chorar\n"
         "Paciente5: Eu também fiquei triste.\n"
         "Paciente1: Pois é.\n"
     )
-    assert row["sanitized_text"] == expected_text
+    assert anon_text == expected_text
     conn.close()
 
-def test_anonymize_transcript_first_name_mapping(test_db_path):
+def test_anonymize_text_first_name_mapping(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
@@ -299,13 +275,7 @@ def test_anonymize_transcript_first_name_mapping(test_db_path):
         "João da Silva: Pois é.\n"
     )
     
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
-    """, (raw_text,))
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
+    anon_text, mappings = anonymize_text(raw_text, db_conn=conn)
     
     assert len(mappings) == 2
     assert mappings == [
@@ -313,7 +283,6 @@ def test_anonymize_transcript_first_name_mapping(test_db_path):
         ("Maria de Souza", "Paciente2"),
     ]
     
-    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
     expected_text = (
         "00:00:00\n"
         "Paciente1: me deu uma vontade de chorar\n"
@@ -321,10 +290,10 @@ def test_anonymize_transcript_first_name_mapping(test_db_path):
         "Paciente2: Eu também fiquei triste.\n"
         "Paciente1: Pois é.\n"
     )
-    assert row["sanitized_text"] == expected_text
+    assert anon_text == expected_text
     conn.close()
 
-def test_anonymize_transcript_ignore_footnotes(test_db_path):
+def test_anonymize_text_ignore_footnotes(test_db_path):
     conn = sqlite3.connect(test_db_path)
     conn.row_factory = sqlite3.Row
     
@@ -335,25 +304,18 @@ def test_anonymize_transcript_ignore_footnotes(test_db_path):
         "Esta transcrição editável foi gerada por computador e pode conter erros.\n"
     )
     
-    conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, status)
-        VALUES (1, 1, 'session.txt', 'txt', ?, 'queued')
-    """, (raw_text,))
-    conn.commit()
-    
-    mappings = anonymize_transcript(1, db_conn=conn)
+    anon_text, mappings = anonymize_text(raw_text, db_conn=conn)
     
     assert len(mappings) == 1
     assert mappings == [
         ("João da Silva", "Paciente1"),
     ]
     
-    row = conn.execute("SELECT sanitized_text FROM transcripts WHERE id = 1").fetchone()
     expected_text = (
         "00:00:00\n"
         "Paciente1: Olá\n"
         "A transcrição foi encerrada após 01:05:42\n"
         "Esta transcrição editável foi gerada por computador e pode conter erros.\n"
     )
-    assert row["sanitized_text"] == expected_text
+    assert anon_text == expected_text
     conn.close()
