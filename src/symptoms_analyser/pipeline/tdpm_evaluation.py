@@ -1,5 +1,5 @@
 """
-pipeline/tdpm_analysis.py
+pipeline/tdpm_evaluation.py
 -------------------------
 STEP 5 of the symptoms-analyser pipeline:
   - Splitting sanitized text into chunks
@@ -28,7 +28,7 @@ from symptoms_analyser.utils import (
 import symptoms_analyser.db as orm
 
 
-PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "tdpm_analysis.md"
+PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "tdpm_evaluation.md"
 ONTOLOGY_FILE = Path(__file__).resolve().parents[3] / "data" / "tdpm_ontology.json"
 MAX_RETRIES = 5
 
@@ -145,7 +145,7 @@ def aggregate_chunk_results(chunk_results: List[Dict[str, Any]]) -> Dict[str, An
     return {"patients": patient_summaries}
 
 
-def tdpm_analysis_with_llm(
+def evaluate_with_llm(
     transcript_id: int,
     blocks_per_call: int = 100,
     evaluator_id: str = "clinician_1",

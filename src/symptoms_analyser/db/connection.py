@@ -26,7 +26,7 @@ def get_db(timeout: float = 30.0):
     Closes the connection on exit, even if an exception is raised.
 
     Note: This factory is intended for short-lived, per-request connections
-    in app.py. The pipeline modules (preprocess.py, tdpm_analysis.py) manage
+    in app.py. The pipeline modules (preprocess.py, tdpm_evaluation.py) manage
     their own long-lived connections for WAL-mode progress tracking and should
     NOT use this factory.
 

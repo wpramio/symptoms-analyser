@@ -74,7 +74,7 @@ sequenceDiagram
             TU_Ctrl->>ORM: Copy anonymized/raw text to sanitized_text
         end
 
-        TU_Ctrl->>TDPM: tdpm_analysis_with_llm(transcript_id)
+        TU_Ctrl->>TDPM: evaluate_with_llm(transcript_id)
         activate TDPM
         TDPM->>DB: Update transcript status to 'analyzing'
         TDPM->>TDPM: Chunk sanitized transcript, send to LLM, aggregate

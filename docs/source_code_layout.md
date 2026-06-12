@@ -20,5 +20,5 @@ src/symptoms_analyser/
     ├── __init__.py
     ├── preprocessing.py         # STEP 3: Text extraction & anonymization engine
     ├── sanitization.py          # STEP 4: LLM-based dialogue sanitization
-    └── tdpm_analysis.py         # STEP 5: LLM clinical dimension scoring
+    └── tdpm_evaluation.py       # STEP 5: LLM clinical dimension scoring
 ```

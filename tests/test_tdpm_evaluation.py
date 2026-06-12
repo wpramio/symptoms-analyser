@@ -3,12 +3,12 @@ import sqlite3
 import json
 from pathlib import Path
 from unittest import mock
-from symptoms_analyser.pipeline.tdpm_analysis import (
+from symptoms_analyser.pipeline.tdpm_evaluation import (
     validate_and_parse,
     aggregate_chunk_results,
     load_prompt,
     call_model,
-    tdpm_analysis_with_llm
+    evaluate_with_llm
 )
 
 @pytest.fixture
@@ -151,9 +151,9 @@ def test_call_model():
     assert out == '{"patients": {}}'
     assert usage["prompt_tokens"] == 100
 
-@mock.patch("symptoms_analyser.pipeline.tdpm_analysis.OpenAI")
-@mock.patch("symptoms_analyser.pipeline.tdpm_analysis.load_prompt")
-def test_tdpm_analysis_with_llm(mock_load, mock_openai, test_db_path):
+@mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.OpenAI")
+@mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.load_prompt")
+def test_evaluate_with_llm(mock_load, mock_openai, test_db_path):
     # Set up mocks
     mock_load.return_value = "System evaluation guidelines"
     
@@ -197,7 +197,7 @@ def test_tdpm_analysis_with_llm(mock_load, mock_openai, test_db_path):
     """)
     conn.commit()
     
-    eval_id = tdpm_analysis_with_llm(1, blocks_per_call=100, evaluator_id="1", db_conn=conn)
+    eval_id = evaluate_with_llm(1, blocks_per_call=100, evaluator_id="1", db_conn=conn)
     
     assert eval_id == 1
     

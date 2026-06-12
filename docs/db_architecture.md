@@ -385,7 +385,7 @@ Our structure retains the full flexibility of the JSON schema via `evaluation_te
 - Complete data-rich views serve the structured JSON stored in `raw_payload` inside `evaluation_telemetry`.
 
 ### 3.3. Store Preprocessing, Analysis, & Synthesis Logs
-The pipeline scripts (`preprocess.py`, `tdpm_analysis.py`, and `synthesis.py`) record execution and LLM telemetry metrics (such as model, token counts, and execution duration) directly into `sanitization_telemetry`, `evaluation_telemetry`, and `session_syntheses` automatically.
+The pipeline scripts (`preprocess.py`, `tdpm_evaluation.py`, and `synthesis.py`) record execution and LLM telemetry metrics (such as model, token counts, and execution duration) directly into `sanitization_telemetry`, `evaluation_telemetry`, and `session_syntheses` automatically.
 
 ---
 
