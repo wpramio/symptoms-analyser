@@ -103,6 +103,17 @@ erDiagram
         string anonymization_flags
         datetime created_at
     }
+    session_syntheses {
+        int transcript_id PK, FK
+        int therapy_session_id FK
+        string group_progress_note
+        string interactions_mapping
+        string model
+        int prompt_tokens
+        int completion_tokens
+        real processing_time
+        datetime created_at
+    }
 
     users ||--o{ therapy_sessions : "hosts"
     therapy_sessions ||--o{ therapy_session_patients : "includes"
@@ -117,6 +128,8 @@ erDiagram
     tdpm_evaluations ||--o{ patient_item_scores : "contains"
     tdpm_evaluations ||--o{ tdpm_evaluations : "revised_from"
     tdpm_evaluations ||--o| evaluation_telemetry : "logs_execution"
+    transcripts ||--o| session_syntheses : "synthesizes"
+    therapy_sessions ||--o{ session_syntheses : "synthesizes"
 ```
 
 ---
@@ -321,6 +334,30 @@ CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization
 
 ---
 
+### 2.4. Qualitative Clinical Syntheses
+
+#### Session Syntheses Table
+Stores qualitative whole-session clinical summaries and client interactions networks generated from the sanitized transcripts.
+```sql
+CREATE TABLE IF NOT EXISTS session_syntheses (
+    transcript_id INTEGER PRIMARY KEY, -- FK to transcripts.id
+    therapy_session_id INTEGER NOT NULL, -- FK to therapy_sessions.id
+    group_progress_note TEXT,          -- Detailed clinical progress notes of the group
+    interactions_mapping TEXT,         -- JSON representing social interaction network mapping
+    model TEXT,                        -- LLM model utilized
+    prompt_tokens INTEGER,             -- LLM prompt token consumption
+    completion_tokens INTEGER,         -- LLM completion token consumption
+    processing_time REAL,              -- Total duration in seconds
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_syntheses_session ON session_syntheses (therapy_session_id);
+```
+
+---
+
 ## 3. Addressing Your Specific Objectives
 
 ### Goal 1: Query Patient Evolution Over Time
@@ -505,6 +542,20 @@ To ensure the local anonymization engine (Phase 1) has an accurate, secure dicti
     *   **When**: Occurs during Phase 1 local preprocessing if a name is identified in the raw transcript that has no matching entry in the `patients` registry (e.g. a new participant or a clinical guest).
     *   **How**: The preprocessor flags the unrecognized name and registers a provisional, draft patient row with a newly allocated pseudonym (e.g., `"Paciente5"`).
     *   **Addressing Imperfect Raw Labels (Human-in-the-Loop)**: Because raw automated transcriptions are prone to spelling errors or speaker misidentifications (e.g. labeling `"João da Silva"` as `"Jão"` or `"J. Silva"`), the system treats all on-the-fly mappings as provisional. In the UI, the clinician is presented with an overlay to either **approve** the new auto-registered profile or **manually merge/correct** it with an existing pre-registered patient profile (e.g., mapping `"Jão"` back to `"João da Silva"`). This ensures clinical database integrity.
+
+---
+
+### Goal 10: Qualitative Whole-Session Syntheses & Group Interaction Analysis
+
+To complement the item-level quantitative TDPM scoring system, the database architecture supports qualitative clinical synthesis at the whole-session level.
+
+#### 1. Clinical Context & Group Dynamics
+Unlike individual evaluations, group therapy relies heavily on interaction tracking, conversational flow, and cumulative group clinical progress:
+- **Group Progress Note:** A cohesive, text-based narrative summarizing the emotional climate, dominant themes, and therapeutic milestones of the session.
+- **Interactions Mapping:** A serialized JSON structure representing the network/graph of communication (e.g., patient-to-patient interventions, clinician prompts, active vs. passive participants).
+
+#### 2. Technical Metadata & Performance Auditing
+To maintain performance records and monitor costs, the `session_syntheses` table stores LLM execution metadata (including model version, token counts, and processing time) for every generated synthesis. By using `transcript_id` as the primary key with a cascading foreign key to `transcripts`, each transcript maintains exactly one active clinical synthesis draft, preventing orphaned logs and ensuring data integrity.
 
 ---
 

@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS session_syntheses (
     transcript_id INTEGER PRIMARY KEY,
     therapy_session_id INTEGER NOT NULL,
     group_progress_note TEXT,
-    interactions_mapping TEXT,       -- JSON text representing interactions network (future-proofing)
+    interactions_mapping TEXT,       -- JSON text representing interactions network
     model TEXT,
     prompt_tokens INTEGER,
     completion_tokens INTEGER,
