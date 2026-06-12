@@ -253,50 +253,6 @@ def update_transcript(
             conn.commit()
 
 
-def create_sanitization_telemetry(
-    transcript_id: int,
-    model: str,
-    strategy: str,
-    status: str,
-    failure_reason: Optional[str],
-    chunks_completed: int,
-    chunks_total: int,
-    prompt_tokens: Optional[int],
-    completion_tokens: Optional[int],
-    total_elapsed_seconds: float,
-    turns_merged: Optional[int],
-    noise_tokens_removed: Optional[str],  # JSON string
-    corrections: Optional[str],           # JSON string
-    anonymization_flags: Optional[str],   # JSON string
-    db_conn: Optional[sqlite3.Connection] = None
-) -> int:
-    """Insert aggregate sanitization quality telemetry for a processed transcript."""
-    sql = """
-        INSERT INTO sanitization_telemetry (
-            transcript_id, model, strategy, status, failure_reason,
-            chunks_completed, chunks_total, prompt_tokens, completion_tokens,
-            total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """
-    params = (
-        transcript_id, model, strategy, status, failure_reason,
-        chunks_completed, chunks_total, prompt_tokens, completion_tokens,
-        total_elapsed_seconds, turns_merged, noise_tokens_removed, corrections, anonymization_flags
-    )
-
-    if db_conn:
-        cursor = db_conn.cursor()
-        cursor.execute(sql, params)
-        db_conn.commit()
-        return cursor.lastrowid
-    else:
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(sql, params)
-            conn.commit()
-            return cursor.lastrowid
-
-
 def create_tdpm_evaluation(
     transcript_id: int,
     evaluator_id: int | str,

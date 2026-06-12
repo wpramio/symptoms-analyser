@@ -870,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedFilePanel = document.getElementById('selectedFilePanel');
         const fileName = document.getElementById('fileName');
         const removeFileBtn = document.getElementById('removeFileBtn');
-        const applySanitizationOpt = document.getElementById('applySanitizationOpt');
         const startBtn = document.getElementById('startBtn');
         const newSessionView = document.getElementById('newSessionView');
 
@@ -933,7 +932,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('apply_sanitization', applySanitizationOpt.checked ? 'true' : 'false');
             formData.append('therapy_session_id', sessionId.toString());
 
             // Switch view state to Processing Console

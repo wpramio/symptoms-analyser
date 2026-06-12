@@ -31,8 +31,7 @@ def handle_transcript_upload(
     filename: str,
     therapy_session_id: int,
     extract_metadata: bool = False,
-    skip_extension_check: bool = False,
-    apply_sanitization: bool = False
+    skip_extension_check: bool = False
 ) -> str:
     """
     Handler function.
@@ -62,7 +61,7 @@ def handle_transcript_upload(
 
     thread = threading.Thread(
         target=process_transcript_pipeline,
-        args=(task_id, filepath, therapy_session_id, extract_metadata, apply_sanitization)
+        args=(task_id, filepath, therapy_session_id, extract_metadata)
     )
     thread.start()
 

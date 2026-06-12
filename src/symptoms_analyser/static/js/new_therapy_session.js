@@ -16,8 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileName = document.getElementById('fileName');
     const removeFileBtn = document.getElementById('removeFileBtn');
     const autoExtractInfoOpt = document.getElementById('autoExtractInfoOpt');
-    const applySanitizationOpt = document.getElementById('applySanitizationOpt');
-
     // Submit Button & Views
     const startBtn = document.getElementById('startBtn');
     const newSessionView = document.getElementById('newSessionView');
@@ -160,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasImport = enableImportOpt.checked && selectedFile;
         if (hasImport) {
             formData.append('file', selectedFile);
-            formData.append('apply_sanitization', applySanitizationOpt.checked ? 'true' : 'false');
             formData.append('auto_fill', autoExtractInfoOpt.checked ? 'true' : 'false');
 
             newSessionView.style.display = 'none';

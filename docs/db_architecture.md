@@ -85,24 +85,7 @@ erDiagram
         string justification
         string evidence
     }
-    sanitization_telemetry {
-        int id PK
-        int transcript_id FK
-        string model
-        string strategy
-        string status
-        string failure_reason
-        int chunks_completed
-        int chunks_total
-        int prompt_tokens
-        int completion_tokens
-        real total_elapsed_seconds
-        int turns_merged
-        string noise_tokens_removed
-        string corrections
-        string anonymization_flags
-        datetime created_at
-    }
+
     session_syntheses {
         int transcript_id PK, FK
         int therapy_session_id FK
@@ -123,7 +106,7 @@ erDiagram
     users ||--o{ tdpm_evaluations : "evaluates"
     users ||--o| patients : "authenticates"
     transcripts ||--o{ tdpm_evaluations : "originates"
-    transcripts ||--o{ sanitization_telemetry : "logs_sanitization"
+
     patients ||--o{ patient_item_scores : "evaluates"
     tdpm_evaluations ||--o{ patient_item_scores : "contains"
     tdpm_evaluations ||--o{ tdpm_evaluations : "revised_from"
@@ -301,36 +284,7 @@ CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patie
 
 ---
 
-### 2.3. System Logs Ingestion
 
-#### Sanitization Telemetry Table
-Tracks historical preprocessing logs linked to transcripts. Removes `session_name` column.
-```sql
-CREATE TABLE IF NOT EXISTS sanitization_telemetry (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    transcript_id INTEGER NOT NULL,    -- FK to transcripts.id (integer)
-    model TEXT NOT NULL,               -- Sanitization model
-    strategy TEXT NOT NULL,            -- e.g. "default"
-    status TEXT NOT NULL,              -- "success" or "failed"
-    failure_reason TEXT,               -- Error trace if failed
-    chunks_completed INTEGER,
-    chunks_total INTEGER,
-    prompt_tokens INTEGER,
-    completion_tokens INTEGER,
-    total_elapsed_seconds REAL,
-    
-    -- Sanitization Metrics / Auditing Payload
-    turns_merged INTEGER,
-    noise_tokens_removed TEXT,         -- JSON list of removed tags
-    corrections TEXT,                  -- JSON map of word mappings
-    anonymization_flags TEXT,          -- JSON list of flagged sensitive words
-    
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id);
-```
 
 ---
 
@@ -385,7 +339,7 @@ Our structure retains the full flexibility of the JSON schema via `evaluation_te
 - Complete data-rich views serve the structured JSON stored in `raw_payload` inside `evaluation_telemetry`.
 
 ### 3.3. Store Preprocessing, Analysis, & Synthesis Logs
-The pipeline scripts (`preprocess.py`, `tdpm_evaluation.py`, and `synthesis.py`) record execution and LLM telemetry metrics (such as model, token counts, and execution duration) directly into `sanitization_telemetry`, `evaluation_telemetry`, and `session_syntheses` automatically.
+The pipeline scripts (`preprocess.py`, `tdpm_evaluation.py`, and `synthesis.py`) record execution and LLM telemetry metrics (such as model, token counts, and execution duration) directly into `evaluation_telemetry` and `session_syntheses` automatically.
 
 ---
 
@@ -428,25 +382,11 @@ When loading the UI:
 
 ---
 
-### 3.5. Store and Visualize Sanitization (Preprocessing) Results
+### 3.5. Preprocessing and Local Anonymization
 
-By storing sanitization quality details in the `sanitization_telemetry` execution log and keeping the core `transcripts` table lean, we achieve a clean division of responsibilities:
-
-#### 1. Ingesting Sanitization Logs
-During the preprocessing step, the system writes:
-- The aggregate sanitization telemetry (e.g., number of turns merged, filler words, corrections) directly into the columns of the `sanitization_telemetry` table for that specific run attempt.
-- The raw text (`raw_text`) and the resulting sanitized text (`sanitized_text`) into `transcripts`.
-
-#### 2. Infinite Auditing & Analytics
-Storing sanitization details directly inside the telemetry table provides massive clinical benefits:
-- **Complete Run History:** If you test different sanitization configurations (e.g., different chunking settings or models) for a single session, the database preserves the exact corrections list and quality metrics **for every run** instead of overwriting them.
-- **Minimal Core Table:** The core `transcripts` table stays lightweight, containing only the actual text inputs and outputs.
-- **Premium UI Features:** The UI can load the active pre-processing execution log to populate filler word panels, corrections audit cards, and anonymization warnings, with click-to-highlight links highlighting specific turns parsed in the app layer.
-
-#### 3. Optionality of Sanitization (Time & Cost Optimization)
-Skipping the sanitization step is fully supported by this design to save execution time and LLM token costs:
-- **No Sanitization Entry:** If sanitization is bypassed, no record is added to `sanitization_telemetry`. The `transcripts.sanitized_text` column simply remains `NULL`.
-- **Graceful UI Degradation:** The UI parser dynamically detects if `sanitized_text` is present. If it is null, it gracefully hides the "Sanitization Analytics Panel" and the "Side-by-Side Diff Toggle", displaying the clinical analysis card overlays directly on the raw transcript.
+During the preprocessing step, the system performs lightweight local anonymization:
+- The raw text (`raw_text`) is parsed, all identifying Protected Health Information (PHI) like real patient names is mapped to pseudonyms, and the resulting anonymized text is saved into `sanitized_text` in the `transcripts` table.
+- This decoupled, offline step occurs before any cloud LLM services are invoked, ensuring clinical data privacy from the outset.
 
 ### 3.6. Self-Contained Source of Truth (Decoupling the Filesystem)
 
@@ -490,8 +430,8 @@ This completely prevents HTTP connection timeouts, allows bulk/multi-file upload
 #### 1. The Async State-Machine Flow
 The progress of a transcript through the AI pipeline is tracked by the `status` state column:
 *   **`queued`**: The file has been successfully uploaded and exists in the database. An offline worker thread (e.g., Celery in Python or BullMQ in Node) is notified.
-*   **`preprocessing`**: The worker has picked up the file and is running the sanitization pipeline. The worker updates the `progress_percent` column in real-time.
-*   **`preprocessed`**: Sanitization is complete. The resulting text is saved in `sanitized_text`.
+*   **`preprocessing`**: The worker has picked up the file and is running the local anonymization pipeline. The worker updates the `progress_percent` column in real-time.
+*   **`preprocessed`**: Local anonymization is complete. The resulting text is saved in `sanitized_text`.
 *   **`analyzing`**: The transcript is chunked and sent to the LLM for TDPM scoring.
 *   **`completed`**: LLM scoring is fully completed, results are loaded into `patient_item_scores`, and the technical metadata is registered in `evaluation_telemetry`.
 *   **`failed`**: An error occurred in either phase. The `error_message` column stores the exact traceback for clinical admins to troubleshoot.
@@ -507,14 +447,12 @@ The progress of a transcript through the AI pipeline is tracked by the `status` 
 In medical software architectures, protecting patient privacy is a legal and ethical imperative (governed by standards like HIPAA in the US and LGPD in Brazil). By completely separating Protected Health Information (PHI) from the clinical analytics pipeline, **our database achieves HIPAA-ready isolation.**
 
 #### 1. The Anonymization Boundary
-*   **The Pseudonym Key**: While **raw transcripts** (as originally uploaded and stored in `transcripts.raw_text`) naturally contain real names, spoken identifiers, and other PHI, an explicit **anonymization step** is executed during preprocessing. In this step, all real names, medical ID numbers, and contact details are identified and replaced with the patient's public, generated **`pseudonym`** (e.g. `"Paciente1"`) or generic placeholders (e.g. `"Fulano1"`). As a result, the preprocessed **sanitized texts** (`transcripts.sanitized_text`), clinical analysis prompts, LLM parameters, and downstream item score records NEVER contain real names or sensitive direct identifiers. Instead, they reference the pseudonym.
-    *   **Two-Phase Pipeline Execution in `sanitized_text`**: To avoid sending real names to cloud LLMs, the pipeline operates in two phases:
-        1.  **Phase 1 (Local/Lightweight Anonymization)**: The system parses the raw text locally and replaces real names with pseudonyms. This intermediate anonymized text is immediately saved into `sanitized_text`.
-        2.  **Phase 2 (LLM Sanitization - Optional)**: To optimize execution speed or conserve token usage, this cloud-based LLM sanitization step (filler word/stutter removal, turn merging, grammar correction) can be optionally skipped. If skipped, the database retains the Phase 1 locally anonymized text directly in `sanitized_text`. If executed, upon successful completion, the system overwrites `sanitized_text` with the final polished, fully sanitized, and anonymized transcript.
+*   **The Pseudonym Key**: While **raw transcripts** (as originally uploaded and stored in `transcripts.raw_text`) naturally contain real names, spoken identifiers, and other PHI, an explicit **anonymization step** is executed during preprocessing. In this step, all real names, medical ID numbers, and contact details are identified and replaced with the patient's public, generated **`pseudonym`** (e.g. `"Paciente1"`) or generic placeholders (e.g. `"Fulano1"`). As a result, the preprocessed **anonymized texts** (`transcripts.sanitized_text`), clinical analysis prompts, LLM parameters, and downstream item score records NEVER contain real names or sensitive direct identifiers. Instead, they reference the pseudonym.
+    *   **Preprocessing Pipeline Execution in `sanitized_text`**: The system parses the raw text locally and replaces real names with pseudonyms. This anonymized text is immediately saved into `sanitized_text` and then used for downstream clinical evaluations.
 *   **Isolated Patient Registry**: The connection between this public pseudonym and the patient's actual sensitive details (like their true name `"João da Silva"`) is stored **strictly and exclusively** in the `patients` table.
 
 #### 2. What this Architectural Decision Enables
-*   **100% Blind LLM Pipelines**: Since raw transcripts are anonymized during preprocessing, the resulting sanitized transcripts sent to the LLM pipeline only contain the pseudonym and generic placeholders. Consequently, the external LLM APIs (and the developers checking pipeline telemetry logs) are never exposed to any patient PHI.
+*   **100% Blind LLM Pipelines**: Since raw transcripts are anonymized during preprocessing, the resulting anonymized transcripts sent to the LLM pipeline only contain the pseudonym and generic placeholders. Consequently, the external LLM APIs are never exposed to any patient PHI.
 *   **Role-Based Dynamic De-anonymization**: In the UI, the frontend displays patient identity safely. When a user logs in, the API checks their role:
     *   If `users.role = 'clinician'` or `'admin'`, the API performs an internal join on `patients` to dynamically display the patient's real name on their private dashboard.
     *   If the user does not have clinical clearance, the system only reveals the pseudonym, preventing accidental exposure of sensitive medical identities.
@@ -523,7 +461,7 @@ In medical software architectures, protecting patient privacy is a legal and eth
 #### 3. Securing Raw PHI (`transcripts.raw_text`)
 Because the raw un-anonymized speech transcript is stored inside the database prior to sanitization, it contains direct patient PHI. To guarantee medical privacy standards, we implement the following security layers:
 *   **Application-Level Column Encryption**: The `transcripts.raw_text` field is encrypted at rest prior to database insertion using a secure symmetric encryption standard (e.g., **AES-256-GCM**). The encryption keys are securely managed by a separate external Key Management Service (KMS) or environment secret store.
-*   **Transient Storage & Pruning**: To minimize long-term exposure, `transcripts.raw_text` is treated as transient storage. Once the clinical assessment is validated and signed off by the clinician, a background pruning worker scrubs the raw text (sets `raw_text = NULL`), leaving only the permanent, 100% anonymized `sanitized_text`.
+*   **Transient Storage & Pruning**: To minimize long-term exposure, `transcripts.raw_text` is treated as transient storage. Once the clinical assessment is validated and signed off by the clinician, a background pruning worker scrubs the raw text (sets `raw_text = NULL`), leaving only the permanent, anonymized `sanitized_text`.
 *   **Access Auditing**: Direct database queries to raw transcripts are disabled at the infrastructure layer. All application-level read and decryption events on `raw_text` automatically generate immutable access logs, recording the timestamp, clinical user ID, and access context for audit purposes.
 
 #### 4. How and When is the Patients Table Populated?
@@ -531,9 +469,9 @@ To ensure the local anonymization engine (Phase 1) has an accurate, secure dicti
 *   **Pre-Registration during Patient Intake (Primary / Recommended Workflow)**:
     *   **When**: Performed during the patient admission or group therapy onboarding process (prior to any audio sessions being recorded or transcripts uploaded).
     *   **How**: An administrator or clinician registers a new patient in the UI by entering their `real_name` (e.g. `"João da Silva"`) and optional demographic metadata. The system automatically creates a UUID `id` and generates a public, unique `pseudonym` (e.g. `"Paciente1"`).
-    *   **Benefit**: This establishes the definitive mapping dictionary, ensuring the Phase 1 preprocessor immediately knows exactly how to anonymize the transcript upon upload.
+    *   **Benefit**: This establishes the definitive mapping dictionary, ensuring the preprocessor immediately knows exactly how to anonymize the transcript upon upload.
 *   **Dynamic On-the-Fly Fallback (Self-Healing Ingestion with Clinician Verification)**:
-    *   **When**: Occurs during Phase 1 local preprocessing if a name is identified in the raw transcript that has no matching entry in the `patients` registry (e.g. a new participant or a clinical guest).
+    *   **When**: Occurs during local preprocessing if a name is identified in the raw transcript that has no matching entry in the `patients` registry (e.g. a new participant or a clinical guest).
     *   **How**: The preprocessor flags the unrecognized name and registers a provisional, draft patient row with a newly allocated pseudonym (e.g., `"Paciente5"`).
     *   **Addressing Imperfect Raw Labels (Human-in-the-Loop)**: Because raw automated transcriptions are prone to spelling errors or speaker misidentifications (e.g. labeling `"João da Silva"` as `"Jão"` or `"J. Silva"`), the system treats all on-the-fly mappings as provisional. In the UI, the clinician is presented with an overlay to either **approve** the new auto-registered profile or **manually merge/correct** it with an existing pre-registered patient profile (e.g., mapping `"Jão"` back to `"João da Silva"`). This ensures clinical database integrity.
 

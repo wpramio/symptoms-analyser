@@ -60,11 +60,7 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 1, 'session_1.txt', 'txt', 'Texto original', 'Texto limpo', 1234, 'completed', 100.0)
     """)
     
-    # 6. Seed sanitization telemetry
-    cursor.execute("""
-        INSERT INTO sanitization_telemetry (id, transcript_id, model, strategy, status, chunks_completed, chunks_total, total_elapsed_seconds, prompt_tokens, completion_tokens, turns_merged, noise_tokens_removed, corrections, anonymization_flags)
-        VALUES (1, 1, 'gemini-2.5-flash', 'chunked_100', 'success', 1, 1, 12.5, 450, 150, 2, '["uh"]', '{"para a": "para"}', '["Dr. Silva"]')
-    """)
+
     
     # 7. Seed evaluations
     cursor.execute("""
@@ -225,10 +221,7 @@ def test_api_routes(client, mock_get_db):
         assert resp.status_code == 200
         assert len(resp.json) == 1
         
-        # api_admin_telemetry
-        resp = client.get("/api/admin/telemetry")
-        assert resp.status_code == 200
-        assert len(resp.json) == 1
+
         
         # api_admin_evaluation_telemetry
         resp = client.get("/api/admin/evaluation-telemetry")
@@ -303,8 +296,7 @@ def test_new_session_actions(client, mock_get_db):
             "start_at": "2026-05-29 19:00:00",
             "duration": "90",
             "patient_ids": "Paciente1",
-            "auto_fill": "false",
-            "apply_sanitization": "false"
+            "auto_fill": "false"
         })
         assert resp.status_code == 201
         assert resp.json["success"] is True
@@ -349,8 +341,7 @@ def test_therapy_session_upload_transcript(mock_upload, client):
     
     # POST transcript file stream
     data = {
-        "file": (io.BytesIO(b"Raw text contents"), "session.txt"),
-        "apply_sanitization": "true"
+        "file": (io.BytesIO(b"Raw text contents"), "session.txt")
     }
     resp = client.post("/therapy_sessions/1/upload_transcript", data=data, content_type="multipart/form-data")
     assert resp.status_code == 200
@@ -538,9 +529,7 @@ def test_delete_transcript_api(client, mock_get_db):
             row = conn.execute("SELECT id FROM transcripts WHERE id = 1").fetchone()
             assert row is None
             
-            # Cascade: check telemetry is deleted
-            tel = conn.execute("SELECT id FROM sanitization_telemetry WHERE transcript_id = 1").fetchone()
-            assert tel is None
+
             
             # Cascade: check evaluation is deleted
             ev = conn.execute("SELECT id FROM tdpm_evaluations WHERE transcript_id = 1").fetchone()

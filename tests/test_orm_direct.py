@@ -10,7 +10,6 @@ from symptoms_analyser.db.orm import (
     link_patient_to_session,
     create_transcript,
     update_transcript,
-    create_sanitization_telemetry,
     create_tdpm_evaluation,
     create_evaluation_telemetry,
     create_patient_item_score,
@@ -112,25 +111,7 @@ def test_orm_operations_without_db_conn(mock_get_db, test_db_path):
             sanitized_text="Clean direct text",
             progress_percent=100.0
         )
-        
-        # 7. create_sanitization_telemetry
-        tel_id = create_sanitization_telemetry(
-            transcript_id=1,
-            model="model-direct",
-            strategy="strategy-direct",
-            status="success",
-            failure_reason=None,
-            chunks_completed=1,
-            chunks_total=1,
-            prompt_tokens=100,
-            completion_tokens=50,
-            total_elapsed_seconds=5.2,
-            turns_merged=0,
-            noise_tokens_removed="[]",
-            corrections="{}",
-            anonymization_flags="[]"
-        )
-        assert tel_id == 1
+
         
         # 8. create_tdpm_evaluation (string clinician and automated type)
         eval_id = create_tdpm_evaluation(

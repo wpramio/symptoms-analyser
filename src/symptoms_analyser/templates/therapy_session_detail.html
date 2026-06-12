@@ -535,7 +535,7 @@
             </div>
             <div class="transcript-tab-row">
                 <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowSanitized">
-                    Texto sanitizado</button>
+                    Texto anonimizado</button>
                 <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">
                     Texto original</button>
             </div>
@@ -587,29 +587,7 @@
         </div>
         {% endif %}
 
-        <!-- Parameters Box -->
-        <div class="parameters-box">
-            <h4 class="parameters-box-title">Configurações de processamento</h4>
 
-            <label class="checkbox-container-flex">
-                <input type="checkbox" id="applySanitizationOpt">
-                <div class="checkbox-info">
-                    <span class="checkbox-title-styled">
-                        Aplicar sanitização por IA (LLM)
-                        <span class="info-tooltip-container" onclick="event.preventDefault();">
-                            <svg class="info-tooltip-trigger-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                            <span class="info-tooltip-text">Ative para que a IA corrija imperfeições e padronize a
-                                transcrição antes da análise clínica.</span>
-                        </span>
-                    </span>
-                </div>
-            </label>
-        </div>
 
         <!-- File dropzone -->
         <div class="upload-card-styled" id="dropZone">

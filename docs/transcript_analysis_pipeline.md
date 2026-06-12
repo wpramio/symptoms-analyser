@@ -13,7 +13,6 @@ sequenceDiagram
     participant TU_Ctrl as Transcript Upload Controller
     participant ORM as ORM Helper Layer (orm.py)
     participant Prep as Preprocessing Pipeline
-    participant Sanit as Sanitization Pipeline
     participant TDPM as TDPM-20 Analyzer
     participant DB as SQLite DB
 
@@ -34,7 +33,7 @@ sequenceDiagram
     end
 
     alt Transcript file is provided
-        TS_Ctrl->>TU_Ctrl: handle_transcript_upload(file, session_id, apply_sanitization, auto_fill)
+        TS_Ctrl->>TU_Ctrl: handle_transcript_upload(file, session_id, auto_fill)
         activate TU_Ctrl
         TU_Ctrl-->>TS_Ctrl: return task_id (Async processing triggered)
         TS_Ctrl-->>UI: Response with task_id & success (Redirect/Poll)
@@ -66,23 +65,12 @@ sequenceDiagram
         Prep-->>TU_Ctrl: transcript_id
         deactivate Prep
  
-        alt apply_sanitization == True
-            TU_Ctrl->>Sanit: sanitize_text_with_llm(transcript_id)
-            activate Sanit
-            Sanit->>DB: Update transcript status to 'preprocessing' / progress
-            Sanit->>Sanit: Chunk, send to LLM, aggregate
-            Sanit->>ORM: update_transcript(transcript_id, sanitized_text, status='preprocessed')
-            Sanit->>ORM: create_sanitization_telemetry(transcript_id, metrics)
-            Sanit-->>TU_Ctrl: sanitized_text
-            deactivate Sanit
-        else
-            TU_Ctrl->>ORM: Copy anonymized/raw text to sanitized_text
-        end
+        TU_Ctrl->>ORM: update_transcript(transcript_id, status='preprocessed')
 
         TU_Ctrl->>LLM_Ana: evaluate_symptoms_with_tdpm(transcript_id)
         activate LLM_Ana
         LLM_Ana->>DB: Update transcript status to 'analyzing'
-        LLM_Ana->>LLM_Ana: Chunk sanitized transcript, send to LLM, aggregate
+        LLM_Ana->>LLM_Ana: Chunk anonymized transcript, send to LLM, aggregate
         LLM_Ana->>ORM: create_tdpm_evaluation(transcript_id, session_id, clinician)
         ORM->>DB: INSERT INTO tdpm_evaluations
         DB-->>ORM: evaluation_id

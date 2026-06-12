@@ -65,15 +65,13 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
     task_id = None
     if file_obj and file_obj.filename != "":
         extract_metadata = form_data.get("auto_fill") == "true"
-        apply_sanitization = form_data.get("apply_sanitization") == "true"
         
         task_id = handle_transcript_upload(
             file_stream=file_obj,
             filename=file_obj.filename,
             therapy_session_id=session_id,
             extract_metadata=extract_metadata,
-            skip_extension_check=True,
-            apply_sanitization=apply_sanitization
+            skip_extension_check=True
         )
 
     return {
@@ -150,7 +148,7 @@ def calculate_airtime(transcript_text: str, patients_list: list[str]) -> dict:
         if not line:
             continue
 
-        # Stop parsing if we hit a sanitization log block
+        # Stop parsing if we hit a sanitization log block (legacy support)
         if line.startswith("##") and "Sanitization Log" in line:
             break
 
@@ -273,7 +271,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
                 "sanitized_text": transcript_row["sanitized_text"],
                 "error_message": transcript_row["error_message"]
             }
-            # Fallback to raw text if sanitized text is not yet generated
+            # Fallback to raw text if preprocessed/anonymized text is not yet generated
             text_for_airtime = transcript_row["sanitized_text"] or transcript_row["raw_text"]
             if text_for_airtime:
                 airtime_data = calculate_airtime(text_for_airtime, patients_list)

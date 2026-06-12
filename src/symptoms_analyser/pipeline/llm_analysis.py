@@ -2,7 +2,7 @@
 pipeline/llm_analysis.py
 -------------------------
 LLM clinical evaluation & synthesis steps of the symptoms-analyser pipeline:
-  - evaluate_symptoms_with_tdpm: Splitting sanitized text into chunks, scoring symptoms via LLM completions, and writing patient scores to DB.
+  - evaluate_symptoms_with_tdpm: Splitting anonymized text into chunks, scoring symptoms via LLM completions, and writing patient scores to DB.
   - generate_clinical_synthesis: Generates qualitative clinical synthesis of the session and saves to session_syntheses.
 """
 
@@ -160,10 +160,10 @@ def evaluate_symptoms_with_tdpm(
     db_conn: Optional[sqlite3.Connection] = None
 ) -> int:
     """
-    Run the TDPM-20 analysis pipeline on the sanitized transcript text
+    Run the TDPM-20 analysis pipeline on the preprocessed/anonymized transcript text
     loaded from the database.
     """
-    # 1. Fetch sanitized text and session references
+    # 1. Fetch anonymized text and session references
     cursor = db_conn.cursor() if db_conn else None
     if cursor:
         cursor.execute("""
@@ -184,9 +184,8 @@ def evaluate_symptoms_with_tdpm(
                 WHERE t.id = ?
             """, (transcript_id,))
             row = cursor.fetchone()
-
     if not row or not row["sanitized_text"]:
-        raise ValueError(f"Transcript ID {transcript_id} not found or has no sanitized text in database.")
+        raise ValueError(f"Transcript ID {transcript_id} not found or has no preprocessed text in database.")
 
     text = row["sanitized_text"]
     therapy_session_id = row["therapy_session_id"]
@@ -201,7 +200,7 @@ def evaluate_symptoms_with_tdpm(
         db_conn=db_conn
     )
 
-    print("  [1/2] Loading and chunking sanitized transcript...")
+    print("  [1/2] Loading and chunking anonymized transcript...")
     base_chunks = split_into_chunks(text)
     chunks = merge_chunks(base_chunks, blocks_per_call)
 
@@ -346,7 +345,7 @@ def generate_clinical_synthesis(
     db_conn: sqlite3.Connection
 ) -> None:
     """
-    Retrieve sanitized text of the transcript and its participating patients list,
+    Retrieve anonymized text of the transcript and its participating patients list,
     query the LLM for qualitative session synthesis, and store the result in the 'session_syntheses' table.
     """
     # 1. Fetch transcript information
@@ -364,7 +363,7 @@ def generate_clinical_synthesis(
     therapy_session_id = row["therapy_session_id"]
     
     if not sanitized_text:
-        # Fallback to raw text if sanitized_text is empty or not populated
+        # Fallback to raw text if sanitized_text (anonymized) is empty or not populated
         cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
         fallback_row = cursor.fetchone()
         sanitized_text = fallback_row["raw_text"] if fallback_row else ""

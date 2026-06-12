@@ -38,11 +38,10 @@ def test_db_path(tmp_path, schema_sql):
 @mock.patch("symptoms_analyser.pipeline.orchestrator.extract_text")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.anonymize_text")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.create_transcript")
-@mock.patch("symptoms_analyser.pipeline.orchestrator.sanitize_text_with_llm")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.evaluate_symptoms_with_tdpm")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.generate_clinical_synthesis")
 def test_process_transcript_pipeline_success(
-    mock_synthesis, mock_tdpm, mock_sanitize, mock_create, mock_anon, mock_extract, test_db_path
+    mock_synthesis, mock_tdpm, mock_create, mock_anon, mock_extract, test_db_path
 ):
     # Set up mocks
     mock_extract.return_value = ({}, "Raw text")
@@ -63,8 +62,7 @@ def test_process_transcript_pipeline_success(
             task_id=task_id,
             filepath=Path("fake_path.txt"),
             therapy_session_id=1,
-            extract_metadata=True,
-            apply_sanitization=True
+            extract_metadata=True
         )
         
     # Verify task state changes
@@ -99,8 +97,7 @@ def test_process_transcript_pipeline_failure(mock_extract, test_db_path):
             task_id=task_id,
             filepath=Path("fake_path.txt"),
             therapy_session_id=1,
-            extract_metadata=True,
-            apply_sanitization=True
+            extract_metadata=True
         )
         
     assert tasks[task_id]["status"] == "error"

@@ -19,6 +19,5 @@ src/symptoms_analyser/
 └── pipeline/                    # CORE clinical pipeline
     ├── __init__.py
     ├── preprocessing.py         # PHASE 1: Preprocessing (text extraction, anonymization & creation)
-    ├── sanitization.py          # STEP 4: LLM-based dialogue sanitization
     └── llm_analysis.py          # PHASE 2: LLM Analysis (symptom evaluation & synthesis)
 ```

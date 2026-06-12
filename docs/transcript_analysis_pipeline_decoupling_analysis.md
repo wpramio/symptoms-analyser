@@ -24,7 +24,6 @@ flowchart TD
         Extract[preprocessing.extract_text]
         Anon[preprocessing.anonymize_text]
         Create[preprocessing.create_transcript]
-        Sanitize[sanitization.sanitize_text_with_llm]
         TDPM[llm_analysis.evaluate_symptoms_with_tdpm]
         Synth[llm_analysis.generate_clinical_synthesis]
     end
@@ -40,27 +39,25 @@ flowchart TD
     ThreadLinear -->|Step 1| Extract
     ThreadLinear -->|Step 2| Anon
     ThreadLinear -->|Step 3| Create
-    ThreadLinear -->|Step 4| Sanitize
-    ThreadLinear -->|Step 5| TDPM
-    ThreadLinear -->|Step 6| Synth
+    ThreadLinear -->|Step 4| TDPM
+    ThreadLinear -->|Step 5| Synth
     
     Extract -.->|Reads| DB
     Anon -.->|Reads| DB
     Create -.->|Writes| DB
-    Sanitize -.->|Reads/Writes| DB
     TDPM -.->|Reads/Writes| DB
     Synth -.->|Reads/Writes| DB
 ```
 
 ### 1.1. Modularity Strengths (Highly Decoupled Data & Logic Layers)
-*   **Pipeline Modularity**: The core steps are written as separate, self-contained Python modules under `src/symptoms_analyser/pipeline/` (`preprocessing.py`, `sanitization.py`, `llm_analysis.py`).
-*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_symptoms_with_tdpm` only requires a `transcript_id`, queries the `sanitized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing or sanitization steps.
+*   **Pipeline Modularity**: The core steps are written as separate, self-contained Python modules under `src/symptoms_analyser/pipeline/` (`preprocessing.py`, `llm_analysis.py`).
+*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_symptoms_with_tdpm` only requires a `transcript_id`, queries the `sanitized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing steps.
 *   **State-Machine Compatibility**: The database schema already defines all the states required for an interrupted or deferred pipeline:
     ```sql
     status TEXT NOT NULL DEFAULT 'queued' 
         CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'analyzing', 'completed', 'failed'))
     ```
-    *   An upload-and-sanitize step ends exactly with `status = 'preprocessed'`.
+    *   An upload-and-preprocess step ends exactly with `status = 'preprocessed'`.
     *   An analysis step transitions the status from `preprocessed` to `analyzing` and finally to `completed` or `failed`.
 
 ### 1.2. Modularity Weaknesses (Coupled Orchestration Layer)
@@ -72,12 +69,9 @@ flowchart TD
     anonymize_text(...)
     # 3. Create Transcript Record
     create_transcript(...)
-    # 4. LLM Sanitization
-    if apply_sanitization:
-        sanitize_text_with_llm(...)
-    # 5. TDPM Clinical scoring
+    # 4. TDPM Clinical scoring
     evaluate_symptoms_with_tdpm(...)
-    # 6. Clinical Synthesis
+    # 5. Clinical Synthesis
     generate_clinical_synthesis(...)
     ```
 *   **UI Assumption**: The Jinja template (`therapy_session_detail.html`) assumes a binary operational state: either the transcript is actively running (showing a processing spinner console) or it is fully completed (showing the finished clinical dashboard). There is currently no UI treatment for the intermediate state where a transcript exists in the `'preprocessed'` state but does not yet have an evaluation.

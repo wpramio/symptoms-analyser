@@ -145,29 +145,7 @@ CREATE TABLE IF NOT EXISTS patient_item_scores (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_evaluation ON patient_item_scores (evaluation_id, patient_id, item_code);
 CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patient_id, dimension_code, item_code);
 
--- 9. Sanitization Telemetry Table
-CREATE TABLE IF NOT EXISTS sanitization_telemetry (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    transcript_id INTEGER NOT NULL,
-    model TEXT NOT NULL,
-    strategy TEXT NOT NULL,
-    status TEXT NOT NULL,
-    failure_reason TEXT,
-    chunks_completed INTEGER,
-    chunks_total INTEGER,
-    prompt_tokens INTEGER,
-    completion_tokens INTEGER,
-    total_elapsed_seconds REAL,
-    turns_merged INTEGER,
-    noise_tokens_removed TEXT,         -- JSON array
-    corrections TEXT,                  -- JSON map
-    anonymization_flags TEXT,          -- JSON array
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_sanitization_telemetry_transcript ON sanitization_telemetry (transcript_id);
-
--- 10. Session Syntheses Table (qualitative whole-text clinical analyses)
+-- 9. Session Syntheses Table (qualitative whole-text clinical analyses)
 CREATE TABLE IF NOT EXISTS session_syntheses (
     transcript_id INTEGER PRIMARY KEY,
     therapy_session_id INTEGER NOT NULL,

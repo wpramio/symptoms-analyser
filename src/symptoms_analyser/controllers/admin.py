@@ -239,10 +239,8 @@ def get_stats() -> dict:
         cursor.execute("""
             SELECT 
                 (SELECT COALESCE(SUM(prompt_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM sanitization_telemetry) +
                 (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_syntheses),
                 (SELECT COALESCE(SUM(completion_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(completion_tokens), 0) FROM sanitization_telemetry) +
                 (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_syntheses)
         """)
         row = cursor.fetchone()
@@ -281,40 +279,6 @@ def get_transcripts() -> list[dict]:
             for r in cursor.fetchall()
         ]
 
-
-def get_sanitization_telemetry() -> list[dict]:
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT st.id, st.transcript_id, st.model, st.strategy, st.total_elapsed_seconds,
-                   st.turns_merged, st.noise_tokens_removed, st.corrections, st.anonymization_flags,
-                   st.prompt_tokens, st.completion_tokens, st.chunks_completed, st.created_at,
-                   s.name as session_name, t.therapy_session_id
-            FROM sanitization_telemetry st
-            JOIN transcripts t ON st.transcript_id = t.id
-            LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
-            ORDER BY st.created_at DESC
-        """)
-        return [
-            {
-                "id": r["id"],
-                "transcript_id": r["transcript_id"],
-                "model": r["model"],
-                "strategy": r["strategy"],
-                "elapsed_seconds": r["total_elapsed_seconds"],
-                "turns_merged": r["turns_merged"],
-                "noise_removed": json.loads(r["noise_tokens_removed"]) if r["noise_tokens_removed"] else [],
-                "corrections_map": json.loads(r["corrections"]) if r["corrections"] else {},
-                "anonymization_flags": json.loads(r["anonymization_flags"]) if r["anonymization_flags"] else [],
-                "prompt_tokens": r["prompt_tokens"],
-                "completion_tokens": r["completion_tokens"],
-                "chunks_completed": r["chunks_completed"],
-                "created_at": r["created_at"],
-                "session_name": r["session_name"] or "Sem sessão vinculada",
-                "therapy_session_id": r["therapy_session_id"],
-            }
-            for r in cursor.fetchall()
-        ]
 
 
 

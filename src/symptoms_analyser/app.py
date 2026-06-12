@@ -7,7 +7,6 @@ from symptoms_analyser.controllers.admin import (
     create_patient,
     get_evaluation_telemetry,
     get_patients,
-    get_sanitization_telemetry,
     get_synthesis_telemetry,
     get_stats,
     get_transcripts,
@@ -220,7 +219,6 @@ def therapy_session_detail(session_id):
 @app.route("/therapy_sessions/<int:session_id>/upload_transcript", methods=["POST"])
 def therapy_session_upload_transcript(session_id):
     try:
-        apply_sanitization = request.form.get("apply_sanitization") == "true"
         if "file" not in request.files or request.files["file"].filename == "":
             return jsonify({"error": "Nenhum arquivo enviado"}), 400
             
@@ -230,8 +228,7 @@ def therapy_session_upload_transcript(session_id):
             filename=file.filename,
             therapy_session_id=session_id,
             extract_metadata=False,
-            skip_extension_check=False,
-            apply_sanitization=apply_sanitization
+            skip_extension_check=False
         )
         return jsonify({"success": True, "task_id": task_id})
     except Exception as e:
@@ -491,9 +488,6 @@ def admin_transcripts():
                 for r in cursor.fetchall()
             ]
             
-        # 4. Fetch sanitization telemetry
-        telemetry = get_sanitization_telemetry()
-        
         # 5. Fetch evaluation telemetry
         eval_telemetry = get_evaluation_telemetry()
         
@@ -505,7 +499,6 @@ def admin_transcripts():
             stats=stats,
             jobs=jobs,
             sessions=sessions,
-            telemetry=telemetry,
             eval_telemetry=eval_telemetry,
             synthesis_telemetry=synthesis_telemetry
         )
@@ -734,7 +727,6 @@ def handle_new_session_api():
             "clinician_id": request.form.get("clinician_id"),
             "patient_ids": request.form.get("patient_ids"),
             "auto_fill": request.form.get("auto_fill"),
-            "apply_sanitization": request.form.get("apply_sanitization"),
             "group_id": request.form.get("group_id")
         }
         
@@ -795,14 +787,6 @@ def api_delete_transcript(transcript_id):
         print(f"Error deleting transcript {transcript_id}: {e}")
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/admin/telemetry")
-def api_admin_telemetry():
-    try:
-        return jsonify(get_sanitization_telemetry())
-    except Exception as e:
-        print(f"Error fetching admin telemetry: {e}")
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/admin/evaluation-telemetry")

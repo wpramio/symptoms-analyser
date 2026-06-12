@@ -11,7 +11,6 @@ import traceback
 from symptoms_analyser.utils import DB_PATH
 import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text, anonymize_text, create_transcript
-from symptoms_analyser.pipeline.sanitization import sanitize_text_with_llm
 from symptoms_analyser.pipeline.llm_analysis import evaluate_symptoms_with_tdpm, generate_clinical_synthesis
 
 
@@ -19,8 +18,7 @@ def process_transcript_pipeline(
     task_id: str,
     filepath: Path,
     therapy_session_id: int,
-    extract_metadata: bool,
-    apply_sanitization: bool
+    extract_metadata: bool
 ) -> None:
     """Background thread function that orchestrates the transcript processing steps sequentially."""
     from symptoms_analyser.controllers.transcript_upload import tasks
@@ -72,23 +70,13 @@ def process_transcript_pipeline(
             orm.find_or_create_patient(pseudonym, real_name, therapy_group_id, db_conn)
             orm.link_patient_to_session(therapy_session_id, pseudonym, db_conn)
 
-        # LLM Sanitization
-        if not apply_sanitization:
-            add_log("Pulando etapa de sanitização por IA (LLM). Utilizando transcrição direta")
-            # If skipping, ensure state is set to preprocessed
-            orm.update_transcript(
-                transcript_id=transcript_id,
-                status="preprocessed",
-                progress_percent=100.0,
-                db_conn=db_conn
-            )
-        else:
-            add_log("Iniciando sanitização da transcrição com IA (LLM)")
-            sanitize_text_with_llm(
-                transcript_id=transcript_id,
-                blocks_per_call=100,
-                db_conn=db_conn
-            )
+        # Update transcript status to preprocessed since sanitization is removed
+        orm.update_transcript(
+            transcript_id=transcript_id,
+            status="preprocessed",
+            progress_percent=100.0,
+            db_conn=db_conn
+        )
 
         # TDPM-20 Clinical scoring
         add_log("(3/4) Executando avaliação clínica (TDPM-20) com IA")

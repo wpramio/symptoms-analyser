@@ -55,12 +55,7 @@ def seeded_db_path(tmp_path, schema_sql):
         INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent)
         VALUES (1, 1, 'session_1.txt', 'txt', 'Texto', 'Texto limpo', 1234, 'completed', 100.0)
     """)
-    
-    # 5.5. Seed Sanitization Telemetry
-    cursor.execute("""
-        INSERT INTO sanitization_telemetry (id, transcript_id, model, strategy, status, chunks_completed, chunks_total, total_elapsed_seconds, prompt_tokens, completion_tokens, turns_merged, noise_tokens_removed, corrections, anonymization_flags)
-        VALUES (1, 1, 'gemini-2.5-flash', 'chunked_100', 'success', 1, 1, 12.5, 450, 150, 2, '["uh"]', '{"para a": "para"}', '["Dr. Silva"]')
-    """)
+
     
     # 6. Seed evaluations
     cursor.execute("""
@@ -132,7 +127,6 @@ def test_new_therapy_session_page_dom(client):
     # Check checkbox config inputs
     assert soup.find("input", {"id": "enableImportOpt"}) is not None
     assert soup.find("input", {"id": "autoExtractInfoOpt"}) is not None
-    assert soup.find("input", {"id": "applySanitizationOpt"}) is not None
 
 def test_patients_list_page_dom(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
