@@ -12,6 +12,7 @@ src/symptoms_analyser/
 │   ├── evaluations.py           # Funções de consulta e alinhamento para avaliações TDPM-20
 │   ├── interventions.py         # Ações clínicas heurísticas e cálculos de métricas do dashboard
 │   ├── revisions.py             # Criação e validação de avaliações TDPM-20 revisadas por humanos
+│   ├── therapy_groups.py        # Gestão de grupos terapêuticos e análise de redes sociais (dinâmicas de grupo)
 │   ├── therapy_sessions.py      # Criação/gerenciamento de sessões e estatísticas de tempo de fala da conversa
 │   └── transcript_upload.py     # Gatilhos assíncronos de upload de transcrição e gerenciamento de arquivos
 │

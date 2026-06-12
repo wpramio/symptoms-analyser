@@ -236,3 +236,18 @@ def align_evaluations(data1: dict | None, data2: dict | None) -> list[dict]:
         })
 
     return aligned_patients
+
+
+def save_clinical_synthesis(eval_id: int, note: str) -> None:
+    """Save clinical progress note/synthesis for the given evaluation ID."""
+    import symptoms_analyser.db as orm
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT transcript_id FROM tdpm_evaluations WHERE id = ?", (eval_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise ValueError("Avaliação não encontrada")
+        transcript_id = row["transcript_id"]
+        
+    orm.update_session_synthesis(transcript_id, note)
+

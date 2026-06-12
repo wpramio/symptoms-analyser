@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 from bs4 import BeautifulSoup
 from symptoms_analyser.app import app
-from symptoms_analyser.controllers.admin import get_group_dynamics_data
+from symptoms_analyser.controllers.therapy_groups import get_group_dynamics_data
 
 @pytest.fixture
 def schema_sql():
@@ -160,6 +160,7 @@ def test_therapy_group_detail_route(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")
@@ -179,7 +180,7 @@ def test_therapy_group_detail_route(client, mock_get_db):
 
 
 def test_get_group_dynamics_data(mock_get_db):
-    with mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+    with mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db):
         
         data = get_group_dynamics_data(1)
         
@@ -214,6 +215,7 @@ def test_group_dynamics_tab_rendering(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")

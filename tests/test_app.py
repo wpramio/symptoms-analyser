@@ -132,6 +132,7 @@ def test_page_routes(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # Index redirect
@@ -190,6 +191,7 @@ def test_api_routes(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # get_session_status
@@ -247,6 +249,7 @@ def test_patient_actions(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # Create new patient API
@@ -277,6 +280,7 @@ def test_new_session_actions(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # Create session via POST JSON API
@@ -356,6 +360,7 @@ def test_therapy_session_upload_transcript(mock_upload, client):
 def test_admin_patients_form_actions(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # 1. Create Patient POST Success
@@ -420,6 +425,7 @@ def test_revise_evaluation_api(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.revisions.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
 
         # Post a valid revision request
@@ -475,6 +481,7 @@ def test_revise_evaluation_api(client, mock_get_db):
 def test_admin_therapy_sessions_form_actions(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # 1. Update Session POST Success
@@ -512,6 +519,7 @@ def test_admin_therapy_sessions_form_actions(client, mock_get_db):
 def test_delete_transcript_api(client, mock_get_db):
     with mock.patch("symptoms_analyser.db.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
          
         # Ensure transcript exists first

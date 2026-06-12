@@ -39,7 +39,7 @@ def test_get_tdpm_table_data():
 
 
 def test_compute_graph_data():
-    from symptoms_analyser.controllers.admin import compute_graph_data
+    from symptoms_analyser.controllers.therapy_groups import compute_graph_data
 
     # Test with normal edges, bridges, isolated patients, and subgroup detection
     # Paciente 1, 2, 3 form a cycle (subgroup). Paciente 3 -> Paciente 4 is a bridge.

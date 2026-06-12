@@ -14,25 +14,36 @@ from symptoms_analyser.controllers.admin import (
     get_patient_evolution_data,
     update_patient,
     get_tdpm_table_data,
-    get_group_dynamics_data,
-    get_therapy_groups_admin,
-    create_therapy_group,
-    update_therapy_group,
     get_clinicians,
     get_sessions_admin,
     update_session_admin,
+    delete_transcript_admin,
+    get_sessions_api_data,
 )
-from symptoms_analyser.controllers.evaluations import get_evaluation_payload, list_evaluation_ids, align_evaluations
+from symptoms_analyser.controllers.evaluations import (
+    get_evaluation_payload,
+    list_evaluation_ids,
+    align_evaluations,
+    save_clinical_synthesis,
+)
 from symptoms_analyser.controllers.revisions import save_revision_logic
 from symptoms_analyser.controllers.therapy_sessions import (
     handle_new_therapy_session,
     get_therapy_sessions,
     get_therapy_session_detail,
     get_session_transcript_status,
+)
+from symptoms_analyser.controllers.therapy_groups import (
+    get_group_dynamics_data,
+    get_therapy_groups_admin,
+    create_therapy_group,
+    update_therapy_group,
     get_therapy_groups,
+    get_therapy_group_detail,
 )
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
 from symptoms_analyser.controllers.interventions import get_group_interventions
+
 
 app = Flask(__name__)
 app.secret_key = "symptoms-analyser-secure-key"
@@ -151,11 +162,7 @@ def index():
 @app.route("/therapy_sessions/new")
 def new_therapy_session():
     try:
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            groups = [dict(row) for row in cursor.fetchall()]
+        groups = get_therapy_groups()
     except Exception as e:
         print(f"Error fetching groups for new session form: {e}")
         groups = []
@@ -165,13 +172,7 @@ def new_therapy_session():
 @app.route("/therapy_sessions")
 def therapy_sessions():
     try:
-        # Fetch therapy groups for filtering select option dropdown
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            therapy_groups = [dict(r) for r in cursor.fetchall()]
-
+        therapy_groups = get_therapy_groups()
         group_id = request.args.get("group_id")
         if group_id is None and therapy_groups:
             group_id = str(therapy_groups[0]["id"])
@@ -247,13 +248,7 @@ def get_session_status(session_id):
 @app.route("/patients")
 def patients():
     try:
-        # Fetch therapy groups for filtering select option dropdown
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            therapy_groups = [dict(r) for r in cursor.fetchall()]
-
+        therapy_groups = get_therapy_groups()
         group_id = request.args.get("group_id")
         if group_id is None and therapy_groups:
             group_id = str(therapy_groups[0]["id"])
@@ -338,36 +333,12 @@ def therapy_groups():
 @app.route("/therapy_groups/<int:group_id>")
 def therapy_group_detail(group_id):
     try:
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT g.id, g.name, u.name as clinician_name, g.created_at
-                FROM therapy_groups g
-                LEFT JOIN users u ON g.clinician_id = u.id
-                WHERE g.id = ?
-                """,
-                (group_id,),
-            )
-            group = cursor.fetchone()
-            
-            if group:
-                cursor.execute(
-                    """
-                    SELECT id, real_name, pseudonym
-                    FROM patients
-                    WHERE therapy_group_id = ?
-                    ORDER BY CAST(SUBSTR(pseudonym, 9) AS INTEGER) ASC
-                    """,
-                    (group_id,),
-                )
-                patients = [dict(row) for row in cursor.fetchall()]
-            else:
-                patients = []
-            
-        if not group:
+        data = get_therapy_group_detail(group_id)
+        if not data:
             return "Grupo não encontrado", 404
+            
+        group = data["group"]
+        patients = data["patients"]
             
         # First tab: Intervenções e ações recomendadas
         res = get_group_interventions(group_id)
@@ -454,44 +425,19 @@ def admin_compare_tdpm_analysis():
 @app.route("/admin/transcripts")
 def admin_transcripts():
     try:
-        # 1. Fetch KPI stats
+        # Fetch KPI stats
         stats = get_stats()
         
-        # 2. Fetch jobs (transcripts)
+        # Fetch jobs (transcripts)
         jobs = get_transcripts()
         
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
-                       u.name as clinician_name,
-                       g.name as therapy_group_name,
-                       (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients
-                FROM therapy_sessions s
-                LEFT JOIN users u ON s.clinician_id = u.id
-                LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-                ORDER BY s.start_at DESC, s.created_at DESC
-            """)
-            sessions = [
-                {
-                    "id": r["id"],
-                    "name": r["name"],
-                    "clinician_id": r["clinician_id"],
-                    "clinician_name": r["clinician_name"] or "Sem clínico",
-                    "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
-                    "start_at": r["start_at"],
-                    "duration": r["duration"],
-                    "created_at": r["created_at"],
-                    "patients": r["patients"] or "Nenhum"
-                }
-                for r in cursor.fetchall()
-            ]
+        # Fetch therapy sessions
+        sessions = get_sessions_admin()
             
-        # 5. Fetch evaluation telemetry
+        # Fetch evaluation telemetry
         eval_telemetry = get_evaluation_telemetry()
         
-        # 6. Fetch synthesis telemetry
+        # Fetch synthesis telemetry
         synthesis_telemetry = get_synthesis_telemetry()
         
         return render_template(
@@ -559,11 +505,7 @@ def admin_patients():
             return redirect(url_for("admin_patients"))
 
         # Fetch therapy groups for dropdowns
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            therapy_groups = [dict(r) for r in cursor.fetchall()]
+        therapy_groups = get_therapy_groups()
 
         patients = get_patients()
         return render_template("admin_patients.html", patients=patients, therapy_groups=therapy_groups)
@@ -603,11 +545,7 @@ def admin_therapy_sessions():
             return redirect(url_for("admin_therapy_sessions"))
 
         # Fetch therapy groups for filter dropdown and modal
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name FROM therapy_groups ORDER BY name ASC")
-            therapy_groups = [dict(r) for r in cursor.fetchall()]
+        therapy_groups = get_therapy_groups()
 
         group_id = request.args.get("group_id")
         sessions = get_sessions_admin(group_id)
@@ -773,20 +711,11 @@ def api_admin_transcripts():
 @app.route("/api/admin/transcripts/<int:transcript_id>", methods=["DELETE"])
 def api_delete_transcript(transcript_id):
     try:
-        import symptoms_analyser.db as orm
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM transcripts WHERE id = ?", (transcript_id,))
-            if not cursor.fetchone():
-                return jsonify({"error": "Transcrição não encontrada"}), 404
-            
-        orm.delete_transcript(transcript_id)
-        return jsonify({"success": True, "message": "Transcrição excluída com sucesso!"}), 200
+        result, status = delete_transcript_admin(transcript_id)
+        return jsonify(result), status
     except Exception as e:
         print(f"Error deleting transcript {transcript_id}: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 
 @app.route("/api/admin/evaluation-telemetry")
@@ -827,24 +756,15 @@ def api_create_patient():
 @app.route("/api/evaluations/<int:eval_id>/synthesis", methods=["POST"])
 def api_save_clinical_synthesis(eval_id: int):
     try:
-        import symptoms_analyser.db as orm
-        from symptoms_analyser.db import get_db
-        
         data = request.get_json() or {}
         note = data.get("group_progress_note")
         if note is None:
             return jsonify({"error": "Dados inválidos: campo 'group_progress_note' é obrigatório"}), 400
             
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT transcript_id FROM tdpm_evaluations WHERE id = ?", (eval_id,))
-            row = cursor.fetchone()
-            if not row:
-                return jsonify({"error": "Avaliação não encontrada"}), 404
-            transcript_id = row["transcript_id"]
-            
-        orm.update_session_synthesis(transcript_id, note)
+        save_clinical_synthesis(eval_id, note)
         return jsonify({"message": "Resumo de tópicos da sessão salvo com sucesso!"}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         print(f"Error saving clinical synthesis: {e}")
         return jsonify({"error": str(e)}), 500
@@ -869,33 +789,7 @@ def api_admin_sessions():
             return jsonify({"error": str(e)}), 500
             
     try:
-        from symptoms_analyser.db import get_db
-        with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
-                       u.name as clinician_name,
-                       g.name as therapy_group_name,
-                       (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
-                FROM therapy_sessions s
-                LEFT JOIN users u ON s.clinician_id = u.id
-                LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-                ORDER BY s.start_at DESC, s.created_at DESC
-            """)
-            sessions = [
-                {
-                    "id": r["id"],
-                    "name": r["name"],
-                    "clinician_id": r["clinician_id"],
-                    "clinician_name": r["clinician_name"] or "Sem clínico",
-                    "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
-                    "start_at": r["start_at"],
-                    "duration": r["duration"],
-                    "patients": r["patients"] or "Nenhum paciente",
-                    "created_at": r["created_at"],
-                }
-                for r in cursor.fetchall()
-            ]
+        sessions = get_sessions_api_data()
         return jsonify(sessions)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

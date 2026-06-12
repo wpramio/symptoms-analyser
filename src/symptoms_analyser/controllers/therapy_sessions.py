@@ -324,31 +324,5 @@ def get_session_transcript_status(session_id: int) -> dict:
         }
 
 
-def get_therapy_groups() -> list[dict]:
-    """Retrieve all therapy groups with clinician name, patients count, and sessions count."""
-    from symptoms_analyser.db import get_db
-    with get_db() as conn:
-        cursor = conn.cursor()
-        query = """
-            SELECT g.id, g.name, g.created_at,
-                   u.name as clinician_name,
-                   (SELECT COUNT(*) FROM patients p WHERE p.therapy_group_id = g.id) as patient_count,
-                   (SELECT COUNT(*) FROM therapy_sessions s WHERE s.therapy_group_id = g.id) as session_count
-            FROM therapy_groups g
-            LEFT JOIN users u ON g.clinician_id = u.id
-            ORDER BY g.name ASC
-        """
-        cursor.execute(query)
-        return [
-            {
-                "id": r["id"],
-                "name": r["name"],
-                "clinician_name": r["clinician_name"] or "Sem clínico",
-                "created_at": r["created_at"],
-                "patient_count": r["patient_count"],
-                "session_count": r["session_count"]
-            }
-            for r in cursor.fetchall()
-        ]
 
 
