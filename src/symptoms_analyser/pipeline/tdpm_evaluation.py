@@ -145,7 +145,7 @@ def aggregate_chunk_results(chunk_results: List[Dict[str, Any]]) -> Dict[str, An
     return {"patients": patient_summaries}
 
 
-def evaluate_with_llm(
+def evaluate_symptoms_with_tdpm(
     transcript_id: int,
     blocks_per_call: int = 100,
     evaluator_id: str = "clinician_1",

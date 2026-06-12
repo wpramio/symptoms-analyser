@@ -8,7 +8,7 @@ from symptoms_analyser.pipeline.tdpm_evaluation import (
     aggregate_chunk_results,
     load_prompt,
     call_model,
-    evaluate_with_llm
+    evaluate_symptoms_with_tdpm
 )
 
 @pytest.fixture
@@ -153,7 +153,7 @@ def test_call_model():
 
 @mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.OpenAI")
 @mock.patch("symptoms_analyser.pipeline.tdpm_evaluation.load_prompt")
-def test_evaluate_with_llm(mock_load, mock_openai, test_db_path):
+def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     # Set up mocks
     mock_load.return_value = "System evaluation guidelines"
     
@@ -197,7 +197,7 @@ def test_evaluate_with_llm(mock_load, mock_openai, test_db_path):
     """)
     conn.commit()
     
-    eval_id = evaluate_with_llm(1, blocks_per_call=100, evaluator_id="1", db_conn=conn)
+    eval_id = evaluate_symptoms_with_tdpm(1, blocks_per_call=100, evaluator_id="1", db_conn=conn)
     
     assert eval_id == 1
     

@@ -17,7 +17,7 @@ from symptoms_analyser.utils import DB_PATH
 import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text_and_create_transcript, anonymize_transcript
 from symptoms_analyser.pipeline.sanitization import sanitize_text_with_llm
-from symptoms_analyser.pipeline.tdpm_evaluation import evaluate_with_llm
+from symptoms_analyser.pipeline.tdpm_evaluation import evaluate_symptoms_with_tdpm
 from symptoms_analyser.pipeline.synthesis import generate_clinical_synthesis
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -102,7 +102,7 @@ def process_transcript_pipeline(
 
         # STEP 5: TDPM-20 Clinical scoring
         add_log("(3/4) Executando avaliação clínica (TDPM-20) com IA")
-        evaluate_with_llm(
+        evaluate_symptoms_with_tdpm(
             transcript_id=transcript_id,
             blocks_per_call=100,
             evaluator_id="clinician_1",

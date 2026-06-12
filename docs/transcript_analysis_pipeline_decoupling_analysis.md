@@ -24,7 +24,7 @@ flowchart TD
         Extract[preprocessing.extract_text_and_create_transcript]
         Anon[preprocessing.anonymize_transcript]
         Sanitize[sanitization.sanitize_text_with_llm]
-        TDPM[tdpm_evaluation.evaluate_with_llm]
+        TDPM[tdpm_evaluation.evaluate_symptoms_with_tdpm]
     end
 
     subgraph Data [Data Store]
@@ -48,7 +48,7 @@ flowchart TD
 
 ### 1.1. Modularity Strengths (Highly Decoupled Data & Logic Layers)
 *   **Pipeline Modularity**: The core steps are written as separate, self-contained Python modules under `src/symptoms_analyser/pipeline/` (`preprocessing.py`, `sanitization.py`, `tdpm_evaluation.py`).
-*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_with_llm` only requires a `transcript_id`, queries the `sanitized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing or sanitization steps.
+*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_symptoms_with_tdpm` only requires a `transcript_id`, queries the `sanitized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing or sanitization steps.
 *   **State-Machine Compatibility**: The database schema already defines all the states required for an interrupted or deferred pipeline:
     ```sql
     status TEXT NOT NULL DEFAULT 'queued' 
@@ -68,6 +68,6 @@ flowchart TD
     if apply_sanitization:
         sanitize_text_with_llm(...)
     # 4. TDPM Clinical scoring
-    evaluate_with_llm(...)
+    evaluate_symptoms_with_tdpm(...)
     ```
 *   **UI Assumption**: The Jinja template (`therapy_session_detail.html`) assumes a binary operational state: either the transcript is actively running (showing a processing spinner console) or it is fully completed (showing the finished clinical dashboard). There is currently no UI treatment for the intermediate state where a transcript exists in the `'preprocessed'` state but does not yet have an evaluation.
