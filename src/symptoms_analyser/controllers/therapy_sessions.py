@@ -252,7 +252,7 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
         
         # Query latest transcript if exists
         cursor.execute("""
-            SELECT id, filename, status, progress_percent, raw_text, sanitized_text, error_message
+            SELECT id, filename, status, progress_percent, raw_text, anonymized_text, error_message
             FROM transcripts
             WHERE therapy_session_id = ?
             ORDER BY created_at DESC LIMIT 1
@@ -268,11 +268,11 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
                 "status": transcript_row["status"],
                 "progress_percent": transcript_row["progress_percent"] or 0,
                 "raw_text": transcript_row["raw_text"],
-                "sanitized_text": transcript_row["sanitized_text"],
+                "anonymized_text": transcript_row["anonymized_text"],
                 "error_message": transcript_row["error_message"]
             }
             # Fallback to raw text if preprocessed/anonymized text is not yet generated
-            text_for_airtime = transcript_row["sanitized_text"] or transcript_row["raw_text"]
+            text_for_airtime = transcript_row["anonymized_text"] or transcript_row["raw_text"]
             if text_for_airtime:
                 airtime_data = calculate_airtime(text_for_airtime, patients_list)
             

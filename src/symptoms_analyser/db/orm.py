@@ -199,16 +199,16 @@ def create_transcript(
     file_type: str,
     raw_text: str,
     file_size_bytes: int,
-    sanitized_text: Optional[str] = None,
+    anonymized_text: Optional[str] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> int:
     """Create a new transcript in the 'preprocessing' state and return its ID."""
     sql = """
         INSERT INTO transcripts (
-            therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent
+            therapy_session_id, filename, file_type, raw_text, anonymized_text, file_size_bytes, status, progress_percent
         ) VALUES (?, ?, ?, ?, ?, ?, 'preprocessing', 0.0)
     """
-    params = (therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes)
+    params = (therapy_session_id, filename, file_type, raw_text, anonymized_text, file_size_bytes)
 
     if db_conn:
         cursor = db_conn.cursor()
@@ -230,7 +230,7 @@ def update_transcript(
 ) -> None:
     """
     Dynamically update transcript fields by ID.
-    Supports updating status, sanitized_text, progress_percent, error_message, etc.
+    Supports updating status, anonymized_text, progress_percent, error_message, etc.
     """
     if not kwargs:
         return

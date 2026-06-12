@@ -77,8 +77,8 @@ CREATE TABLE IF NOT EXISTS transcripts (
     therapy_session_id INTEGER,
     filename TEXT NOT NULL,
     file_type TEXT,
-    raw_text TEXT NOT NULL,            -- Unsanitized raw transcript text (PHI)
-    sanitized_text TEXT,               -- Preprocessed / anonymized text
+    raw_text TEXT NOT NULL,            -- Raw transcript text (contains PHI)
+    anonymized_text TEXT,              -- Anonymized text (no PHI)
     file_size_bytes INTEGER,
     batch_id TEXT,                     -- UUID for grouping bulk uploads
     status TEXT NOT NULL DEFAULT 'queued' 

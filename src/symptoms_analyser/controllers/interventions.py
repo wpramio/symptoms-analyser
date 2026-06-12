@@ -101,7 +101,7 @@ def _run_heuristics_calculations(
         
         # Fetch transcripts for all sessions
         cursor.execute(f"""
-            SELECT therapy_session_id, raw_text, sanitized_text 
+            SELECT therapy_session_id, raw_text, anonymized_text 
             FROM transcripts 
             WHERE therapy_session_id IN ({placeholders})
         """, session_ids)
@@ -110,7 +110,7 @@ def _run_heuristics_calculations(
         # Map of session_id to transcript text
         session_transcripts = {}
         for row in transcripts_rows:
-            session_transcripts[row["therapy_session_id"]] = row["sanitized_text"] or row["raw_text"]
+            session_transcripts[row["therapy_session_id"]] = row["anonymized_text"] or row["raw_text"]
             
         # Aggregate airtime across all sessions
         for sid, text in session_transcripts.items():
@@ -134,14 +134,14 @@ def _run_heuristics_calculations(
                         
         # Also keep latest session's airtime for the relational checks that need current-session speaker data
         cursor.execute("""
-            SELECT raw_text, sanitized_text 
+            SELECT raw_text, anonymized_text 
             FROM transcripts 
             WHERE therapy_session_id = ? 
             ORDER BY created_at DESC LIMIT 1
         """, (ref_session_id,))
         latest_row = cursor.fetchone()
         if latest_row:
-            l_text = latest_row["sanitized_text"] or latest_row["raw_text"]
+            l_text = latest_row["anonymized_text"] or latest_row["raw_text"]
             if l_text:
                 airtime_data = calculate_airtime(l_text, list(curr_participants.values()))
                 

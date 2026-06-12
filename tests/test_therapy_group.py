@@ -49,7 +49,7 @@ def seeded_db_path(tmp_path, schema_sql):
     
     # 4. Seed Transcripts
     cursor.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, raw_text, sanitized_text, status)
+        INSERT INTO transcripts (id, therapy_session_id, filename, raw_text, anonymized_text, status)
         VALUES 
         (1, 1, 'session_1.txt', 'Paciente1: Olá tudo bem\nTerapeuta: Olá como vai\nPaciente2: Eu estou bem também', 'Paciente1: Olá tudo bem\nTerapeuta: Olá como vai\nPaciente2: Eu estou bem também', 'completed'),
         (2, 2, 'session_2.txt', 'Paciente1: Oi tudo bem\nTerapeuta: Oi como vai', 'Paciente1: Oi tudo bem\nTerapeuta: Oi como vai', 'completed')

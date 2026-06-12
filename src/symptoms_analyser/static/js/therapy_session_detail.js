@@ -596,21 +596,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Transcript Tab Switcher (Sanitized vs Raw)
-        const btnShowSanitized = document.getElementById('btnShowSanitized');
+        // Transcript Tab Switcher (Anonymized vs Raw)
+        const btnShowAnonymized = document.getElementById('btnShowAnonymized');
         const btnShowRaw = document.getElementById('btnShowRaw');
         const transcriptTextContent = document.getElementById('transcriptTextContent');
 
-        if (btnShowSanitized && btnShowRaw && transcriptTextContent) {
-            btnShowSanitized.addEventListener('click', () => {
-                btnShowSanitized.classList.add('active');
+        if (btnShowAnonymized && btnShowRaw && transcriptTextContent) {
+            btnShowAnonymized.addEventListener('click', () => {
+                btnShowAnonymized.classList.add('active');
                 btnShowRaw.classList.remove('active');
-                transcriptTextContent.textContent = transcriptTextContent.dataset.sanitized || '';
+                transcriptTextContent.textContent = transcriptTextContent.dataset.anonymized || '';
             });
 
             btnShowRaw.addEventListener('click', () => {
                 btnShowRaw.classList.add('active');
-                btnShowSanitized.classList.remove('active');
+                btnShowAnonymized.classList.remove('active');
                 transcriptTextContent.textContent = transcriptTextContent.dataset.raw || '';
             });
         }

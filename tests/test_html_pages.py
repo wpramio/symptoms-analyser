@@ -52,7 +52,7 @@ def seeded_db_path(tmp_path, schema_sql):
     
     # 5. Seed Transcripts
     cursor.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent)
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, anonymized_text, file_size_bytes, status, progress_percent)
         VALUES (1, 1, 'session_1.txt', 'txt', 'Texto', 'Texto limpo', 1234, 'completed', 100.0)
     """)
 

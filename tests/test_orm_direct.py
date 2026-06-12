@@ -108,7 +108,7 @@ def test_orm_operations_without_db_conn(mock_get_db, test_db_path):
         update_transcript(
             transcript_id=1,
             status="completed",
-            sanitized_text="Clean direct text",
+            anonymized_text="Clean direct text",
             progress_percent=100.0
         )
 

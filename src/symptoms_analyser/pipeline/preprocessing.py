@@ -157,7 +157,7 @@ def create_transcript(
         filename=filepath.name,
         file_type=filepath.suffix.lstrip("."),
         raw_text=raw_text,
-        sanitized_text=anonymized_text,
+        anonymized_text=anonymized_text,
         file_size_bytes=file_size_bytes,
         db_conn=db_conn
     )

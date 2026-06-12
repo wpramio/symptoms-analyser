@@ -51,7 +51,7 @@ flowchart TD
 
 ### 1.1. Modularity Strengths (Highly Decoupled Data & Logic Layers)
 *   **Pipeline Modularity**: The core steps are written as separate, self-contained Python modules under `src/symptoms_analyser/pipeline/` (`preprocessing.py`, `llm_analysis.py`).
-*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_symptoms_with_tdpm` only requires a `transcript_id`, queries the `sanitized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing steps.
+*   **Database-Driven Communication**: The modules communicate *exclusively* via the database using standard identifiers. For instance, `evaluate_symptoms_with_tdpm` only requires a `transcript_id`, queries the `anonymized_text` from the `transcripts` table, runs the LLM analysis, and populates the `tdpm_evaluations` and clinical score tables. It does not require any active in-memory context from the preprocessing steps.
 *   **State-Machine Compatibility**: The database schema already defines all the states required for an interrupted or deferred pipeline:
     ```sql
     status TEXT NOT NULL DEFAULT 'queued' 

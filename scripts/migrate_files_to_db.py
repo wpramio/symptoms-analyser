@@ -201,25 +201,25 @@ def ingest_transcripts_and_preprocessing_logs(conn):
         raw_text = rf.read_text(encoding="utf-8")
         
         sanitized_files = list(PREPROCESS_DIR.glob(f"{session_name}.run*.sanitized.txt"))
-        sanitized_text = None
+        anonymized_text = None
         if sanitized_files:
             def run_num(p):
                 match = re.search(r"\.run(\d+)\.", p.name)
                 return int(match.group(1)) if match else 0
             latest_sanitized = max(sanitized_files, key=run_num)
-            sanitized_text = latest_sanitized.read_text(encoding="utf-8")
+            anonymized_text = latest_sanitized.read_text(encoding="utf-8")
             
         therapy_session_id = get_or_create_session(conn, session_name, raw_text)
             
         cursor.execute("""
             INSERT INTO transcripts 
-            (therapy_session_id, filename, file_type, raw_text, sanitized_text, file_size_bytes, status, progress_percent)
+            (therapy_session_id, filename, file_type, raw_text, anonymized_text, file_size_bytes, status, progress_percent)
             VALUES (?, ?, 'docx', ?, ?, ?, 'completed', 100.0)
         """, (
             therapy_session_id,
             f"{session_name}.docx",
             raw_text,
-            sanitized_text,
+            anonymized_text,
             len(raw_text.encode('utf-8'))
         ))
         

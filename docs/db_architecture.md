@@ -29,7 +29,7 @@ erDiagram
         string filename
         string file_type
         string raw_text
-        string sanitized_text
+        string anonymized_text
         int file_size_bytes
         string batch_id
         string status
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS therapy_session_patients (
 ```
 
 #### Transcripts Table
-Preserves the complete, original source text of uploaded transcript files alongside its optional sanitized/preprocessed state.
+Preserves the complete, original source text of uploaded transcript files alongside its optional anonymized/preprocessed state.
 ```sql
 CREATE TABLE IF NOT EXISTS transcripts (
     id INTEGER PRIMARY KEY AUTOINCREMENT, -- Changed to sequential integer
@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS transcripts (
     filename TEXT NOT NULL,            -- Original uploaded file name (e.g., "session_2026_03_16.docx")
     file_type TEXT,                    -- e.g. "docx", "txt"
     raw_text TEXT NOT NULL,            -- Full unparsed raw speech (may contain PHI/real names)
-    sanitized_text TEXT,               -- The FULL preprocessed and anonymized text block (NULL if skipped)
+    anonymized_text TEXT,              -- The FULL preprocessed and anonymized text block (NULL if skipped)
     file_size_bytes INTEGER,
     
     -- Async Batch & Job Processing Status
@@ -291,7 +291,7 @@ CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patie
 ### 2.4. Qualitative Clinical Syntheses
 
 #### Session Syntheses Table
-Stores qualitative whole-session clinical summaries and client interactions networks generated from the sanitized transcripts.
+Stores qualitative whole-session clinical summaries and client interactions networks generated from the anonymized transcripts.
 ```sql
 CREATE TABLE IF NOT EXISTS session_syntheses (
     transcript_id INTEGER PRIMARY KEY, -- FK to transcripts.id
@@ -352,7 +352,7 @@ During ingestion or execution, when we parse the results JSON, we extract eviden
 
 #### Premium UI Interaction (Interactive Transcript View)
 When loading the UI:
-1. **Fetch Transcript Blocks**: The frontend fetches `raw_text` / `sanitized_text` from `transcripts`.
+1. **Fetch Transcript Blocks**: The frontend fetches `raw_text` / `anonymized_text` from `transcripts`.
 2. **On-the-fly Splitting**: React parses the text block in less than 0.2ms into speaker turns using a regex newline parser.
 3. **Fetch Scores**: The frontend loads the `patient_item_scores` rows (which already contain nested evidence objects!).
 4. **Dynamic Overlays**:
@@ -385,7 +385,7 @@ When loading the UI:
 ### 3.5. Preprocessing and Local Anonymization
 
 During the preprocessing step, the system performs lightweight local anonymization:
-- The raw text (`raw_text`) is parsed, all identifying Protected Health Information (PHI) like real patient names is mapped to pseudonyms, and the resulting anonymized text is saved into `sanitized_text` in the `transcripts` table.
+- The raw text (`raw_text`) is parsed, all identifying Protected Health Information (PHI) like real patient names is mapped to pseudonyms, and the resulting anonymized text is saved into `anonymized_text` in the `transcripts` table.
 - This decoupled, offline step occurs before any cloud LLM services are invoked, ensuring clinical data privacy from the outset.
 
 ### 3.6. Self-Contained Source of Truth (Decoupling the Filesystem)
@@ -431,7 +431,7 @@ This completely prevents HTTP connection timeouts, allows bulk/multi-file upload
 The progress of a transcript through the AI pipeline is tracked by the `status` state column:
 *   **`queued`**: The file has been successfully uploaded and exists in the database. An offline worker thread (e.g., Celery in Python or BullMQ in Node) is notified.
 *   **`preprocessing`**: The worker has picked up the file and is running the local anonymization pipeline. The worker updates the `progress_percent` column in real-time.
-*   **`preprocessed`**: Local anonymization is complete. The resulting text is saved in `sanitized_text`.
+*   **`preprocessed`**: Local anonymization is complete. The resulting text is saved in `anonymized_text`.
 *   **`analyzing`**: The transcript is chunked and sent to the LLM for TDPM scoring.
 *   **`completed`**: LLM scoring is fully completed, results are loaded into `patient_item_scores`, and the technical metadata is registered in `evaluation_telemetry`.
 *   **`failed`**: An error occurred in either phase. The `error_message` column stores the exact traceback for clinical admins to troubleshoot.
@@ -447,8 +447,8 @@ The progress of a transcript through the AI pipeline is tracked by the `status` 
 In medical software architectures, protecting patient privacy is a legal and ethical imperative (governed by standards like HIPAA in the US and LGPD in Brazil). By completely separating Protected Health Information (PHI) from the clinical analytics pipeline, **our database achieves HIPAA-ready isolation.**
 
 #### 1. The Anonymization Boundary
-*   **The Pseudonym Key**: While **raw transcripts** (as originally uploaded and stored in `transcripts.raw_text`) naturally contain real names, spoken identifiers, and other PHI, an explicit **anonymization step** is executed during preprocessing. In this step, all real names, medical ID numbers, and contact details are identified and replaced with the patient's public, generated **`pseudonym`** (e.g. `"Paciente1"`) or generic placeholders (e.g. `"Fulano1"`). As a result, the preprocessed **anonymized texts** (`transcripts.sanitized_text`), clinical analysis prompts, LLM parameters, and downstream item score records NEVER contain real names or sensitive direct identifiers. Instead, they reference the pseudonym.
-    *   **Preprocessing Pipeline Execution in `sanitized_text`**: The system parses the raw text locally and replaces real names with pseudonyms. This anonymized text is immediately saved into `sanitized_text` and then used for downstream clinical evaluations.
+*   **The Pseudonym Key**: While **raw transcripts** (as originally uploaded and stored in `transcripts.raw_text`) naturally contain real names, spoken identifiers, and other PHI, an explicit **anonymization step** is executed during preprocessing. In this step, all real names, medical ID numbers, and contact details are identified and replaced with the patient's public, generated **`pseudonym`** (e.g. `"Paciente1"`) or generic placeholders (e.g. `"Fulano1"`). As a result, the preprocessed **anonymized texts** (`transcripts.anonymized_text`), clinical analysis prompts, LLM parameters, and downstream item score records NEVER contain real names or sensitive direct identifiers. Instead, they reference the pseudonym.
+    *   **Preprocessing Pipeline Execution in `anonymized_text`**: The system parses the raw text locally and replaces real names with pseudonyms. This anonymized text is immediately saved into `anonymized_text` and then used for downstream clinical evaluations.
 *   **Isolated Patient Registry**: The connection between this public pseudonym and the patient's actual sensitive details (like their true name `"João da Silva"`) is stored **strictly and exclusively** in the `patients` table.
 
 #### 2. What this Architectural Decision Enables
@@ -461,7 +461,7 @@ In medical software architectures, protecting patient privacy is a legal and eth
 #### 3. Securing Raw PHI (`transcripts.raw_text`)
 Because the raw un-anonymized speech transcript is stored inside the database prior to sanitization, it contains direct patient PHI. To guarantee medical privacy standards, we implement the following security layers:
 *   **Application-Level Column Encryption**: The `transcripts.raw_text` field is encrypted at rest prior to database insertion using a secure symmetric encryption standard (e.g., **AES-256-GCM**). The encryption keys are securely managed by a separate external Key Management Service (KMS) or environment secret store.
-*   **Transient Storage & Pruning**: To minimize long-term exposure, `transcripts.raw_text` is treated as transient storage. Once the clinical assessment is validated and signed off by the clinician, a background pruning worker scrubs the raw text (sets `raw_text = NULL`), leaving only the permanent, anonymized `sanitized_text`.
+*   **Transient Storage & Pruning**: To minimize long-term exposure, `transcripts.raw_text` is treated as transient storage. Once the clinical assessment is validated and signed off by the clinician, a background pruning worker scrubs the raw text (sets `raw_text = NULL`), leaving only the permanent, anonymized `anonymized_text`.
 *   **Access Auditing**: Direct database queries to raw transcripts are disabled at the infrastructure layer. All application-level read and decryption events on `raw_text` automatically generate immutable access logs, recording the timestamp, clinical user ID, and access context for audit purposes.
 
 #### 4. How and When is the Patients Table Populated?

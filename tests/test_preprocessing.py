@@ -131,7 +131,7 @@ def test_create_transcript_txt(tmp_path, test_db_path):
     row = conn.execute("SELECT * FROM transcripts WHERE id = 1").fetchone()
     assert row["filename"] == "session_2026_05_29.txt"
     assert row["raw_text"] == "00:05:00\nPaciente1: Olá doutor."
-    assert row["sanitized_text"] == "00:05:00\nPaciente1: Olá doutor."
+    assert row["anonymized_text"] == "00:05:00\nPaciente1: Olá doutor."
     
     session_row = conn.execute("SELECT * FROM therapy_sessions WHERE id = 1").fetchone()
     assert session_row["name"] == "Sessão 29/05/2026"
@@ -141,7 +141,7 @@ def test_create_transcript_txt(tmp_path, test_db_path):
 
 @mock.patch("symptoms_analyser.pipeline.preprocessing.extract_text_from_docx")
 def test_create_transcript_docx(mock_extract, tmp_path, test_db_path):
-    mock_extract.return_value = ({"session_date": "16 de mar. de 2026"}, "Sanitized content")
+    mock_extract.return_value = ({"session_date": "16 de mar. de 2026"}, "Raw content")
     docx_file = tmp_path / "dummy.docx"
     docx_file.write_text("content", encoding="utf-8")  # make it exist
     
@@ -162,8 +162,8 @@ def test_create_transcript_docx(mock_extract, tmp_path, test_db_path):
     
     assert transcript_id == 1
     row = conn.execute("SELECT * FROM transcripts WHERE id = 1").fetchone()
-    assert row["raw_text"] == "Sanitized content"
-    assert row["sanitized_text"] == "Anonymized content"
+    assert row["raw_text"] == "Raw content"
+    assert row["anonymized_text"] == "Anonymized content"
     conn.close()
 
 def test_anonymize_text_empty(test_db_path):

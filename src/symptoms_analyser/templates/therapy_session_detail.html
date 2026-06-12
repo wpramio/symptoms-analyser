@@ -534,7 +534,7 @@
                 <h3 class="synthesis-card-title mb-0">Transcrição completa da sessão</h3>
             </div>
             <div class="transcript-tab-row">
-                <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowSanitized">
+                <button type="button" class="btn btn-secondary btn-transcript-tab active" id="btnShowAnonymized">
                     Texto anonimizado</button>
                 <button type="button" class="btn btn-secondary btn-transcript-tab" id="btnShowRaw">
                     Texto original</button>
@@ -542,8 +542,8 @@
         </div>
         <div class="transcript-body-scroll-custom">
             <pre id="transcriptTextContent" class="transcript-content-pre"
-                data-sanitized="{{ transcript.sanitized_text or '' }}"
-                data-raw="{{ transcript.raw_text or '' }}">{{ transcript.sanitized_text or transcript.raw_text }}</pre>
+                data-anonymized="{{ transcript.anonymized_text or '' }}"
+                data-raw="{{ transcript.raw_text or '' }}">{{ transcript.anonymized_text or transcript.raw_text }}</pre>
         </div>
     </div>
     {% endif %}

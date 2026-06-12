@@ -193,7 +193,7 @@ def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     
     # Pre-seed transcript
     conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, anonymized_text, status)
         VALUES (1, 1, 'session.txt', 'txt', '00:01:00\nPaciente: Eu sinto muita fome o dia todo.', '00:01:00\nPaciente: Eu sinto muita fome o dia todo.', 'preprocessed')
     """)
     conn.commit()
@@ -300,7 +300,7 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     
     # Insert test transcript
     conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, anonymized_text, status)
         VALUES (10, 1, 'test.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
     """)
     conn.commit()
@@ -338,7 +338,7 @@ def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
     conn.row_factory = sqlite3.Row
     
     conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, anonymized_text, status)
         VALUES (20, 1, 'test_retry.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
     """)
     conn.commit()
@@ -365,7 +365,7 @@ def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db
     conn.row_factory = sqlite3.Row
     
     conn.execute("""
-        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, sanitized_text, status)
+        INSERT INTO transcripts (id, therapy_session_id, filename, file_type, raw_text, anonymized_text, status)
         VALUES (30, 1, 'test_fail.txt', 'txt', 'Raw Text', 'Texto Higienizado', 'completed')
     """)
     conn.commit()

@@ -1009,7 +1009,7 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
             # Query latest transcript for this session
             cursor.execute(
                 """
-                SELECT raw_text, sanitized_text 
+                SELECT raw_text, anonymized_text 
                 FROM transcripts 
                 WHERE therapy_session_id = ? 
                 ORDER BY created_at DESC LIMIT 1
@@ -1018,7 +1018,7 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
             )
             t_row = cursor.fetchone()
             if t_row:
-                text = t_row["sanitized_text"] or t_row["raw_text"]
+                text = t_row["anonymized_text"] or t_row["raw_text"]
                 if text:
                     airtime = calculate_airtime(text, patients_list)
                     if airtime and "speakers" in airtime:

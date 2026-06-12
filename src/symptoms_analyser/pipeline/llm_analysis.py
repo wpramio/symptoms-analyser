@@ -167,7 +167,7 @@ def evaluate_symptoms_with_tdpm(
     cursor = db_conn.cursor() if db_conn else None
     if cursor:
         cursor.execute("""
-            SELECT t.sanitized_text, t.therapy_session_id, t.filename, s.therapy_group_id
+            SELECT t.anonymized_text, t.therapy_session_id, t.filename, s.therapy_group_id
             FROM transcripts t
             LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
             WHERE t.id = ?
@@ -178,16 +178,16 @@ def evaluate_symptoms_with_tdpm(
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT t.sanitized_text, t.therapy_session_id, t.filename, s.therapy_group_id
+                SELECT t.anonymized_text, t.therapy_session_id, t.filename, s.therapy_group_id
                 FROM transcripts t
                 LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
                 WHERE t.id = ?
             """, (transcript_id,))
             row = cursor.fetchone()
-    if not row or not row["sanitized_text"]:
+    if not row or not row["anonymized_text"]:
         raise ValueError(f"Transcript ID {transcript_id} not found or has no preprocessed text in database.")
 
-    text = row["sanitized_text"]
+    text = row["anonymized_text"]
     therapy_session_id = row["therapy_session_id"]
     therapy_group_id = row["therapy_group_id"]
     filename = row["filename"]
@@ -351,7 +351,7 @@ def generate_clinical_synthesis(
     # 1. Fetch transcript information
     cursor = db_conn.cursor()
     cursor.execute("""
-        SELECT sanitized_text, therapy_session_id 
+        SELECT anonymized_text, therapy_session_id 
         FROM transcripts 
         WHERE id = ?
     """, (transcript_id,))
@@ -359,16 +359,16 @@ def generate_clinical_synthesis(
     if not row:
         raise ValueError(f"Transcript ID {transcript_id} not found in the database.")
     
-    sanitized_text = row["sanitized_text"]
+    anonymized_text = row["anonymized_text"]
     therapy_session_id = row["therapy_session_id"]
     
-    if not sanitized_text:
-        # Fallback to raw text if sanitized_text (anonymized) is empty or not populated
+    if not anonymized_text:
+        # Fallback to raw text if anonymized_text (anonymized) is empty or not populated
         cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
         fallback_row = cursor.fetchone()
-        sanitized_text = fallback_row["raw_text"] if fallback_row else ""
+        anonymized_text = fallback_row["raw_text"] if fallback_row else ""
         
-    if not sanitized_text.strip():
+    if not anonymized_text.strip():
         # Nothing to analyze
         return
 
@@ -392,7 +392,7 @@ Pacientes Participantes (Pseudônimos): {patients_list_str}
 
 Transcrição da Sessão:
 ---
-{sanitized_text}
+{anonymized_text}
 ---
 """
 
