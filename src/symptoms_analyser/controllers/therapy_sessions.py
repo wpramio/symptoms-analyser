@@ -9,7 +9,7 @@ from symptoms_analyser.controllers.transcript_upload import (
 
 def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any] = None) -> Dict[str, Any]:
     """
-    STEP 1: Handle therapy session creation.
+    Handle therapy session creation.
     Creates the session, links patients, and triggers async transcript ingestion if a file is present.
     """
     session_name = form_data.get("session_name")

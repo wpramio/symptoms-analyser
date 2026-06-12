@@ -1,7 +1,7 @@
 """
 pipeline/llm_analysis.py
 -------------------------
-STEP 5 & 6 of the symptoms-analyser pipeline:
+LLM clinical evaluation & synthesis steps of the symptoms-analyser pipeline:
   - evaluate_symptoms_with_tdpm: Splitting sanitized text into chunks, scoring symptoms via LLM completions, and writing patient scores to DB.
   - generate_clinical_synthesis: Generates qualitative clinical synthesis of the session and saves to session_syntheses.
 """
@@ -160,7 +160,7 @@ def evaluate_symptoms_with_tdpm(
     db_conn: Optional[sqlite3.Connection] = None
 ) -> int:
     """
-    Step 5: Run the TDPM-20 analysis pipeline on the sanitized transcript text
+    Run the TDPM-20 analysis pipeline on the sanitized transcript text
     loaded from the database.
     """
     # 1. Fetch sanitized text and session references

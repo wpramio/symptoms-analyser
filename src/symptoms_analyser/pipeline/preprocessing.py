@@ -1,9 +1,9 @@
 """
 pipeline/preprocessing.py
 -------------------------
-STEP 3 of the symptoms-analyser pipeline:
-  3a. Extract text from transcript files (docx or txt) and create DB records.
-  3b. Anonymize transcript and map real names to pseudonyms.
+Preprocessing logic of the symptoms-analyser pipeline:
+  - Extract text from transcript files (docx or txt) and create DB records.
+  - Anonymize transcript and map real names to pseudonyms.
 """
 
 from datetime import datetime, timezone
@@ -190,7 +190,7 @@ def anonymize_text(
     db_conn: Optional[sqlite3.Connection] = None
 ) -> Tuple[str, List[Tuple[str, str]]]:
     """
-    Step 3b: Anonymization & patient creation mapping.
+    Anonymization & patient creation mapping.
     Identifies real names in raw transcript and replaces them with pseudonyms.
     Reuses existing pseudonyms if patients are already registered in the DB.
     

@@ -1,7 +1,7 @@
 """
 pipeline/sanitization.py
 ------------------------
-STEP 4 of the symptoms-analyser pipeline:
+Sanitization step of the symptoms-analyser pipeline:
   - Splitting text into chunks
   - Making LLM completions calls for each chunk
   - Saving the aggregated sanitization logs, metadata, and final sanitized text
@@ -199,7 +199,7 @@ def sanitize_text_with_llm(
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
     """
-    Step 4: Load raw/anonymized text, chunk, run AI-based sanitization,
+    Load raw/anonymized text, chunk, run AI-based sanitization,
     reassemble, update sanitized_text, and write detailed telemetry.
     """
     # 1. Fetch transcript details from database
