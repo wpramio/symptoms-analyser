@@ -172,7 +172,7 @@ def test_page_routes(client, mock_get_db):
         assert resp.status_code == 404
         
         # Admin compare TDPM page
-        resp = client.get("/admin/compare_tdpm_analysis?a=/api/evaluations/1&b=")
+        resp = client.get("/admin/compare_tdpm_evaluation?a=/api/evaluations/1&b=")
         assert resp.status_code == 200
         
         # Admin transcripts page

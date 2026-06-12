@@ -36,7 +36,7 @@ def list_evaluation_ids() -> list[dict]:
 
 def get_evaluation_payload(eval_id: str) -> dict | None:
     """
-    Load the raw TDPM analysis JSON payload for the given evaluation ID.
+    Load the raw TDPM evaluation JSON payload for the given evaluation ID.
 
     Args:
         eval_id: The evaluation_id from evaluation_telemetry.

@@ -379,8 +379,8 @@ def tdpm_table():
         return str(e), 500
 
 
-@app.route("/admin/compare_tdpm_analysis")
-def admin_compare_tdpm_analysis():
+@app.route("/admin/compare_tdpm_evaluation")
+def admin_compare_tdpm_evaluation():
     # 1. Fetch available evaluations list for the dropdown selectors
     evaluations_list = list_evaluation_ids()
     
@@ -412,7 +412,7 @@ def admin_compare_tdpm_analysis():
         aligned_data = align_evaluations(data_a, data_b)
         
     return render_template(
-        "admin_compare_tdpm_analysis.html",
+        "admin_compare_tdpm_evaluation.html",
         evaluations_list=evaluations_list,
         selected_a=a_param or (f"/api/evaluations/{eval_id_a}" if eval_id_a else ""),
         selected_b=b_param or (f"/api/evaluations/{eval_id_b}" if eval_id_b else ""),
