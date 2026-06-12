@@ -1,18 +1,53 @@
 # Contexto do Projeto
 
 ## Visão geral
-Este projeto aplica análise de sintomas baseada em IA a transcrições de **sessões de terapia em grupo** focadas em **transtornos aditivos**. É parte do meu **Trabalho de Conclusão de Curso (TCC)**, realizado na UFRGS.
+Este projeto oferece **apoio ao profissional (terapeuta)** no acompanhamento clínico de pacientes, fornecendo elementos para auxiliar a **avaliação da evolução do paciente ao longo do tratamento**. O foco são as **terapias em grupo na modalidade online**, voltadas a pacientes com **transtornos aditivos**.
+
+A partir das transcrições das sessões, o sistema aplica análise baseada em IA para produzir avaliações **quantitativas** (escala TDPM-20) e **qualitativas** (síntese clínica da sessão), disponibilizando-as ao terapeuta por meio de uma aplicação web.
+
+É parte do meu **Trabalho de Conclusão de Curso (TCC)**, realizado na UFRGS.
+
+## Natureza do sistema: um CDSS
+O sistema pode ser classificado como um **Sistema de Apoio à Decisão Clínica (CDSS, do inglês *Clinical Decision Support System*)**, mais especificamente do tipo **baseado em conhecimento** (*knowledge-based*). Seu propósito é **apoiar**, e não substituir, o julgamento do terapeuta, oferecendo informação filtrada e contextualizada para enriquecer a avaliação e o acompanhamento do paciente.
+
+Ele segue a arquitetura clássica de um CDSS baseado em conhecimento, composta por três elementos:
+
+### 1. Base de conhecimento clínico
+A escala **TDPM-20**: 20 dimensões, critérios de avaliação por item e regras de pontuação (detalhados abaixo).
+
+### 2. Motor de raciocínio
+O processamento de IA sobre as transcrições, em duas frentes:
+
+- **Avaliação TDPM-20 via LLM**: pontuação dos sintomas em cada dimensão, usando *few-shot learning* e *structured output* (saída estruturada em JSON).
+- **Síntese clínica da sessão**: análise qualitativa que reúne:
+  - identificação do **foco central** da sessão;
+  - listagem dos **temas transversais**, ou seja, os assuntos mais abordados e discutidos pelo grupo;
+  - breve descrição das **técnicas clínicas, psicoeducação ou conduções** realizadas pelo(a) terapeuta;
+  - agregação das **interações marcantes** e do suporte mútuo (paciente-terapeuta e paciente-paciente).
+
+### 3. Mecanismo de interação com o clínico
+A **aplicação web (Flask)**, que apresenta:
+
+- dashboards;
+- perfis dimensionais;
+- análises da dinâmica dos grupos;
+- alertas críticos e sugestões de manejo (*feature* ainda experimental).
+
+## Evolução do projeto
+O projeto nasceu como um conjunto de **scripts Python** que extraíam o texto das transcrições, sanitizavam o conteúdo (remoção de ruídos e erros da transcrição via LLM, etapa **não mais realizada**) e executavam a avaliação TDPM-20 com LLM. Os resultados eram armazenados em **arquivos JSON**.
+
+Diante da necessidade de uma experiência de uso mais simples e da oferta de outros tipos de dados, o sistema evoluiu para uma **plataforma web mais completa**, construída em **Flask**, com os dados persistidos em banco **SQLite**.
 
 ## Avaliação de sintomas TDPM-20
-A análise é fundamentada na escala **TDPM-20 (Transtorno Disregulatório Predostático da Mente — Transdiagnostic Dysregulation of the Predostatic Mind)**, uma ferramenta transdiagnóstica para avaliação de desregulação psicopatológica em indivíduos com transtornos aditivos. Integra dimensões emocionais, cognitivas, comportamentais e psicofisiológicas, aplicável em contextos clínicos e de pesquisa.
+A análise é fundamentada na escala **TDPM-20 (Transtorno Disregulatório Predostático da Mente; em inglês, Transdiagnostic Dysregulation of the Predostatic Mind)**, uma ferramenta transdiagnóstica para avaliação de desregulação psicopatológica em indivíduos com transtornos aditivos. Integra dimensões emocionais, cognitivas, comportamentais e psicofisiológicas, aplicável em contextos clínicos e de pesquisa.
 
 O TDPM-20 foi desenvolvido a partir do framework **DREXI3** (pela pesquisadora Patrícia Furtado Martins), iniciado pelo grupo de estudos do **Centro de Pesquisa de Álcool e Drogas (CPAD)** do **Hospital de Clínicas de Porto Alegre**, coordenado pelo **Dr. Felix Kessler**.
 
 ### Regras de pontuação
-- Cada dimensão possui **2 itens**, exceto *Espectro Ansiedade/Fobia/Pânico*, que possui **3 itens** — totalizando **41 itens**.
+- Cada dimensão possui **2 itens**, exceto *Espectro Ansiedade/Fobia/Pânico*, que possui **3 itens**, totalizando **41 itens**.
 - Todos os itens são pontuados em uma **escala de 0 a 4** (0 = ausente; 4 = grave).
 - **Regra de desempate (sensibilidade clínica):** Em caso de dúvida entre duas pontuações possíveis (ex.: 1 vs. 2), atribuir sempre a **pontuação mais alta** para evitar subestimar a gravidade.
-- O **escore da dimensão** é a **média dos seus itens** (intervalo 0–4).
+- O **escore da dimensão** é a **média dos seus itens** (intervalo de 0 a 4).
 
 ### Etapas da avaliação
 1. **Identificação** dos sintomas relevantes em cada dimensão.
@@ -65,6 +100,15 @@ O TDPM-20 foi desenvolvido a partir do framework **DREXI3** (pela pesquisadora P
 - **Gerenciador de Pacotes:** `uv`
 - **Testes:** `pytest`
 
+## Configuração
+A integração com o LLM é definida por variáveis de ambiente (arquivo `.env`), o que permite trocar de provedor/modelo sem alterar o código:
+
+| Variável | Descrição |
+|---|---|
+| `LLM_API_KEY` | Chave de API do provedor de LLM |
+| `LLM_BASE_URL` | URL base da API (compatível com o protocolo OpenAI) |
+| `LLM_MODEL` | Identificador do modelo a ser utilizado |
+
 ## Estrutura do código-fonte
 
 ```
@@ -97,9 +141,9 @@ src/symptoms_analyser/
 ```
 
 ## Documentação adicional
-- [`docs/db_architecture.md`](docs/db_architecture.md) — Esquema do banco de dados e arquitetura de armazenamento
-- [`docs/transcript_analysis_pipeline.md`](docs/transcript_analysis_pipeline.md) — Pipeline de análise de transcrições (fluxo, fases e diagrama de sequência)
-- [`docs/design_system.md`](docs/design_system.md) — Sistema de design da interface web
+- [`docs/db_architecture.md`](docs/db_architecture.md): Esquema do banco de dados e arquitetura de armazenamento
+- [`docs/transcript_analysis_pipeline.md`](docs/transcript_analysis_pipeline.md): Pipeline de análise de transcrições (fluxo, fases e diagrama de sequência)
+- [`docs/design_system.md`](docs/design_system.md): Sistema de design da interface web
 
 ## Orientação / instituição
 - **Instituição:** UFRGS
