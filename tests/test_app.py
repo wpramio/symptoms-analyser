@@ -85,7 +85,7 @@ def seeded_db_path(tmp_path, schema_sql):
         }
     }
     cursor.execute("""
-        INSERT INTO evaluation_telemetry (evaluation_id, model, chunks_analyzed, blocks_per_call, prompt_tokens, completion_tokens, total_elapsed_seconds, status, raw_payload, created_at)
+        INSERT INTO evaluation_telemetry (evaluation_id, model, chunks_evaluated, blocks_per_call, prompt_tokens, completion_tokens, total_elapsed_seconds, status, raw_payload, created_at)
         VALUES (1, 'gemini-2.5-flash', 1, 100, 1000, 300, 15.2, 'success', ?, '2026-05-29 14:15:00')
     """, (json.dumps(raw_payload),))
     

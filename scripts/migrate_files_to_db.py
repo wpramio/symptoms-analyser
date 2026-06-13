@@ -384,14 +384,14 @@ def ingest_clinical_evaluations(conn):
         
         cursor.execute("""
             INSERT OR REPLACE INTO evaluation_telemetry (
-                evaluation_id, model, chunks_analyzed, blocks_per_call, 
+                evaluation_id, model, chunks_evaluated, blocks_per_call, 
                 prompt_tokens, completion_tokens, total_elapsed_seconds, 
                 status, failure_reason, raw_payload, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'success', NULL, ?, ?)
         """, (
             eval_id,
             det_data.get("model", run.get("model", "unknown")),
-            det_data.get("chunks_analyzed", run.get("chunks_total", 0)),
+            det_data.get("chunks_evaluated", run.get("chunks_total", 0)),
             det_data.get("blocks_per_call", run.get("blocks_per_call", 100)),
             prompt_tokens,
             completion_tokens,

@@ -310,7 +310,7 @@
                                     </span>
                                     <span class="telemetry-tooltip-row">
                                         <span class="telemetry-tooltip-label">Blocos de análise:</span>
-                                        <strong class="telemetry-tooltip-value">{{ evaluation.chunks_analyzed if
+                                        <strong class="telemetry-tooltip-value">{{ evaluation.chunks_evaluated if
                                             evaluation else
                                             '-' }}</strong>
                                     </span>
@@ -366,7 +366,7 @@
                             </button>
                         </div>
                     </div>
-                    {% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
+                    {% elif transcript and transcript.status in ['preprocessing', 'evaluating', 'queued'] %}
                     <span class="status-badge" data-status="preprocessing">
                         Processando ({{ transcript.progress_percent }}%)
                     </span>
@@ -550,7 +550,7 @@
 </div>
 </div> <!-- Closes session-tab-content wrapper -->
 
-{% elif transcript and transcript.status in ['preprocessing', 'analyzing', 'queued'] %}
+{% elif transcript and transcript.status in ['preprocessing', 'evaluating', 'queued'] %}
 <!-- STATE 2: PIPELINE IS ACTIVELY RUNNING -->
 <div class="results-container centered-container-narrow">
     <div class="processing-card dashboard-card processing-centered" id="processingView">

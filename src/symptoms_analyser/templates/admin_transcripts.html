@@ -44,12 +44,12 @@
                                 {% if job.status == 'queued' %}Na Fila
                                 {% elif job.status == 'preprocessing' %}Pré-processando
                                 {% elif job.status == 'preprocessed' %}Pré-processada
-                                {% elif job.status == 'analyzing' %}Analisando
+                                {% elif job.status == 'evaluating' %}Analisando
                                 {% elif job.status == 'completed' %}Analisada
                                 {% elif job.status == 'failed' %}Falha (Ver erro)
                                 {% else %}{{ job.status }}{% endif %}
                             </div>
-                            {% if job.status == 'preprocessing' or job.status == 'analyzing' %}
+                            {% if job.status == 'preprocessing' or job.status == 'evaluating' %}
                             <div class="margin-top-small">
                                 <div class="text-muted font-bold text-small d-flex-between">
                                     <span>{% if job.status == 'preprocessing' %}Pré-processando{% else %}Analisando{%
@@ -128,7 +128,7 @@
                         </td>
                         <td class="text-medium">
                             <strong>Modelo:</strong> {{ tele.model }}<br>
-                            <span class="text-muted text-small">Chunks: {{ tele.chunks_analyzed or 0 }}</span><br>
+                            <span class="text-muted text-small">Chunks: {{ tele.chunks_evaluated or 0 }}</span><br>
                             <span class="text-muted text-small">Blocos/Chamada: {{ tele.blocks_per_call or 0 }}</span>
                         </td>
                         <td class="text-medium">

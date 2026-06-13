@@ -299,7 +299,7 @@ def create_tdpm_evaluation(
 def create_evaluation_telemetry(
     evaluation_id: int,
     model: str,
-    chunks_analyzed: int,
+    chunks_evaluated: int,
     blocks_per_call: int,
     prompt_tokens: Optional[int],
     completion_tokens: Optional[int],
@@ -313,13 +313,13 @@ def create_evaluation_telemetry(
     """Insert pipeline execution telemetry corresponding to a specific clinical evaluation."""
     sql = """
         INSERT INTO evaluation_telemetry (
-            evaluation_id, model, chunks_analyzed, blocks_per_call, 
+            evaluation_id, model, chunks_evaluated, blocks_per_call, 
             prompt_tokens, completion_tokens, total_elapsed_seconds, 
             status, failure_reason, raw_payload, created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
     params = (
-        evaluation_id, model, chunks_analyzed, blocks_per_call,
+        evaluation_id, model, chunks_evaluated, blocks_per_call,
         prompt_tokens, completion_tokens, total_elapsed_seconds,
         status, failure_reason, raw_payload, created_at
     )

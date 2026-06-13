@@ -170,7 +170,7 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
             orm.create_evaluation_telemetry(
                 evaluation_id=new_eval_id,
                 model="human-revision",
-                chunks_analyzed=baseline_payload.get("chunks_analyzed", 0),
+                chunks_evaluated=baseline_payload.get("chunks_evaluated", 0),
                 blocks_per_call=baseline_payload.get("blocks_per_call", 0),
                 prompt_tokens=0,
                 completion_tokens=0,

@@ -92,7 +92,7 @@ def get_evaluation_telemetry() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT et.evaluation_id, et.model, et.chunks_analyzed, et.blocks_per_call,
+            SELECT et.evaluation_id, et.model, et.chunks_evaluated, et.blocks_per_call,
                    et.prompt_tokens, et.completion_tokens, et.total_elapsed_seconds,
                    et.status, et.failure_reason, et.created_at,
                    e.transcript_id, e.therapy_session_id, s.name as session_name
@@ -105,7 +105,7 @@ def get_evaluation_telemetry() -> list[dict]:
             {
                 "evaluation_id": r["evaluation_id"],
                 "model": r["model"],
-                "chunks_analyzed": r["chunks_analyzed"],
+                "chunks_evaluated": r["chunks_evaluated"],
                 "blocks_per_call": r["blocks_per_call"],
                 "prompt_tokens": r["prompt_tokens"],
                 "completion_tokens": r["completion_tokens"],

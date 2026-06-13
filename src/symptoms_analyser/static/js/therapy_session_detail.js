@@ -809,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // STATE 2: PIPELINE POLLING LOGIC (When actively running)
     // =========================================================================
-    if (initialTranscriptStatus && ['preprocessing', 'analyzing', 'queued'].includes(initialTranscriptStatus)) {
+    if (initialTranscriptStatus && ['preprocessing', 'evaluating', 'queued'].includes(initialTranscriptStatus)) {
         addLog(`Iniciando monitoramento de execução da sessão ${sessionId}`, 'system');
 
         async function pollDatabaseStatus() {

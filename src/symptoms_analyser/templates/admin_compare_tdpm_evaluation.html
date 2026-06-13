@@ -54,7 +54,7 @@
                         <div class="meta-label">Modelo</div>
                         <div class="meta-value">{{ data_a.model or '-' }}</div>
                         <div class="meta-label">Blocos</div>
-                        <div class="meta-value">{{ data_a.chunks_analyzed or '-' }}</div>
+                        <div class="meta-value">{{ data_a.chunks_evaluated or '-' }}</div>
                         <div class="meta-label">Tempo de execução</div>
                         <div class="meta-value">{% if data_a.total_elapsed_seconds %}{{ data_a.total_elapsed_seconds
                             }}s{% else %}-{% endif %}</div>
@@ -81,7 +81,7 @@
                         <div class="meta-label">Modelo</div>
                         <div class="meta-value">{{ data_b.model or '-' }}</div>
                         <div class="meta-label">Blocos</div>
-                        <div class="meta-value">{{ data_b.chunks_analyzed or '-' }}</div>
+                        <div class="meta-value">{{ data_b.chunks_evaluated or '-' }}</div>
                         <div class="meta-label">Tempo de execução</div>
                         <div class="meta-value">{% if data_b.total_elapsed_seconds %}{{ data_b.total_elapsed_seconds
                             }}s{% else %}-{% endif %}</div>

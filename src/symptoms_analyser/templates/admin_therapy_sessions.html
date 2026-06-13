@@ -64,7 +64,7 @@
                         <td>
                             {% if session.transcript_status == 'completed' %}
                             <span class="status-badge" data-status="completed">Disponível</span>
-                            {% elif session.transcript_status in ['preprocessing', 'analyzing'] %}
+                            {% elif session.transcript_status in ['preprocessing', 'evaluating'] %}
                             <span class="status-badge" data-status="preprocessing">Em processamento</span>
                             {% elif session.transcript_status == 'failed' %}
                             <span class="status-badge" data-status="failed">Erro</span>

@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS transcripts (
     file_size_bytes INTEGER,
     batch_id TEXT,                     -- UUID for grouping bulk uploads
     status TEXT NOT NULL DEFAULT 'queued' 
-        CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'analyzing', 'completed', 'failed')),
+        CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'evaluating', 'completed', 'failed')),
     progress_percent REAL DEFAULT 0.0,
     error_message TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_evaluations_evaluator ON tdpm_evaluations (evalua
 CREATE TABLE IF NOT EXISTS evaluation_telemetry (
     evaluation_id INTEGER PRIMARY KEY,
     model TEXT NOT NULL,
-    chunks_analyzed INTEGER,
+    chunks_evaluated INTEGER,
     blocks_per_call INTEGER,
     prompt_tokens INTEGER,
     completion_tokens INTEGER,

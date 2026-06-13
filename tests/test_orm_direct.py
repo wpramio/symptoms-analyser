@@ -127,7 +127,7 @@ def test_orm_operations_without_db_conn(mock_get_db, test_db_path):
         create_evaluation_telemetry(
             evaluation_id=1,
             model="eval-model",
-            chunks_analyzed=1,
+            chunks_evaluated=1,
             blocks_per_call=100,
             prompt_tokens=200,
             completion_tokens=100,

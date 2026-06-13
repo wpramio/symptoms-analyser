@@ -193,10 +193,10 @@ def evaluate_symptoms_with_tdpm(
     filename = row["filename"]
     session_name = Path(filename).stem
 
-    # 2. Update DB status to 'analyzing'
+    # 2. Update DB status to 'evaluating'
     orm.update_transcript(
         transcript_id=transcript_id,
-        status="analyzing",
+        status="evaluating",
         db_conn=db_conn
     )
 
@@ -263,7 +263,7 @@ def evaluate_symptoms_with_tdpm(
         "timestamp_utc": created_at_str,
         "session": session_name,
         "model": MODEL,
-        "chunks_analyzed": len(chunks),
+        "chunks_evaluated": len(chunks),
         "blocks_per_call": blocks_per_call,
         "total_elapsed_seconds": round(total_elapsed, 1),
         "token_usage": total_usage,
@@ -273,7 +273,7 @@ def evaluate_symptoms_with_tdpm(
     orm.create_evaluation_telemetry(
         evaluation_id=eval_id,
         model=MODEL,
-        chunks_analyzed=len(chunks),
+        chunks_evaluated=len(chunks),
         blocks_per_call=blocks_per_call,
         prompt_tokens=total_usage.get("prompt_tokens"),
         completion_tokens=total_usage.get("completion_tokens"),
