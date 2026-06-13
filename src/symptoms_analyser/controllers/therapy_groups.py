@@ -419,11 +419,11 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
                             total_words += spk["word_count"]
                             total_turns += spk["turn_count"]
 
-            # Query clinical synthesis interactions mapping
+            # Query clinical analysis interactions mapping
             cursor.execute(
                 """
                 SELECT interactions_mapping
-                FROM session_syntheses
+                FROM session_clinical_analyses
                 WHERE therapy_session_id = ?
                 """,
                 (session_id,)
@@ -479,14 +479,14 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
         group_patients = [r["pseudonym"] for r in cursor.fetchall()]
 
         # Post-process Interactions mapping data (raw edges kept for scroll list)
-        synthesis_payload = None
+        clinical_analysis_payload = None
         if aggregated_edges:
             node_ids = set()
             for edge in aggregated_edges:
                 node_ids.add(edge["source"])
                 node_ids.add(edge["target"])
             nodes = [{"id": nid, "label": nid} for nid in sorted(node_ids)]
-            synthesis_payload = {
+            clinical_analysis_payload = {
                 "interactions_mapping": {
                     "nodes": nodes,
                     "edges": aggregated_edges
@@ -498,6 +498,6 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
 
         return {
             "airtime": airtime_payload,
-            "synthesis": synthesis_payload,
+            "clinical_analysis": clinical_analysis_payload,
             "graph_data": graph_data,
         }

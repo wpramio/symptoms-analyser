@@ -69,9 +69,9 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 'gpt-4', 1000, 300, 10.0, '{"aggregated": {"patients": {"Paciente1": {"dimensions": {"1": {"dimension_sum": 3}}, "items": {}}}}}')
     """)
     
-    # 8. Seed session synthesis telemetry
+    # 8. Seed session clinical analysis telemetry
     cursor.execute("""
-        INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time, created_at)
+        INSERT INTO session_clinical_analyses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time, created_at)
         VALUES (1, 1, 'Group Note', '{"nodes":[],"edges":[]}', 'gpt-4', 500, 200, 3.4, '2026-05-29 14:15:00')
     """)
     
@@ -133,7 +133,8 @@ def test_patients_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
          
         resp = client.get("/patients?group_id=")
         assert resp.status_code == 200
@@ -157,7 +158,8 @@ def test_therapy_sessions_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
          
         resp = client.get("/therapy_sessions?group_id=")
         assert resp.status_code == 200
@@ -212,7 +214,8 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
          
         # 1. Sessions List Page
         resp = client.get("/therapy_sessions")

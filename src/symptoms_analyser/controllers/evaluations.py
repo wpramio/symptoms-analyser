@@ -62,30 +62,30 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
         )
         row = cursor.fetchone()
 
-        synthesis_row = None
+        clinical_analysis_row = None
         if row:
             cursor.execute(
                 """
                 SELECT group_progress_note, interactions_mapping
-                FROM session_syntheses
+                FROM session_clinical_analyses
                 WHERE transcript_id = (SELECT transcript_id FROM tdpm_evaluations WHERE id = ?)
                 """,
                 (eval_id,),
             )
-            synthesis_row = cursor.fetchone()
+            clinical_analysis_row = cursor.fetchone()
 
     if row and row[0]:
         payload = json.loads(row[0])
         payload["session"] = f"{row[1]} ({row[2] or 'Sem clínico'})"
         
-        # Inject clinical synthesis
-        if synthesis_row:
-            payload["synthesis"] = {
-                "group_clinical_progress_note": synthesis_row["group_progress_note"],
-                "interactions_mapping": json.loads(synthesis_row["interactions_mapping"]) if synthesis_row["interactions_mapping"] else None
+        # Inject clinical analysis
+        if clinical_analysis_row:
+            payload["clinical_analysis"] = {
+                "group_clinical_progress_note": clinical_analysis_row["group_progress_note"],
+                "interactions_mapping": json.loads(clinical_analysis_row["interactions_mapping"]) if clinical_analysis_row["interactions_mapping"] else None
             }
         else:
-            payload["synthesis"] = None
+            payload["clinical_analysis"] = None
 
         # Post-process for backward compatibility of dimension_average
         patients = payload.get("aggregated", {}).get("patients", {})
@@ -238,8 +238,8 @@ def align_evaluations(data1: dict | None, data2: dict | None) -> list[dict]:
     return aligned_patients
 
 
-def save_clinical_synthesis(eval_id: int, note: str) -> None:
-    """Save clinical progress note/synthesis for the given evaluation ID."""
+def save_clinical_analysis(eval_id: int, note: str) -> None:
+    """Save clinical progress note/analysis for the given evaluation ID."""
     import symptoms_analyser.db as orm
     with get_db() as conn:
         cursor = conn.cursor()
@@ -249,5 +249,5 @@ def save_clinical_synthesis(eval_id: int, note: str) -> None:
             raise ValueError("Avaliação não encontrada")
         transcript_id = row["transcript_id"]
         
-    orm.update_session_synthesis(transcript_id, note)
+    orm.update_session_clinical_analysis(transcript_id, note)
 

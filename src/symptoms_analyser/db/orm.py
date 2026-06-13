@@ -420,7 +420,7 @@ def update_patient(
             _execute(conn)
 
 
-def create_session_synthesis(
+def create_session_clinical_analysis(
     transcript_id: int,
     therapy_session_id: int,
     group_progress_note: Optional[str] = None,
@@ -431,9 +431,9 @@ def create_session_synthesis(
     processing_time: Optional[float] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
-    """Insert or replace a qualitative whole-session clinical synthesis."""
+    """Insert or replace a qualitative whole-session clinical analysis."""
     sql = """
-        INSERT OR REPLACE INTO session_syntheses 
+        INSERT OR REPLACE INTO session_clinical_analyses 
         (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """
@@ -449,14 +449,14 @@ def create_session_synthesis(
             db_conn_to_use.commit()
 
 
-def update_session_synthesis(
+def update_session_clinical_analysis(
     transcript_id: int,
     group_progress_note: str,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
-    """Update only the progress note of a session's clinical synthesis."""
+    """Update only the progress note of a session's clinical analysis."""
     sql = """
-        UPDATE session_syntheses
+        UPDATE session_clinical_analyses
         SET group_progress_note = ?
         WHERE transcript_id = ?
     """
@@ -474,7 +474,7 @@ def delete_transcript(
     transcript_id: int,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> None:
-    """Delete a transcript and its cascade entities (evaluations, telemetry, syntheses, etc.)."""
+    """Delete a transcript and its cascade entities (evaluations, telemetry, clinical analyses, etc.)."""
     sql = "DELETE FROM transcripts WHERE id = ?"
     if db_conn:
         db_conn.execute(sql, (transcript_id,))

@@ -109,7 +109,7 @@ def seeded_db_path(tmp_path, schema_sql):
         (2, 'model-a', 2, 'success', ?, '2026-05-27 14:15:00')
     """, (json.dumps(payload_1), json.dumps(payload_2)))
 
-    # 7. Seed Session Syntheses for Interactions
+    # 7. Seed Session Clinical Analyses for Interactions
     interactions = {
         "nodes": [
             {"id": "Paciente1", "label": "Paciente1"},
@@ -125,7 +125,7 @@ def seeded_db_path(tmp_path, schema_sql):
         ]
     }
     cursor.execute("""
-        INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping)
+        INSERT INTO session_clinical_analyses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping)
         VALUES (1, 1, 'Nota de progresso coletivo 1', ?)
     """, (json.dumps(interactions),))
     
@@ -161,7 +161,8 @@ def test_therapy_group_detail_route(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200
@@ -196,13 +197,13 @@ def test_get_group_dynamics_data(mock_get_db):
         assert "Paciente2" in speakers
         assert "Terapeuta" in speakers
         
-        # Verify synthesis/interactions mapping
-        assert "synthesis" in data
-        synthesis = data["synthesis"]
-        assert synthesis is not None
-        assert "interactions_mapping" in synthesis
+        # Verify clinical_analysis/interactions mapping
+        assert "clinical_analysis" in data
+        clinical_analysis = data["clinical_analysis"]
+        assert clinical_analysis is not None
+        assert "interactions_mapping" in clinical_analysis
         
-        mapping = synthesis["interactions_mapping"]
+        mapping = clinical_analysis["interactions_mapping"]
         assert len(mapping["nodes"]) >= 2
         assert len(mapping["edges"]) == 1
         assert mapping["edges"][0]["source"] == "Paciente1"
@@ -216,7 +217,8 @@ def test_group_dynamics_tab_rendering(client, mock_get_db):
          mock.patch("symptoms_analyser.db.orm.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
+         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200
@@ -244,5 +246,5 @@ def test_group_dynamics_tab_rendering(client, mock_get_db):
         page_json = json.loads(script_island.string)
         assert page_json["groupId"] == 1
         assert page_json["airtime"] is not None
-        assert page_json["synthesis"] is not None
+        assert page_json["clinical_analysis"] is not None
 

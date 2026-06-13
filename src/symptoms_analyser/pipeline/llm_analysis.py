@@ -1,9 +1,9 @@
 """
 pipeline/llm_analysis.py
 -------------------------
-LLM clinical evaluation & synthesis steps of the symptoms-analyser pipeline:
+LLM clinical evaluation & clinical analysis steps of the symptoms-analyser pipeline:
   - evaluate_symptoms_with_tdpm: Splitting anonymized text into chunks, scoring symptoms via LLM completions, and writing patient scores to DB.
-  - generate_clinical_synthesis: Generates qualitative clinical synthesis of the session and saves to session_syntheses.
+  - generate_clinical_analysis: Generates qualitative clinical analysis of the session and saves to session_clinical_analyses.
 """
 
 from datetime import datetime, timezone
@@ -27,7 +27,7 @@ import symptoms_analyser.db as orm
 
 
 TDPM_PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "tdpm_evaluation.md"
-SYNTHESIS_PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "clinical_synthesis.md"
+CLINICAL_ANALYSIS_PROMPT_FILE = Path(__file__).resolve().parents[3] / "prompts" / "clinical_analysis.md"
 ONTOLOGY_FILE = Path(__file__).resolve().parents[3] / "data" / "tdpm_ontology.json"
 MAX_RETRIES = 5
 
@@ -340,13 +340,13 @@ def evaluate_symptoms_with_tdpm(
     return eval_id
 
 
-def generate_clinical_synthesis(
+def generate_clinical_analysis(
     transcript_id: int,
     db_conn: sqlite3.Connection
 ) -> None:
     """
     Retrieve anonymized text of the transcript and its participating patients list,
-    query the LLM for qualitative session synthesis, and store the result in the 'session_syntheses' table.
+    query the LLM for qualitative session clinical analysis, and store the result in the 'session_clinical_analyses' table.
     """
     # 1. Fetch transcript information
     cursor = db_conn.cursor()
@@ -383,24 +383,24 @@ def generate_clinical_synthesis(
     patients_list_str = ", ".join(patients) if patients else "Nenhum paciente identificado"
 
     # 3. Formulate the LLM prompt context
-    system_prompt = load_prompt(SYNTHESIS_PROMPT_FILE)
+    system_prompt = load_prompt(CLINICAL_ANALYSIS_PROMPT_FILE)
     
     user_text = f"""
-Sessão de Terapia em Grupo:
-ID da Sessão: {therapy_session_id}
-Pacientes Participantes (Pseudônimos): {patients_list_str}
+        Sessão de Terapia em Grupo:
+        ID da Sessão: {therapy_session_id}
+        Pacientes Participantes (Pseudônimos): {patients_list_str}
 
-Transcrição da Sessão:
----
-{anonymized_text}
----
-"""
+        Transcrição da Sessão:
+        ---
+        {anonymized_text}
+        ---
+    """
 
     # 4. Invoke LLM API
     client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
     
     max_json_retries = 3
-    synthesis_data = None
+    clinical_analysis_data = None
     total_prompt_tokens = 0
     total_completion_tokens = 0
     run_start = time.time()
@@ -411,7 +411,7 @@ Transcrição da Sessão:
             total_prompt_tokens += usage.get("prompt_tokens", 0)
             total_completion_tokens += usage.get("completion_tokens", 0)
         try:
-            synthesis_data = json.loads(response_content)
+            clinical_analysis_data = json.loads(response_content)
             break
         except json.JSONDecodeError as e:
             if parse_attempt == max_json_retries:
@@ -420,14 +420,14 @@ Transcrição da Sessão:
             time.sleep(2)
         
     processing_time = time.time() - run_start
-    group_note = synthesis_data.get("group_clinical_progress_note")
+    group_note = clinical_analysis_data.get("group_clinical_progress_note")
     
     # Safely serialize interactions network mapping placeholder
-    interactions = synthesis_data.get("interactions_mapping")
+    interactions = clinical_analysis_data.get("interactions_mapping")
     interactions_str = json.dumps(interactions, ensure_ascii=False) if interactions else None
     
     # Persist in DB using ORM
-    orm.create_session_synthesis(
+    orm.create_session_clinical_analysis(
         transcript_id=transcript_id,
         therapy_session_id=therapy_session_id,
         group_progress_note=group_note,

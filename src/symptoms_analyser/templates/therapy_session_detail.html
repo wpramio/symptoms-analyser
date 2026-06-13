@@ -111,10 +111,10 @@
 
     <!-- TAB PANELS CONTENT -->
     <div class="session-tab-content">
-        <!-- TAB PANEL 1: Clinical Synthesis -->
+        <!-- TAB PANEL 1: Clinical Analysis -->
         <div class="session-tab-panel active" id="tab-synthesis">
             <!-- CARD 1.5: Resumo de tópicos da sessão (IA) -->
-            {% if evaluation and evaluation.synthesis %}
+            {% if evaluation and evaluation.clinical_analysis %}
             <div class="dashboard-card synthesis-card" id="synthesis-section">
                 <div class="synthesis-card-header">
                     <div class="synthesis-title-container">
@@ -154,7 +154,7 @@
                 <div class="synthesis-card-body">
                     <div class="synthesis-textarea-wrapper">
                         <div id="group-progress-note-textarea" class="synthesis-text-container">{{
-                            evaluation.synthesis.group_clinical_progress_note or '' }}</div>
+                            evaluation.clinical_analysis.group_clinical_progress_note or '' }}</div>
                     </div>
                 </div>
             </div>
@@ -165,7 +165,7 @@
         <div class="session-tab-panel" id="tab-dynamics">
             <div class="session-detail-grid {% if airtime %}has-airtime{% endif %}">
                 <!-- CARD 1.7: Rede de interações sociais -->
-                {% if evaluation_id and evaluation and evaluation.synthesis %}
+                {% if evaluation_id and evaluation and evaluation.clinical_analysis %}
                 <div class="dashboard-card social-network-card" id="social-network-section">
                     <div class="social-network-header">
                         <div class="synthesis-title-container">
@@ -641,7 +641,7 @@
     "evaluationPath": {{ ('/api/evaluations/' ~ evaluation_id) | tojson if evaluation_id else 'null' }},
     "transcriptStatus": {{ transcript.status | tojson if transcript else 'null' }},
     "airtime": {{ airtime | tojson if airtime else 'null' }},
-    "synthesis": {{ evaluation.synthesis | tojson if (evaluation and evaluation.synthesis) else 'null' }}
+    "clinical_analysis": {{ evaluation.clinical_analysis | tojson if (evaluation and evaluation.clinical_analysis) else 'null' }}
 }
 </script>
 <script src="/static/js/therapy_session_detail.js"></script>

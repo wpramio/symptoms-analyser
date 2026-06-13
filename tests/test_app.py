@@ -95,9 +95,9 @@ def seeded_db_path(tmp_path, schema_sql):
         VALUES (1, 1, '1', '1.1', 3, 'Razao', '[]')
     """)
     
-    # 9.5. Seed session synthesis telemetry
+    # 9.5. Seed session clinical analysis telemetry
     cursor.execute("""
-        INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time, created_at)
+        INSERT INTO session_clinical_analyses (transcript_id, therapy_session_id, group_progress_note, interactions_mapping, model, prompt_tokens, completion_tokens, processing_time, created_at)
         VALUES (1, 1, 'Group Note', '{"nodes":[],"edges":[]}', 'gemini-2.5-flash', 500, 200, 3.4, '2026-05-29 14:15:00')
     """)
     
@@ -230,8 +230,8 @@ def test_api_routes(client, mock_get_db):
         assert resp.status_code == 200
         assert len(resp.json) == 1
         
-        # api_admin_synthesis_telemetry
-        resp = client.get("/api/admin/synthesis-telemetry")
+        # api_admin_clinical_analysis_telemetry
+        resp = client.get("/api/admin/clinical-analysis-telemetry")
         assert resp.status_code == 200
         assert len(resp.json) == 1
         

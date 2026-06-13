@@ -11,7 +11,7 @@ import traceback
 from symptoms_analyser.utils import DB_PATH
 import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text, anonymize_text, create_transcript
-from symptoms_analyser.pipeline.llm_analysis import evaluate_symptoms_with_tdpm, generate_clinical_synthesis
+from symptoms_analyser.pipeline.llm_analysis import evaluate_symptoms_with_tdpm, generate_clinical_analysis
 
 
 def process_transcript_pipeline(
@@ -87,9 +87,9 @@ def process_transcript_pipeline(
             db_conn=db_conn
         )
 
-        # Clinical Synthesis
+        # Clinical Analysis
         add_log("(4/4) Executando síntese qualitativa com IA")
-        generate_clinical_synthesis(
+        generate_clinical_analysis(
             transcript_id=transcript_id,
             db_conn=db_conn
         )

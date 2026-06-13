@@ -145,8 +145,8 @@ CREATE TABLE IF NOT EXISTS patient_item_scores (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_evaluation ON patient_item_scores (evaluation_id, patient_id, item_code);
 CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patient_id, dimension_code, item_code);
 
--- 9. Session Syntheses Table (qualitative whole-text clinical analyses)
-CREATE TABLE IF NOT EXISTS session_syntheses (
+-- 9. Session Clinical Analyses Table (qualitative whole-text clinical analyses)
+CREATE TABLE IF NOT EXISTS session_clinical_analyses (
     transcript_id INTEGER PRIMARY KEY,
     therapy_session_id INTEGER NOT NULL,
     group_progress_note TEXT,
@@ -159,5 +159,5 @@ CREATE TABLE IF NOT EXISTS session_syntheses (
     FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
     FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
 );
-CREATE INDEX IF NOT EXISTS idx_syntheses_session ON session_syntheses (therapy_session_id);
+CREATE INDEX IF NOT EXISTS idx_clinical_analyses_session ON session_clinical_analyses (therapy_session_id);
 

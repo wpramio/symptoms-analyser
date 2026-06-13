@@ -165,7 +165,7 @@
         </div>
     </div>
 
-    <!-- Section 4: Detailed Synthesis Telemetry Logs matching .results-container table container -->
+    <!-- Section 4: Detailed Clinical Analysis Telemetry Logs matching .results-container table container -->
     <div class="results-container">
         <h3>Telemetria de síntese clínica</h3>
         <div class="table-container">
@@ -180,8 +180,8 @@
                     </tr>
                 </thead>
                 <tbody id="synthesisTelemetryTableBody">
-                    {% if synthesis_telemetry %}
-                    {% for tele in synthesis_telemetry %}
+                    {% if clinical_analysis_telemetry %}
+                    {% for tele in clinical_analysis_telemetry %}
                     <tr>
                         <td class="text-medium">
                             <strong>{{ tele.session_name }}</strong><br>

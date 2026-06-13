@@ -94,14 +94,14 @@ def test_get_session_interventions_individual_and_relational(mock_get_db):
             cursor.execute("INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES (20, 1, '1', '1.1', 4)")
             cursor.execute("INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES (20, 2, '1', '1.1', 2)")
             
-            # Synthesis rows (interactions_mapping)
+            # Clinical analysis rows (interactions_mapping)
             # Sessão 2 has empty interactions mapping -> PacienteA & PacienteB isolated
             graph_data = {
                 "nodes": [{"id": "PacienteA"}, {"id": "PacienteB"}],
                 "edges": []
             }
             cursor.execute("""
-                INSERT INTO session_syntheses (therapy_session_id, interactions_mapping, group_progress_note)
+                INSERT INTO session_clinical_analyses (therapy_session_id, interactions_mapping, group_progress_note)
                 VALUES (2, ?, 'Hoje falamos sobre ansiedade geral e fissuras leves.')
             """, (json.dumps(graph_data),))
             
@@ -226,9 +226,9 @@ def test_new_heuristics(mock_get_db):
             for idx in range(1, 5):
                 cursor.execute(f"INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES ({100 + idx}, 20, '1', '1.1', 1)")
                 
-            # Session syntheses
+            # Session clinical analyses
             for idx in range(1, 5):
-                cursor.execute(f"INSERT INTO session_syntheses (transcript_id, therapy_session_id, group_progress_note) VALUES ({100 + idx}, {idx}, 'Progresso da sessao')")
+                cursor.execute(f"INSERT INTO session_clinical_analyses (transcript_id, therapy_session_id, group_progress_note) VALUES ({100 + idx}, {idx}, 'Progresso da sessao')")
                 
             conn.commit()
             

@@ -7,7 +7,7 @@ from symptoms_analyser.controllers.admin import (
     create_patient,
     get_evaluation_telemetry,
     get_patients,
-    get_synthesis_telemetry,
+    get_clinical_analysis_telemetry,
     get_stats,
     get_transcripts,
     get_patients_list_with_stats,
@@ -24,7 +24,7 @@ from symptoms_analyser.controllers.evaluations import (
     get_evaluation_payload,
     list_evaluation_ids,
     align_evaluations,
-    save_clinical_synthesis,
+    save_clinical_analysis,
 )
 from symptoms_analyser.controllers.revisions import save_revision_logic
 from symptoms_analyser.controllers.therapy_sessions import (
@@ -357,7 +357,7 @@ def therapy_group_detail(group_id):
             alerts=alerts,
             sessions=sessions,
             airtime=dynamics_data.get("airtime"),
-            synthesis=dynamics_data.get("synthesis"),
+            clinical_analysis=dynamics_data.get("clinical_analysis"),
             graph_data=dynamics_data.get("graph_data"),
         )
     except Exception as e:
@@ -437,8 +437,8 @@ def admin_transcripts():
         # Fetch evaluation telemetry
         eval_telemetry = get_evaluation_telemetry()
         
-        # Fetch synthesis telemetry
-        synthesis_telemetry = get_synthesis_telemetry()
+        # Fetch clinical analysis telemetry
+        clinical_analysis_telemetry = get_clinical_analysis_telemetry()
         
         return render_template(
             "admin_transcripts.html",
@@ -446,7 +446,7 @@ def admin_transcripts():
             jobs=jobs,
             sessions=sessions,
             eval_telemetry=eval_telemetry,
-            synthesis_telemetry=synthesis_telemetry
+            clinical_analysis_telemetry=clinical_analysis_telemetry
         )
     except Exception as e:
         import traceback
@@ -727,12 +727,12 @@ def api_admin_evaluation_telemetry():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/admin/synthesis-telemetry")
-def api_admin_synthesis_telemetry():
+@app.route("/api/admin/clinical-analysis-telemetry")
+def api_admin_clinical_analysis_telemetry():
     try:
-        return jsonify(get_synthesis_telemetry())
+        return jsonify(get_clinical_analysis_telemetry())
     except Exception as e:
-        print(f"Error fetching admin synthesis telemetry: {e}")
+        print(f"Error fetching admin clinical analysis telemetry: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -753,20 +753,20 @@ def api_create_patient():
         return jsonify(result), status
     except Exception as e:
         print(f"Error creating patient mapping: {e}")
-@app.route("/api/evaluations/<int:eval_id>/synthesis", methods=["POST"])
-def api_save_clinical_synthesis(eval_id: int):
+@app.route("/api/evaluations/<int:eval_id>/clinical-analysis", methods=["POST"])
+def api_save_clinical_analysis(eval_id: int):
     try:
         data = request.get_json() or {}
         note = data.get("group_progress_note")
         if note is None:
             return jsonify({"error": "Dados inválidos: campo 'group_progress_note' é obrigatório"}), 400
             
-        save_clinical_synthesis(eval_id, note)
+        save_clinical_analysis(eval_id, note)
         return jsonify({"message": "Resumo de tópicos da sessão salvo com sucesso!"}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
-        print(f"Error saving clinical synthesis: {e}")
+        print(f"Error saving clinical analysis: {e}")
         return jsonify({"error": str(e)}), 500
 
 

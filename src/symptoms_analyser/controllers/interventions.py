@@ -145,18 +145,18 @@ def _run_heuristics_calculations(
             if l_text:
                 airtime_data = calculate_airtime(l_text, list(curr_participants.values()))
                 
-        # 7. Fetch interactions_mapping and notes from session syntheses
+        # 7. Fetch interactions_mapping and notes from session clinical analyses
         cursor.execute(f"""
             SELECT therapy_session_id, interactions_mapping, group_progress_note
-            FROM session_syntheses
+            FROM session_clinical_analyses
             WHERE therapy_session_id IN ({placeholders})
         """, session_ids)
-        synthesis_rows = cursor.fetchall()
+        clinical_analysis_rows = cursor.fetchall()
         
         curr_interactions = None
-        historical_syntheses = sorted(synthesis_rows, key=lambda r: session_order.get(r["therapy_session_id"], 9999))
+        historical_clinical_analyses = sorted(clinical_analysis_rows, key=lambda r: session_order.get(r["therapy_session_id"], 9999))
         
-        for row in historical_syntheses:
+        for row in historical_clinical_analyses:
             if row["therapy_session_id"] == ref_session_id:
                 if row["interactions_mapping"]:
                     try:
@@ -199,7 +199,7 @@ def _run_heuristics_calculations(
             attended_session_ids = [h_entry["session_id"] for h_entry in history]
             
             total_attended_interactions = 0
-            for r in historical_syntheses:
+            for r in historical_clinical_analyses:
                 if r["therapy_session_id"] in attended_session_ids and r["interactions_mapping"]:
                     try:
                         js = json.loads(r["interactions_mapping"])
@@ -478,11 +478,11 @@ def _run_heuristics_calculations(
                 })
 
         # D. Persistent Subgroups / Cliques (Recurrent connections in last 3 sessions)
-        if len(historical_syntheses) >= 3:
-            recent_syntheses = historical_syntheses[-3:]
+        if len(historical_clinical_analyses) >= 3:
+            recent_clinical_analyses = historical_clinical_analyses[-3:]
             recent_edges_by_session = []
             
-            for r in recent_syntheses:
+            for r in recent_clinical_analyses:
                 s_edges = []
                 if r["interactions_mapping"]:
                     try:
@@ -580,8 +580,8 @@ def _run_heuristics_calculations(
         # =====================================================================
         # HEURISTIC 3: Extração de Tópicos / Análise das Minutas
         # =====================================================================
-        if len(historical_syntheses) >= 3:
-            recent_syntheses = historical_syntheses[-4:] if len(historical_syntheses) >= 4 else historical_syntheses[-3:]
+        if len(historical_clinical_analyses) >= 3:
+            recent_clinical_analyses = historical_clinical_analyses[-4:] if len(historical_clinical_analyses) >= 4 else historical_clinical_analyses[-3:]
             
             clinical_keywords = {
                 "fissura": ["fissura", "desejo de uso", "craving", "vontade de usar"],
@@ -596,7 +596,7 @@ def _run_heuristics_calculations(
             overlapping_themes = []
             for theme, terms in clinical_keywords.items():
                 appears_in_all = True
-                for row in recent_syntheses:
+                for row in recent_clinical_analyses:
                     note = row["group_progress_note"] or ""
                     note_lower = note.lower()
                     if not any(term in note_lower for term in terms):
@@ -610,7 +610,7 @@ def _run_heuristics_calculations(
                     "type": "topic",
                     "severity": "warning",
                     "title": f"Estagnação temática: {theme.capitalize()}",
-                    "description": f"O tema <strong>{theme}</strong> foi identificado como central/recorrente em todas as últimas {len(recent_syntheses)} sessões analisadas.",
+                    "description": f"O tema <strong>{theme}</strong> foi identificado como central/recorrente em todas as últimas {len(recent_clinical_analyses)} sessões analisadas.",
                     "action": f"Sugerir alteração metodológica de grupo: trazer dinâmicas focadas em aceitação e compromisso (ACT) ou mudar o formato da facilitação conversacional para quebrar a estagnação.",
                     "patient": None
                 })

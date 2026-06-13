@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // =========================================================================
     // Social Network Visualization
     // =========================================================================
-    const synthesisData = _page.synthesis;
+    const synthesisData = _page.clinical_analysis;
     if (synthesisData && synthesisData.interactions_mapping) {
         const supportMapping = synthesisData.interactions_mapping || { nodes: [], edges: [] };
         if (supportMapping.edges) {
@@ -762,7 +762,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // =========================================================================
-        // CLINICAL SYNTHESIS HANDLERS
+        // CLINICAL ANALYSIS HANDLERS
         // =========================================================================
         const btnCopySynthesis = document.getElementById('btn-copy-synthesis');
         const progressNoteTextarea = document.getElementById('group-progress-note-textarea');

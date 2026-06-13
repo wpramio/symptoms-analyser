@@ -129,10 +129,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================================================
     // Social Network Visualization
     // =========================================================================
-    const synthesisData = _page.synthesis;
+    const synthesisData = _page.clinical_analysis;
     const graphData = _page.graphData;
 
-    // ── Interaction Scroll List (uses raw edges from synthesis) ───────────────
+    // ── Interaction Scroll List (uses raw edges from clinical analysis) ───────────────
     if (synthesisData && synthesisData.interactions_mapping) {
         const interactionScrollList = document.getElementById('interactionScrollList');
         if (interactionScrollList) {

@@ -306,7 +306,7 @@
 
         <!-- Tab 2: Group Dynamics -->
         <div class="session-tab-panel" id="tab-dynamics">
-            {% if not airtime and not synthesis %}
+            {% if not airtime and not clinical_analysis %}
             <div class="welcome-message">
                 <span style="font-size: 3rem;">👥</span>
                 <h3>Sem dados de dinâmica do grupo</h3>
@@ -358,7 +358,7 @@
                 {% endif %}
 
                 <!-- CARD: Rede de interações sociais -->
-                {% if synthesis %}
+                {% if clinical_analysis %}
                 <div class="dashboard-card social-network-card" id="social-network-section">
                     <div class="social-network-header">
                         <div class="synthesis-title-container">
@@ -539,7 +539,7 @@
 {
     "groupId": {{ group.id }},
     "airtime": {{ airtime | tojson if airtime else 'null' }},
-    "synthesis": {{ synthesis | tojson if synthesis else 'null' }},
+    "clinical_analysis": {{ clinical_analysis | tojson if clinical_analysis else 'null' }},
     "graphData": {{ graph_data | tojson if graph_data else 'null' }}
 }
 </script>

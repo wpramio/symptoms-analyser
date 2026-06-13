@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-scripts/backfill_syntheses.py
+scripts/backfill_clinical_analyses.py
 -----------------------------
-Utility data migration script that backfills session syntheses for existing completed transcripts.
+Utility data migration script that backfills session clinical analyses for existing completed transcripts.
 """
 
 import os
@@ -17,7 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import required tools
 from symptoms_analyser.utils import DB_PATH
-from symptoms_analyser.pipeline.llm_analysis import generate_clinical_synthesis
+from symptoms_analyser.pipeline.llm_analysis import generate_clinical_analysis
 
 def backfill():
     print(f"[*] Conectando ao banco de dados SQLite: {DB_PATH.resolve()}")
@@ -53,8 +53,8 @@ def backfill():
         session_id = transcript["therapy_session_id"]
         filename = transcript["filename"]
         
-        # Check if synthesis already exists
-        cursor.execute("SELECT 1 FROM session_syntheses WHERE transcript_id = ?", (t_id,))
+        # Check if clinical analysis already exists
+        cursor.execute("SELECT 1 FROM session_clinical_analyses WHERE transcript_id = ?", (t_id,))
         exists = cursor.fetchone()
         
         force_regen = "--force" in sys.argv or "-f" in sys.argv
@@ -65,12 +65,12 @@ def backfill():
             
         if exists and force_regen:
             print(f"[~] Forçando regeneração da Transcrição #{t_id} ({filename}). Deletando antiga...")
-            cursor.execute("DELETE FROM session_syntheses WHERE transcript_id = ?", (t_id,))
+            cursor.execute("DELETE FROM session_clinical_analyses WHERE transcript_id = ?", (t_id,))
             conn.commit()
             
         print(f"[*] Processando Transcrição #{t_id} ({filename}) para a Sessão #{session_id}...")
         try:
-            generate_clinical_synthesis(transcript_id=t_id, db_conn=conn)
+            generate_clinical_analysis(transcript_id=t_id, db_conn=conn)
             print(f"[✔] Síntese gerada com sucesso para Transcrição #{t_id}!")
             backfilled_count += 1
         except Exception as e:

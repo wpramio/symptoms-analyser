@@ -9,7 +9,7 @@ from symptoms_analyser.pipeline.llm_analysis import (
     load_prompt,
     call_model,
     evaluate_symptoms_with_tdpm,
-    generate_clinical_synthesis
+    generate_clinical_analysis
 )
 
 @pytest.fixture
@@ -236,7 +236,7 @@ def test_evaluate_symptoms_with_tdpm(mock_load, mock_openai, test_db_path):
     
     conn.close()
 
-def test_session_synthesis_orm(test_db_path):
+def test_session_clinical_analysis_orm(test_db_path):
     import symptoms_analyser.db as orm
     conn = sqlite3.connect(test_db_path)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -249,8 +249,8 @@ def test_session_synthesis_orm(test_db_path):
     """)
     conn.commit()
 
-    # 2. Test create_session_synthesis
-    orm.create_session_synthesis(
+    # 2. Test create_session_clinical_analysis
+    orm.create_session_clinical_analysis(
         transcript_id=42,
         therapy_session_id=1,
         group_progress_note="Minuta inicial sugerida pela IA.",
@@ -262,7 +262,7 @@ def test_session_synthesis_orm(test_db_path):
         db_conn=conn
     )
     
-    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
+    row = conn.execute("SELECT * FROM session_clinical_analyses WHERE transcript_id = 42").fetchone()
     assert row is not None
     assert row["group_progress_note"] == "Minuta inicial sugerida pela IA."
     assert row["interactions_mapping"] == '{"nodes": [], "edges": []}'
@@ -271,14 +271,14 @@ def test_session_synthesis_orm(test_db_path):
     assert row["completion_tokens"] == 200
     assert row["processing_time"] == 1.5
 
-    # 3. Test update_session_synthesis (simulating clinician edit)
-    orm.update_session_synthesis(
+    # 3. Test update_session_clinical_analysis (simulating clinician edit)
+    orm.update_session_clinical_analysis(
         transcript_id=42,
         group_progress_note="Minuta editada pelo clínico.",
         db_conn=conn
     )
     
-    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 42").fetchone()
+    row = conn.execute("SELECT * FROM session_clinical_analyses WHERE transcript_id = 42").fetchone()
     assert row is not None
     assert row["group_progress_note"] == "Minuta editada pelo clínico."
     assert row["interactions_mapping"] == '{"nodes": [], "edges": []}'  # Kept intact!
@@ -286,13 +286,13 @@ def test_session_synthesis_orm(test_db_path):
     conn.close()
 
 @mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
-def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
+def test_generate_clinical_analysis_pipeline(mock_call_model, test_db_path):
     # Mock LLM return value
-    mock_synthesis_json = {
+    mock_clinical_analysis_json = {
         "group_clinical_progress_note": "Esta é a evolução do grupo da sessão 1.",
         "interactions_mapping": {"nodes": [], "edges": []}
     }
-    mock_call_model.return_value = (json.dumps(mock_synthesis_json), {"prompt_tokens": 100, "completion_tokens": 50})
+    mock_call_model.return_value = (json.dumps(mock_clinical_analysis_json), {"prompt_tokens": 100, "completion_tokens": 50})
     
     conn = sqlite3.connect(test_db_path)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -305,11 +305,11 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     """)
     conn.commit()
     
-    # Run the clinical synthesis pipeline
-    generate_clinical_synthesis(transcript_id=10, db_conn=conn)
+    # Run the clinical analysis pipeline
+    generate_clinical_analysis(transcript_id=10, db_conn=conn)
     
-    # Assert DB was updated with synthesized data
-    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 10").fetchone()
+    # Assert DB was updated with clinical-analysis data
+    row = conn.execute("SELECT * FROM session_clinical_analyses WHERE transcript_id = 10").fetchone()
     assert row is not None
     assert row["therapy_session_id"] == 1
     assert row["group_progress_note"] == "Esta é a evolução do grupo da sessão 1."
@@ -322,15 +322,15 @@ def test_generate_clinical_synthesis_pipeline(mock_call_model, test_db_path):
     conn.close()
 
 @mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
-def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
+def test_generate_clinical_analysis_json_retry(mock_call_model, test_db_path):
     # First call returns invalid JSON, second call returns valid JSON
-    mock_synthesis_json = {
+    mock_clinical_analysis_json = {
         "group_clinical_progress_note": "Evolução do grupo com sucesso.",
         "interactions_mapping": {"nodes": [], "edges": []}
     }
     mock_call_model.side_effect = [
         ("{invalid_json", {"prompt_tokens": 100}),
-        (json.dumps(mock_synthesis_json), {"prompt_tokens": 100})
+        (json.dumps(mock_clinical_analysis_json), {"prompt_tokens": 100})
     ]
     
     conn = sqlite3.connect(test_db_path)
@@ -343,20 +343,20 @@ def test_generate_clinical_synthesis_json_retry(mock_call_model, test_db_path):
     """)
     conn.commit()
     
-    # Run the clinical synthesis pipeline - should succeed after retrying
-    generate_clinical_synthesis(transcript_id=20, db_conn=conn)
+    # Run the clinical analysis pipeline - should succeed after retrying
+    generate_clinical_analysis(transcript_id=20, db_conn=conn)
     
     # Should have called model twice
     assert mock_call_model.call_count == 2
     
-    row = conn.execute("SELECT * FROM session_syntheses WHERE transcript_id = 20").fetchone()
+    row = conn.execute("SELECT * FROM session_clinical_analyses WHERE transcript_id = 20").fetchone()
     assert row is not None
     assert row["group_progress_note"] == "Evolução do grupo com sucesso."
     
     conn.close()
 
 @mock.patch("symptoms_analyser.pipeline.llm_analysis.call_model")
-def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db_path):
+def test_generate_clinical_analysis_json_retry_failure(mock_call_model, test_db_path):
     # All 3 calls return invalid JSON
     mock_call_model.return_value = ("{invalid_json", {"prompt_tokens": 100})
     
@@ -370,9 +370,9 @@ def test_generate_clinical_synthesis_json_retry_failure(mock_call_model, test_db
     """)
     conn.commit()
     
-    # Run the clinical synthesis pipeline - should fail after 3 attempts
+    # Run the clinical analysis pipeline - should fail after 3 attempts
     with pytest.raises(ValueError, match="Failed to parse LLM response as JSON after 3 attempts"):
-        generate_clinical_synthesis(transcript_id=30, db_conn=conn)
+        generate_clinical_analysis(transcript_id=30, db_conn=conn)
         
     assert mock_call_model.call_count == 3
     

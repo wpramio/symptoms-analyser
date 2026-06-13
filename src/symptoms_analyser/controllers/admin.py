@@ -45,9 +45,9 @@ def get_stats() -> dict:
         cursor.execute("""
             SELECT 
                 (SELECT COALESCE(SUM(prompt_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_syntheses),
+                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_clinical_analyses),
                 (SELECT COALESCE(SUM(completion_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_syntheses)
+                (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_clinical_analyses)
         """)
         row = cursor.fetchone()
         stats["total_prompt_tokens"] = row[0] or 0
@@ -121,14 +121,14 @@ def get_evaluation_telemetry() -> list[dict]:
         ]
 
 
-def get_synthesis_telemetry() -> list[dict]:
+def get_clinical_analysis_telemetry() -> list[dict]:
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT ss.transcript_id, ss.therapy_session_id, ss.model,
                    ss.prompt_tokens, ss.completion_tokens, ss.processing_time,
                    ss.created_at, s.name as session_name
-            FROM session_syntheses ss
+            FROM session_clinical_analyses ss
             LEFT JOIN therapy_sessions s ON ss.therapy_session_id = s.id
             ORDER BY ss.created_at DESC
         """)

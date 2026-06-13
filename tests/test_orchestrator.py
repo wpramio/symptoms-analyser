@@ -39,9 +39,9 @@ def test_db_path(tmp_path, schema_sql):
 @mock.patch("symptoms_analyser.pipeline.orchestrator.anonymize_text")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.create_transcript")
 @mock.patch("symptoms_analyser.pipeline.orchestrator.evaluate_symptoms_with_tdpm")
-@mock.patch("symptoms_analyser.pipeline.orchestrator.generate_clinical_synthesis")
+@mock.patch("symptoms_analyser.pipeline.orchestrator.generate_clinical_analysis")
 def test_process_transcript_pipeline_success(
-    mock_synthesis, mock_tdpm, mock_create, mock_anon, mock_extract, test_db_path
+    mock_clinical_analysis, mock_tdpm, mock_create, mock_anon, mock_extract, test_db_path
 ):
     # Set up mocks
     mock_extract.return_value = ({}, "Raw text")
