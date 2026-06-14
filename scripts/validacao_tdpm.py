@@ -231,11 +231,19 @@ def fig_heatmap(raters, path):
 
 
 # ----------------------------------------------------------- tabelas LaTeX
-def write_table(df, fname, caption, label, fonte="Fonte: elaborado pelo autor."):
-    inner = df.to_latex(index=False, escape=False)  # permite $\kappa$, $\times$
+def write_table(df, fname, caption, label, fonte="Fonte: elaborado pelo autor.",
+                pre="", column_format=None, tabularx=False):
+    # pre: comandos antes do tabular (ex.: \footnotesize, \tabcolsep) para caber na margem
+    # column_format: especificacao de colunas (ex.: colunas X de tabularx que quebram linha)
+    # tabularx: troca o ambiente tabular por tabularx{\textwidth} (texto longo que precisa quebrar)
+    kw = {"column_format": column_format} if column_format else {}
+    inner = df.to_latex(index=False, escape=False, **kw)  # permite $\kappa$, $\times$
+    if tabularx:
+        inner = inner.replace("\\begin{tabular}", "\\begin{tabularx}{\\textwidth}", 1)
+        inner = inner.replace("\\end{tabular}", "\\end{tabularx}", 1)
     tex = (f"\\begin{{table}}[htb]\n\\centering\n"
-           f"\\caption{{{caption}}}\n\\label{{{label}}}\n{inner}"
-           f"\\vspace{{2pt}}\\\\\n{{\\small {fonte}}}\n\\end{{table}}\n")
+           f"\\caption{{{caption}}}\n\\label{{{label}}}\n{pre}{inner}"
+           f"\\legend{{{fonte}}}\n\\end{{table}}\n")
     open(os.path.join(TAB_DIR, fname), "w").write(tex)
     print("  escrito:", os.path.join("tabelas", fname))
 
@@ -302,7 +310,8 @@ inten = pd.DataFrame([{
 } for n, m in zip(NAMES, COMPS)])
 write_table(inten, "tab_intensidade.tex",
             "Concordância de intensidade (escala 0--4) e dimensional por comparação.",
-            "tab:intensidade")
+            "tab:intensidade",
+            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4.5pt}\n")
 
 # co-detectados clinico x gemini (detalhe ilustrativo)
 det_pairs = []
@@ -319,8 +328,10 @@ for p in PATIENTS:
     fmt = lambda L: ", ".join(f"{d} ({DIMS[d]})" for d in L) or "---"
     t3.append({"Paciente": p, "Clínico": fmt(top3(clinico, p)),
                "Gemini": fmt(top3(gem1, p)), "Gemma": fmt(top3(gemma, p))})
+_X = ">{\\raggedright\\arraybackslash}X"
 write_table(pd.DataFrame(t3), "tab_top3.tex",
             "Três dimensões prioritárias (top-3) por paciente e avaliador.",
-            "tab:top3")
+            "tab:top3",
+            pre="\\small\n", column_format=f"l {_X} {_X} {_X}", tabularx=True)
 
 print("\nOK. Saidas em:", MONO)
