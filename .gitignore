@@ -16,5 +16,8 @@ output/
 # SQLite DB
 *.db
 
+# Dados clínicos sensíveis (PHI) - não versionar trechos de fala de pacientes
+data/avaliacao_tdpm_terapeuta.csv
+
 # OS
 .DS_Store

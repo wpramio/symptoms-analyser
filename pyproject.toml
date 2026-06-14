@@ -24,4 +24,9 @@ dev = [
     "beautifulsoup4>=4.14.3",
     "pytest>=9.0.3",
 ]
+stats = [
+    "matplotlib>=3.11.0",
+    "pandas>=3.0.3",
+    "scikit-learn>=1.9.0",
+]
 
