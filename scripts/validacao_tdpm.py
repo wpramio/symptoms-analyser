@@ -19,7 +19,7 @@ Decisoes metodologicas (combinadas):
 Metricas via scikit-learn. Rode a partir da raiz do repo:
   uv run python scripts/validacao_tdpm.py
 """
-import csv, json, sqlite3, re, os, itertools
+import csv, json, sqlite3, re, os
 from collections import defaultdict
 
 import numpy as np
@@ -28,9 +28,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from matplotlib.patches import Patch
-from sklearn.metrics import (cohen_kappa_score, precision_recall_fscore_support,
-                             confusion_matrix)
+from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB   = os.path.join(ROOT, "data", "sqlite.db")
@@ -105,11 +103,8 @@ def detection(ref, test):
     tn, fp, fn, tp = confusion_matrix(rb, tb, labels=[0, 1]).ravel()
     prec, rec, f1, _ = precision_recall_fscore_support(
         rb, tb, average="binary", zero_division=0)
-    n = len(ref); po = (tp + tn) / n
-    kappa = cohen_kappa_score(rb, tb)
     return dict(tp=tp, fp=fp, fn=fn, tn=tn, precision=prec, recall=rec, f1=f1,
-                specificity=tn / (tn + fp) if tn + fp else np.nan,
-                agreement=po, kappa=kappa, pabak=2 * po - 1)
+                specificity=tn / (tn + fp) if tn + fp else np.nan)
 
 
 def codetected(ref_s, test_s):
@@ -134,8 +129,6 @@ def metrics_row(ref_s, test_s):
     n3 = sum(len(set(top3(ref_s, p)) & set(top3(test_s, p))) for p in PATIENTS)
     return dict(
         **m,
-        kappa_quad=cohen_kappa_score(ref, test, weights="quadratic", labels=[0,1,2,3,4]),
-        kappa_lin =cohen_kappa_score(ref, test, weights="linear",    labels=[0,1,2,3,4]),
         n_codet=len(pairs),
         exata=sum(1 for *_, a, b in pairs if a == b),
         dentro1=sum(1 for *_, a, b in pairs if abs(a - b) <= 1),
@@ -147,39 +140,10 @@ def metrics_row(ref_s, test_s):
 def reprodutibilidade(series_list):
     """concordancia entre execucoes do mesmo modelo (temperatura 0)."""
     sers = [to_series(s) for s in series_list]
-    identical = all(sers[0].equals(s) for s in sers[1:])
-    if identical:
-        return dict(identical=True, kmean=1.0, kmin=1.0)
-    ks = [cohen_kappa_score(a, b, weights="quadratic", labels=[0,1,2,3,4])
-          for a, b in itertools.combinations(sers, 2)]
-    return dict(identical=False, kmean=float(np.mean(ks)), kmin=float(min(ks)))
+    return dict(identical=all(sers[0].equals(s) for s in sers[1:]))
 
 
 # ----------------------------------------------------------- figuras
-def fig_kappa(rows, path):
-    """barras horizontais: kappa ponderado vs. clinico, um por modelo, ordenado."""
-    rs = sorted(rows, key=lambda r: r["m"]["kappa_quad"])   # asc => melhor no topo
-    labels = [r["nome"] for r in rs]
-    vals   = [r["m"]["kappa_quad"] for r in rs]
-    colors = [PROV_COLOR[r["prov"]] for r in rs]
-    fig, ax = plt.subplots(figsize=(7, 5))
-    bands = [(0,.2,"sofrível"),(.2,.4,"razoável"),(.4,.6,"moderada"),
-             (.6,.8,"substancial"),(.8,1,"quase perfeita")]
-    greys = ["#f7f7f7","#ededed","#e2e2e2","#d6d6d6","#cacaca"]
-    for (lo,hi,name), g in zip(bands, greys):
-        ax.axvspan(lo, hi, color=g, zorder=0)
-        ax.text((lo+hi)/2, len(labels)-0.35, name, ha="center", va="top",
-                fontsize=6.5, color="#888")
-    bars = ax.barh(labels, vals, color=colors, zorder=3, height=0.62)
-    for b, v in zip(bars, vals):
-        ax.text(v+0.012, b.get_y()+b.get_height()/2, f"{v:.2f}", va="center", fontsize=8)
-    ax.set_xlim(0, 1); ax.set_xlabel("Kappa de Cohen ponderado (quadrático) vs. clínico")
-    ax.set_title("Concordância com o clínico por modelo (sessão 16/03/2026)")
-    leg = [Patch(color=PROV_COLOR[p], label=p) for p in ("google","anthropic","openai")]
-    ax.legend(handles=leg, fontsize=7, loc="lower right", title="Provedor", title_fontsize=7)
-    fig.tight_layout(); fig.savefig(path); plt.close(fig)
-
-
 def fig_confusao(comps, path):
     fig, axes = plt.subplots(1, len(comps), figsize=(4*len(comps), 3.6))
     if len(comps) == 1: axes = [axes]
@@ -210,12 +174,12 @@ def fig_heatmap(raters, path):
     ax.imshow(data, cmap=cmap, vmin=0, vmax=4, aspect="auto")
     ax.set_xticks(range(len(raters)), [r[0] for r in raters], fontsize=8, rotation=20, ha="right")
     ax.set_yticks(range(len(rows)),
-                  [f"{p[-1]}·{code} {ITEMS[code][:24]}" for p, code in rows], fontsize=7)
+                  [f"P{p[-1]} · {code} {ITEMS[code][:24]}" for p, code in rows], fontsize=7)
     for i in range(len(rows)):
         for j in range(len(raters)):
             v = data[i, j]
-            ax.text(j, i, "" if v == 0 else int(v), ha="center", va="center",
-                    fontsize=8, color="white" if v >= 3 else "black")
+            ax.text(j, i, int(v), ha="center", va="center", fontsize=8,
+                    color="white" if v >= 3 else ("#b0b0b0" if v == 0 else "black"))
     ax.set_title("Notas por avaliador (0 = ausente)", fontsize=10)
     fig.tight_layout(); fig.savefig(path); plt.close(fig)
 
@@ -249,37 +213,35 @@ runs = {nome: [load_llm(e) for e in evals] for nome, slug, evals in MODELOS}
 rows = [dict(nome=nome, slug=slug, prov=provider(slug),
              m=metrics_row(clinico, runs[nome][0]))
         for nome, slug, evals in MODELOS]
-rows.sort(key=lambda r: r["m"]["kappa_quad"], reverse=True)   # melhor concordancia primeiro
+rows.sort(key=lambda r: r["m"]["f1"], reverse=True)   # melhor F1 de deteccao primeiro
 best  = rows[0]
 worst = rows[-1]
 
 # reprodutibilidade entre as 3 execucoes (ordem igual a 'rows' p/ cross-ref)
 repro = {r["nome"]: reprodutibilidade(runs[r["nome"]]) for r in rows}
 
-hr("RANKING vs. CLINICO (execucao 1, ordenado por kappa pond. quad.)")
-print(f"{'modelo':18} {'kquad':>6} {'recall':>7} {'F1':>5} {'top3':>5} | "
-      f"{'identicas':>9} {'kmin':>5}")
+hr("RANKING vs. CLINICO (execucao 1, ordenado por F1 de deteccao)")
+print(f"{'modelo':18} {'recall':>7} {'F1':>5} {'MAE':>6} {'top3':>5} | {'identicas':>9}")
 for r in rows:
     m = r["m"]; rp = repro[r["nome"]]
-    print(f"{r['nome']:18} {m['kappa_quad']:6.2f} {m['recall']:7.2f} {m['f1']:5.2f} "
-          f"{m['top3_overlap']:5} | {('sim' if rp['identical'] else 'nao'):>9} {rp['kmin']:5.2f}")
-print(f"\nMelhor concordancia: {best['nome']} (kquad={best['m']['kappa_quad']:.2f})")
+    mae = f"{m['mae_codet']:.2f}" if m["n_codet"] else "---"
+    print(f"{r['nome']:18} {m['recall']:7.2f} {m['f1']:5.2f} {mae:>6} "
+          f"{m['top3_overlap']:5} | {('sim' if rp['identical'] else 'nao'):>9}")
+print(f"\nMelhor F1: {best['nome']} (F1={best['m']['f1']:.2f})")
 
 bestser = runs[best["nome"]][0]
 
 # ---- figuras ----
 hr("GERANDO FIGURAS")
 os.makedirs(FIG_DIR, exist_ok=True)
-fig_kappa(rows, os.path.join(FIG_DIR, "fig_kappa_comparacoes.pdf"))
 fig_confusao([{"short": best["nome"],  "m": best["m"]},
               {"short": worst["nome"], "m": worst["m"]}],
              os.path.join(FIG_DIR, "fig_matriz_confusao.pdf"))
-heat = [("Clínico", clinico), (best["nome"], bestser)]
-for base in ("Gemma 4 31B", "Gemini 3.5 Flash"):
-    if base != best["nome"]:
-        heat.append((base, runs[base][0]))
+# heatmap compara o clinico com o melhor e o pior modelo (por F1)
+heat = [("Clínico", clinico), (best["nome"], runs[best["nome"]][0]),
+        (worst["nome"], runs[worst["nome"]][0])]
 fig_heatmap(heat, os.path.join(FIG_DIR, "fig_notas_por_avaliador.pdf"))
-for f in ("fig_kappa_comparacoes.pdf", "fig_matriz_confusao.pdf", "fig_notas_por_avaliador.pdf"):
+for f in ("fig_matriz_confusao.pdf", "fig_notas_por_avaliador.pdf"):
     print("  escrito:", os.path.join("figuras", f))
 
 # ---- tabelas ----
@@ -290,15 +252,13 @@ det = pd.DataFrame([{
     "Modelo": r["nome"], "VP": r["m"]["tp"], "FP": r["m"]["fp"], "FN": r["m"]["fn"],
     "VN": r["m"]["tn"], "Precisão": f"{r['m']['precision']:.2f}",
     "Recall": f"{r['m']['recall']:.2f}", "F1": f"{r['m']['f1']:.2f}",
-    "$\\kappa$ bin.": f"{r['m']['kappa']:.2f}", "PABAK": f"{r['m']['pabak']:.2f}",
 } for r in rows])
 write_table(det, "tab_deteccao.tex",
             "Métricas de detecção de sintomas por modelo, contra o clínico (execução 1)",
             "tab:deteccao", pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
 inten = pd.DataFrame([{
-    "Modelo": r["nome"], "$\\kappa$ pond. (quad.)": f"{r['m']['kappa_quad']:.2f}",
-    "$\\kappa$ pond. (lin.)": f"{r['m']['kappa_lin']:.2f}",
+    "Modelo": r["nome"],
     "N co-det.": r["m"]["n_codet"], "Exata": f"{r['m']['exata']}/{r['m']['n_codet']}",
     "Dentro de 1": f"{r['m']['dentro1']}/{r['m']['n_codet']}",
     "MAE co-det.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
@@ -308,16 +268,6 @@ write_table(inten, "tab_intensidade.tex",
             "Concordância de intensidade (escala 0--4) e dimensional por modelo, contra o clínico",
             "tab:intensidade",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
-
-rep = pd.DataFrame([{
-    "Modelo": r["nome"],
-    "Execuções idênticas": "sim" if repro[r["nome"]]["identical"] else "não",
-    "$\\kappa$ pond. médio": f"{repro[r['nome']]['kmean']:.2f}",
-    "$\\kappa$ pond. mínimo": f"{repro[r['nome']]['kmin']:.2f}",
-} for r in rows])
-write_table(rep, "tab_reprodutibilidade.tex",
-            "Reprodutibilidade entre as três execuções de cada modelo (temperatura 0)",
-            "tab:reprodutibilidade")
 
 # detalhe ilustrativo no modelo de melhor concordancia
 det_pairs = []
