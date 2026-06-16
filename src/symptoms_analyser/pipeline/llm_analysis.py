@@ -65,7 +65,9 @@ def call_model(
             resp = client.chat.completions.create(
                 model=MODEL,
                 messages=messages,
-                temperature=0,
+                extra_body={ "reasoning": { "effort": "minimal", "exclude": True } },
+                temperature=0.0,
+                top_p=0.0,
                 response_format={"type": "json_object"},
                 **kwargs
             )
@@ -91,8 +93,23 @@ def call_model(
                 raise
 
 
+def _strip_markdown_fences(text: str) -> str:
+    """Remove markdown code block fencing (```json ... ```) if present."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        # Remove opening fence (e.g. ```json or ```)
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            stripped = stripped[first_newline + 1:]
+        # Remove closing fence
+        if stripped.rstrip().endswith("```"):
+            stripped = stripped.rstrip()[:-3].rstrip()
+    return stripped
+
+
 def validate_and_parse(json_str: str) -> Dict[str, Any]:
-    obj = json.loads(json_str)
+    cleaned = _strip_markdown_fences(json_str)
+    obj = json.loads(cleaned)
     if "patients" not in obj:
         raise ValueError("Output JSON missing required keys 'patients'")
     return obj
@@ -226,11 +243,17 @@ def evaluate_symptoms_with_tdpm(
         try:
             parsed = validate_and_parse(raw_out)
         except Exception as e:
-            logging.warning(f"First parse failed for chunk {i}, retrying: {e}")
+            preview = repr(raw_out[:500]) if raw_out else repr(raw_out)
+            logging.warning(f"First parse failed for chunk {i}, retrying: {e}\n  Raw response preview: {preview}")
             retry_user = ("Return only valid JSON matching the schema: \n" + system_prompt + "\n\n" + user_text)
             with Spinner(label + " (retry)..."):
                 raw_out, usage = call_model(client, system_prompt, retry_user, max_completion_tokens=20000)
-            parsed = validate_and_parse(raw_out)
+            try:
+                parsed = validate_and_parse(raw_out)
+            except Exception as e2:
+                preview2 = repr(raw_out[:500]) if raw_out else repr(raw_out)
+                logging.error(f"Retry parse also failed for chunk {i}: {e2}\n  Raw response preview: {preview2}")
+                raise
 
         for key in total_usage:
             val = usage.get(key)
@@ -411,7 +434,7 @@ def generate_clinical_analysis(
             total_prompt_tokens += usage.get("prompt_tokens", 0)
             total_completion_tokens += usage.get("completion_tokens", 0)
         try:
-            clinical_analysis_data = json.loads(response_content)
+            clinical_analysis_data = json.loads(_strip_markdown_fences(response_content))
             break
         except json.JSONDecodeError as e:
             if parse_attempt == max_json_retries:
