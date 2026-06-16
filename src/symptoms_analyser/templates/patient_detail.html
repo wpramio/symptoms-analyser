@@ -109,8 +109,8 @@
                 <div class="evolution-card interventions-overview-card" style="margin-bottom: 1.5rem;">
                     <div class="card-header-flex" style="margin-bottom: 1rem;">
                         <div>
-                            <h3 class="card-title">Intervenções recomendadas</h3>
-                            <p class="card-subtitle">Ações e alertas de manejo sugeridos para o paciente.</p>
+                            <h3 class="card-title">Alertas de risco</h3>
+                            <p class="card-subtitle">Alertas clínicos identificados para o paciente.</p>
                         </div>
                     </div>
                     <div class="overview-interventions-list">
@@ -124,9 +124,6 @@
                                 <h4 class="intervention-item-title">{{ alert.title }}</h4>
                             </div>
                             <p class="intervention-item-desc">{{ alert.description | safe }}</p>
-                            <div class="intervention-item-action">
-                                <strong>Ação proposta:</strong> {{ alert.action }}
-                            </div>
                         </div>
                         {% endfor %}
                     </div>

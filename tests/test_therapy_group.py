@@ -162,7 +162,7 @@ def test_therapy_group_detail_route(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200
@@ -218,7 +218,7 @@ def test_group_dynamics_tab_rendering(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
          
         resp = client.get("/therapy_groups/1")
         assert resp.status_code == 200

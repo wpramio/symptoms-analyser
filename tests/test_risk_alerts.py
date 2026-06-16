@@ -3,7 +3,7 @@ import sqlite3
 import json
 from pathlib import Path
 from unittest import mock
-from symptoms_analyser.controllers.interventions import get_session_interventions
+from symptoms_analyser.controllers.risk_alerts import get_session_risk_alerts
 
 @pytest.fixture
 def schema_sql():
@@ -41,13 +41,13 @@ def mock_get_db(test_db_path):
             conn.close()
     return _get_db
 
-def test_get_session_interventions_no_sessions(mock_get_db):
-    with mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
-        res = get_session_interventions(1)
+def test_get_session_risk_alerts_no_sessions(mock_get_db):
+    with mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
+        res = get_session_risk_alerts(1)
         assert res == {"alerts": []}
 
-def test_get_session_interventions_individual_and_relational(mock_get_db):
-    with mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+def test_get_session_risk_alerts_individual_and_relational(mock_get_db):
+    with mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
         # 1. Create a cohort of sessions
         with mock_get_db() as conn:
             cursor = conn.cursor()
@@ -107,8 +107,8 @@ def test_get_session_interventions_individual_and_relational(mock_get_db):
             
             conn.commit()
 
-        # Run interventions logic for session 2
-        res = get_session_interventions(2)
+        # Run risk alerts logic for session 2
+        res = get_session_risk_alerts(2)
         alerts = res["alerts"]
         
         # We expect:
@@ -126,9 +126,9 @@ def test_get_session_interventions_individual_and_relational(mock_get_db):
         assert "PacienteA" in critical_alerts[0]["title"]
         assert "Apetite aumentado" in critical_alerts[0]["description"]
 
-def test_get_group_interventions(mock_get_db):
-    from symptoms_analyser.controllers.interventions import get_group_interventions
-    with mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+def test_get_group_risk_alerts(mock_get_db):
+    from symptoms_analyser.controllers.risk_alerts import get_group_risk_alerts
+    with mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
         with mock_get_db() as conn:
             cursor = conn.cursor()
             # Insert groups
@@ -167,18 +167,18 @@ def test_get_group_interventions(mock_get_db):
             cursor.execute("INSERT INTO patient_item_scores (evaluation_id, patient_id, dimension_code, item_code, score) VALUES (20, 2, '1', '1.1', 4)")
             conn.commit()
 
-        # Interventions for Group 1
-        res1 = get_group_interventions(1)
-        # Interventions for Group 2
-        res2 = get_group_interventions(2)
+        # Risk alerts for Group 1
+        res1 = get_group_risk_alerts(1)
+        # Risk alerts for Group 2
+        res2 = get_group_risk_alerts(2)
         
         # Verify that we get the alerts
         assert isinstance(res1, dict)
         assert isinstance(res2, dict)
 
 def test_new_heuristics(mock_get_db):
-    from symptoms_analyser.controllers.interventions import get_group_interventions
-    with mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+    from symptoms_analyser.controllers.risk_alerts import get_group_risk_alerts
+    with mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
         with mock_get_db() as conn:
             cursor = conn.cursor()
             
@@ -232,7 +232,7 @@ def test_new_heuristics(mock_get_db):
                 
             conn.commit()
             
-        res = get_group_interventions(10)
+        res = get_group_risk_alerts(10)
         alerts = res["alerts"]
         
         # We expect:

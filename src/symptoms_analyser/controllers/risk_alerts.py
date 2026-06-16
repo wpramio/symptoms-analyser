@@ -353,7 +353,7 @@ def _run_heuristics_calculations(
             }
 
         # =====================================================================
-        # HEURISTIC 1: Ações Individuais (TDPM-20)
+        # HEURISTIC 1: Alertas Individuais (TDPM-20)
         # =====================================================================
         for pseudo, profile in pmd.items():
             history = patient_history.get(pseudo, [])
@@ -379,7 +379,6 @@ def _run_heuristics_calculations(
                         "severity": "critical",
                         "title": f"Crise persistente: {pseudo}",
                         "description": f"O paciente apresentou pontuação máxima (Nota 4) em <strong>{item_name}</strong> pela {sym_info['consec_4']}ª sessão consecutiva.",
-                        "action": f"Recomenda-se realizar contato individual de suporte com {pseudo} nas próximas 24 horas fora do grupo.",
                         "patient": pseudo
                     })
                     continue
@@ -390,7 +389,6 @@ def _run_heuristics_calculations(
                         "severity": "warning",
                         "title": f"Sofrimento crônico severo: {pseudo}",
                         "description": f"O paciente pontuou severamente (Nota 3) em <strong>{item_name}</strong> por {sym_info['consec_3']} sessões consecutivas.",
-                        "action": f"Dedicar 10 minutos do início da sessão ou realizar breve intervenção individual para investigar barreiras clínicas em relação a esse sintoma.",
                         "patient": pseudo
                     })
                     continue
@@ -401,7 +399,6 @@ def _run_heuristics_calculations(
                         "severity": "info",
                         "title": f"Alerta de estagnação moderada: {pseudo}",
                         "description": f"O paciente apresenta sofrimento persistente e estacionado (Nota 2) em <strong>{item_name}</strong> há {sym_info['consec_2']} sessões seguidas.",
-                        "action": f"Oferecer psicoeducação direcionada (ex: higiene comportamental para insônia) ou focar em estratégias de aceitação e compromisso.",
                         "patient": pseudo
                     })
                     continue
@@ -415,12 +412,11 @@ def _run_heuristics_calculations(
                         "severity": "warning",
                         "title": f"Deterioração gradual: {pseudo}",
                         "description": f"Houve uma piora consecutiva do sintoma de <strong>{item_name}</strong> nas últimas 3 sessões ({s_prev2} ➜ {s_prev1} ➜ {s_curr}).",
-                        "action": f"Sondar ativamente durante a dinâmica do grupo se novos eventos estressores familiares ou profissionais afetaram {pseudo} recentemente.",
                         "patient": pseudo
                     })
 
         # =====================================================================
-        # HEURISTIC 2: Ações Relacionais e Coesão
+        # HEURISTIC 2: Alertas Relacionais e Coesão
         # =====================================================================
         # A. Absolute Isolation: zero connections in graph
         for pseudo in curr_participants.values():
@@ -431,7 +427,6 @@ def _run_heuristics_calculations(
                     "severity": "warning",
                     "title": f"Isolamento clínico na sessão: {pseudo}",
                     "description": f"O paciente {pseudo} não registrou nenhuma interação social direcionada de suporte ou validação com os pares nesta sessão.",
-                    "action": f"Fazer uma pergunta aberta direta a {pseudo} logo no início do próximo encontro para resgatá-lo e reinseri-lo na dinâmica.",
                     "patient": pseudo
                 })
 
@@ -446,7 +441,6 @@ def _run_heuristics_calculations(
                             "severity": "info",
                             "title": f"Monopólio conversacional histórico: {pseudo}",
                             "description": f"O paciente {pseudo} centralizou as conversas ao longo de toda a história do grupo, ocupando {pct:.1f}% do total de palavras faladas pelos participantes.",
-                            "action": f"Aplicar técnica de 'Acolher e Desviar': validar a contribuição de {pseudo} e transitar a fala para outro membro (ex: '{pseudo}, excelente ponto. {list(curr_participants.values())[0] if curr_participants else ''}, como você lidaria com isso?').",
                             "patient": pseudo
                         })
         else:
@@ -460,7 +454,6 @@ def _run_heuristics_calculations(
                                 "severity": "info",
                                 "title": f"Monopólio conversacional: {pseudo}",
                                 "description": f"O paciente {pseudo} centralizou a sessão, ocupando {pct:.1f}% do total de palavras faladas pelos participantes.",
-                                "action": f"Aplicar técnica de 'Acolher e Desviar': validar a contribuição de {pseudo} e transitar a fala para outro membro (ex: '{pseudo}, excelente ponto. {list(curr_participants.values())[0] if curr_participants else ''}, como você lidaria com isso?').",
                                 "patient": pseudo
                             })
 
@@ -473,7 +466,6 @@ def _run_heuristics_calculations(
                     "severity": "info",
                     "title": f"Diálogo vertical exclusivo: {pseudo}",
                     "description": f"O paciente {pseudo} interagiu abundantemente com a figura do terapeuta, mas obteve zero conexões de fala ou suporte com os outros pacientes.",
-                    "action": f"Estimular conexões horizontais: pedir que {pseudo} comente diretamente o relato de outro paciente, diminuindo a dependência vertical do terapeuta.",
                     "patient": pseudo
                 })
 
@@ -518,7 +510,6 @@ def _run_heuristics_calculations(
                             "severity": "info",
                             "title": "Subgrupo/clique identificado",
                             "description": f"Registrou-se uma conexão recorrente e preferencial de suporte mútuo entre {p_a} e {p_b} pelas últimas 3 sessões seguidas.",
-                            "action": f"Interromper o subgrupo cruzando debates (ex: propor uma pergunta específica que cruze os relatos de {p_a} com outros membros além de {p_b}).",
                             "patient": None
                         })
 
@@ -544,7 +535,6 @@ def _run_heuristics_calculations(
                             "severity": "critical",
                             "title": f"Risco alto de abandono (dropout): {pseudo}",
                             "description": f"O paciente apresenta taxa de presença de {attendance_rate:.0f}% ({attended_count}/{total_cohort_sessions} sessões) e isolamento par-a-par persistente (média de {avg_interactions:.1f} interações horizontais por sessão).",
-                            "action": f"Realizar contato extra-sessão (mensagem de acolhimento ou ligação curta de retenção) com foco no fortalecimento da aliança terapêutica individual.",
                             "patient": pseudo
                         })
                         has_critical_dropout = True
@@ -556,7 +546,6 @@ def _run_heuristics_calculations(
                         "severity": "warning",
                         "title": f"Risco de abandono / Dropout: {pseudo}",
                         "description": f"O paciente apresenta taxa de presença preocupante de {attendance_rate:.0f}% ({attended_count}/{total_cohort_sessions} sessões).",
-                        "action": f"Entrar em contato com o paciente para compreender os motivos das ausências frequentes e tentar restabelecer o engajamento.",
                         "patient": pseudo
                     })
 
@@ -573,12 +562,11 @@ def _run_heuristics_calculations(
                         "severity": "warning",
                         "title": f"Potencial isolamento: {pseudo}",
                         "description": f"O paciente {pseudo} apresenta tempo de fala acumulado de apenas {pct:.1f}% ({raw_w_count} palavras) ao longo de todas as sessões analisadas.",
-                        "action": f"Estimular a participação ativa de {pseudo} com perguntas simples e acolhedoras para aumentar seu espaço de fala no grupo.",
                         "patient": pseudo
                     })
 
         # =====================================================================
-        # HEURISTIC 3: Extração de Tópicos / Análise das Minutas
+        # HEURISTIC 3: Alertas de Tópicos / Análise das Minutas
         # =====================================================================
         if len(historical_clinical_analyses) >= 3:
             recent_clinical_analyses = historical_clinical_analyses[-4:] if len(historical_clinical_analyses) >= 4 else historical_clinical_analyses[-3:]
@@ -611,18 +599,17 @@ def _run_heuristics_calculations(
                     "severity": "warning",
                     "title": f"Estagnação temática: {theme.capitalize()}",
                     "description": f"O tema <strong>{theme}</strong> foi identificado como central/recorrente em todas as últimas {len(recent_clinical_analyses)} sessões analisadas.",
-                    "action": f"Sugerir alteração metodológica de grupo: trazer dinâmicas focadas em aceitação e compromisso (ACT) ou mudar o formato da facilitação conversacional para quebrar a estagnação.",
                     "patient": None
                 })
                 
     return {"alerts": alerts}
 
 
-def get_session_interventions(session_id: int) -> Dict[str, Any]:
+def get_session_risk_alerts(session_id: int) -> Dict[str, Any]:
     """
-    Computes qualitative and quantitative action suggestions for group therapists
-    by looking at the current session's scores, airtimes, social networks, and matching
-    them against historical trends of the group.
+    Computes risk alerts for group therapists by looking at the current session's
+    scores, airtimes, social networks, and matching them against historical trends
+    of the group.
     """
     with get_db() as conn:
         conn.row_factory = sqlite3.Row
@@ -701,10 +688,10 @@ def get_session_interventions(session_id: int) -> Dict[str, Any]:
 
 
 
-def get_group_interventions(group_id: int) -> Dict[str, Any]:
+def get_group_risk_alerts(group_id: int) -> Dict[str, Any]:
     """
     Runs calculations based on all historic sessions from a specific group
-    to show active alerts and actions for now (or the near future).
+    to show active risk alerts for the group.
     """
     with get_db() as conn:
         conn.row_factory = sqlite3.Row

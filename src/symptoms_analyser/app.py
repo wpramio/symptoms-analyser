@@ -42,7 +42,7 @@ from symptoms_analyser.controllers.therapy_groups import (
     get_therapy_group_detail,
 )
 from symptoms_analyser.controllers.transcript_upload import tasks, handle_transcript_upload
-from symptoms_analyser.controllers.interventions import get_group_interventions
+from symptoms_analyser.controllers.risk_alerts import get_group_risk_alerts
 
 
 app = Flask(__name__)
@@ -273,17 +273,17 @@ def patient_detail(patient_id):
         if not data:
             return "Patient not found", 404
 
-        # Get patient alerts/interventions
+        # Get patient risk alerts
         group_id = data["patient"].get("therapy_group_id")
         patient_alerts = []
         if group_id:
             try:
-                from symptoms_analyser.controllers.interventions import get_group_interventions
-                res = get_group_interventions(group_id)
+                from symptoms_analyser.controllers.risk_alerts import get_group_risk_alerts
+                res = get_group_risk_alerts(group_id)
                 alerts = res.get("alerts", [])
                 patient_alerts = [a for a in alerts if a.get("patient") == patient_id]
             except Exception as e:
-                print(f"Error fetching interventions for patient {patient_id}: {e}")
+                print(f"Error fetching risk alerts for patient {patient_id}: {e}")
 
         # Get latest dimensions for radar chart
         import json
@@ -340,8 +340,8 @@ def therapy_group_detail(group_id):
         group = data["group"]
         patients = data["patients"]
             
-        # First tab: Intervenções e ações recomendadas
-        res = get_group_interventions(group_id)
+        # First tab: Alertas de risco
+        res = get_group_risk_alerts(group_id)
         alerts = res.get("alerts", [])
         
         # Second tab: Sessões passadas

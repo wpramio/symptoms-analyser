@@ -134,7 +134,7 @@ def test_patients_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
          
         resp = client.get("/patients?group_id=")
         assert resp.status_code == 200
@@ -159,7 +159,7 @@ def test_therapy_sessions_list_page_dom(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
          
         resp = client.get("/therapy_sessions?group_id=")
         assert resp.status_code == 200
@@ -215,7 +215,7 @@ def test_therapy_group_ui_rendering(client, mock_get_db):
          mock.patch("symptoms_analyser.controllers.evaluations.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.therapy_groups.get_db", mock_get_db), \
          mock.patch("symptoms_analyser.controllers.admin.get_db", mock_get_db), \
-         mock.patch("symptoms_analyser.controllers.interventions.get_db", mock_get_db):
+         mock.patch("symptoms_analyser.controllers.risk_alerts.get_db", mock_get_db):
          
         # 1. Sessions List Page
         resp = client.get("/therapy_sessions")
