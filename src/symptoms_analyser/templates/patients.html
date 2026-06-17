@@ -38,6 +38,31 @@
                 <div>
                     <div class="patient-card-header">
                         <span class="patient-card-id">{{ patient.pseudonym }}</span>
+                        {% set alert_sev = patient_alert_map.get(patient.pseudonym) %}
+                        {% if alert_sev %}
+                        <span class="patient-alert-badge patient-alert-badge--{{ alert_sev }}"
+                            title="{% if alert_sev == 'critical' %}Alerta crítico ativo{% elif alert_sev == 'warning' %}Aviso ativo{% else %}Sugestão ativa{% endif %}">
+                            {% if alert_sev == 'critical' %}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            {% elif alert_sev == 'warning' %}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            {% else %}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            {% endif %}
+                        </span>
+                        {% endif %}
                     </div>
                     <!-- Secure Real Name indicator -->
                     <div class="patient-secure-tag">
@@ -61,6 +86,7 @@
                     </div>
                 </div>
             </a>
+
             {% endfor %}
             {% else %}
             <div class="patients-empty-state">

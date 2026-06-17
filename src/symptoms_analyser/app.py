@@ -255,15 +255,29 @@ def patients():
 
         patient_list = get_patients_list_with_stats(group_id)
 
+        # Build alert severity map {pseudonym -> 'critical'|'warning'|'info'}
+        patient_alert_map = {}
+        try:
+            from symptoms_analyser.controllers.risk_alerts import get_patients_alert_map
+            if group_id and str(group_id).strip() not in ("", "None"):
+                group_ids = [int(group_id)]
+            else:
+                group_ids = [g["id"] for g in therapy_groups if g.get("id")]
+            patient_alert_map = get_patients_alert_map(group_ids)
+        except Exception as e:
+            print(f"Error building patient alert map: {e}")
+
         return render_template(
-            "patients.html", 
-            patients=patient_list, 
+            "patients.html",
+            patients=patient_list,
             therapy_groups=therapy_groups,
-            selected_group_id=group_id
+            selected_group_id=group_id,
+            patient_alert_map=patient_alert_map
         )
     except Exception as e:
         print(f"Error serving patients list: {e}")
         return str(e), 500
+
 
 
 @app.route("/patients/<patient_id>")

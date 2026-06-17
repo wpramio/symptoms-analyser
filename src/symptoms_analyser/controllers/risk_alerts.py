@@ -765,3 +765,34 @@ def get_group_risk_alerts(group_id: int) -> Dict[str, Any]:
         group_id=group_id,
         is_global=True
     )
+
+
+# Severity precedence order for comparison
+_SEVERITY_RANK = {"critical": 2, "warning": 1, "info": 0}
+
+
+def get_patients_alert_map(group_ids: List[int]) -> Dict[str, str]:
+    """
+    Returns a dict mapping patient pseudonym -> highest alert severity
+    ('critical', 'warning', or 'info') for each patient that has at
+    least one active alert across the given group IDs.
+
+    Patients with no alerts are omitted from the result.
+    """
+    result: Dict[str, str] = {}
+    for gid in group_ids:
+        try:
+            res = get_group_risk_alerts(gid)
+        except Exception:
+            continue
+        for alert in res.get("alerts", []):
+            pseudo = alert.get("patient")
+            if not pseudo:
+                continue
+            severity = alert.get("severity", "info")
+            current_rank = _SEVERITY_RANK.get(result.get(pseudo, ""), -1)
+            new_rank = _SEVERITY_RANK.get(severity, 0)
+            if new_rank > current_rank:
+                result[pseudo] = severity
+    return result
+
