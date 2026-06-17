@@ -187,29 +187,49 @@ def create_transcript(
 
 def anonymize_text(
     raw_text: str,
+    clinician_name: Optional[str] = None,
     db_conn: Optional[sqlite3.Connection] = None
 ) -> Tuple[str, List[Tuple[str, str]]]:
     """
     Anonymization & patient creation mapping.
     Identifies real names in raw transcript and replaces them with pseudonyms.
     Reuses existing pseudonyms if patients are already registered in the DB.
+
+    If ``clinician_name`` is provided, occurrences of the therapist's real name
+    are replaced with the generic label "Terapeuta" instead of being treated as
+    a patient.
     
     Returns:
         Tuple: (anonymized_text, List of tuples [(real_name, pseudonym)])
     """
     if db_conn:
-        return _anonymize_with_conn(raw_text, db_conn)
+        return _anonymize_with_conn(raw_text, clinician_name, db_conn)
     else:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
-            return _anonymize_with_conn(raw_text, conn)
+            return _anonymize_with_conn(raw_text, clinician_name, conn)
 
 
-def _anonymize_with_conn(raw_text: str, conn: sqlite3.Connection) -> Tuple[str, List[Tuple[str, str]]]:
+def _anonymize_with_conn(
+    raw_text: str,
+    clinician_name: Optional[str],
+    conn: sqlite3.Connection
+) -> Tuple[str, List[Tuple[str, str]]]:
     if not raw_text:
         raise ValueError("Raw text is empty or None.")
 
     cursor = conn.cursor()
+
+    # Build the set of known therapist labels (generic + real name if provided)
+    therapist_labels = {"terapeuta", "clinico", "clínico", "clinician", "dr.", "dra.", "dr", "dra"}
+    clinician_name_parts: List[str] = []  # full name + first name for matching
+    if clinician_name:
+        clinician_name_parts.append(clinician_name)
+        therapist_labels.add(clinician_name.lower())
+        words = clinician_name.split()
+        if len(words) > 1:
+            clinician_name_parts.append(words[0])
+            therapist_labels.add(words[0].lower())
 
     # 1. Fetch all pseudonyms currently registered in the database to prevent collisions
     cursor.execute("SELECT pseudonym FROM patients")
@@ -245,7 +265,7 @@ def _anonymize_with_conn(raw_text: str, conn: sqlite3.Connection) -> Tuple[str, 
             ])
             if is_system_msg:
                 continue
-            if speaker_lower not in ["terapeuta", "clinico", "clínico", "clinician", "dr.", "dra.", "dr", "dra"]:
+            if speaker_lower not in therapist_labels:
                 all_speakers.add(speaker)
 
     # Sort the detected speaker names for deterministic pseudonym assignment
@@ -323,5 +343,15 @@ def _anonymize_with_conn(raw_text: str, conn: sqlite3.Connection) -> Tuple[str, 
             anonymized_text,
             flags=re.IGNORECASE
         )
-    
+
+    # Replace the clinician's real name with the generic "Terapeuta" label.
+    # Process longer variants first to avoid partial replacements.
+    for part in sorted(clinician_name_parts, key=len, reverse=True):
+        anonymized_text = re.sub(
+            r"\b" + re.escape(part) + r"\b",
+            "Terapeuta",
+            anonymized_text,
+            flags=re.IGNORECASE
+        )
+
     return anonymized_text, mappings

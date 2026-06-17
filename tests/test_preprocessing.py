@@ -319,3 +319,39 @@ def test_anonymize_text_ignore_footnotes(test_db_path):
     )
     assert anon_text == expected_text
     conn.close()
+
+def test_anonymize_text_clinician_name(test_db_path):
+    """The therapist's real name should be replaced by 'Terapeuta', not treated as a patient."""
+    conn = sqlite3.connect(test_db_path)
+    conn.row_factory = sqlite3.Row
+
+    raw_text = (
+        "00:00:00\n"
+        "Ana Carolina Mendes: Bom dia pessoal, vamos começar.\n"
+        "João da Silva: Bom dia Ana.\n"
+        "Maria de Souza: Oi Ana Carolina Mendes!\n"
+        "Ana Carolina Mendes: João, como você se sentiu essa semana?\n"
+        "João da Silva: Me senti melhor.\n"
+    )
+
+    anon_text, mappings = anonymize_text(
+        raw_text, clinician_name="Ana Carolina Mendes", db_conn=conn
+    )
+
+    # Only patients should appear in the mappings
+    assert len(mappings) == 2
+    assert mappings == [
+        ("João da Silva", "Paciente1"),
+        ("Maria de Souza", "Paciente2"),
+    ]
+
+    expected_text = (
+        "00:00:00\n"
+        "Terapeuta: Bom dia pessoal, vamos começar.\n"
+        "Paciente1: Bom dia Terapeuta.\n"
+        "Paciente2: Oi Terapeuta!\n"
+        "Terapeuta: Paciente1, como você se sentiu essa semana?\n"
+        "Paciente1: Me senti melhor.\n"
+    )
+    assert anon_text == expected_text
+    conn.close()

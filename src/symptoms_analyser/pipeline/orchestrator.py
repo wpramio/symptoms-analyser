@@ -42,10 +42,22 @@ def process_transcript_pipeline(
         add_log("(1/4) Extraindo texto da transcrição")
         metadata, raw_text = extract_text(filepath)
 
+        # Resolve the clinician's real name so it is not treated as a patient
+        clinician_name = None
+        row = db_conn.execute(
+            "SELECT u.name FROM users u "
+            "JOIN therapy_sessions ts ON ts.clinician_id = u.id "
+            "WHERE ts.id = ?",
+            (therapy_session_id,)
+        ).fetchone()
+        if row:
+            clinician_name = row["name"]
+
         # Local anonymization + name->pseudonym mappings
         add_log("(2/4) Executando anonimização local")
         anonymized_text, mappings = anonymize_text(
             raw_text=raw_text,
+            clinician_name=clinician_name,
             db_conn=db_conn
         )
 
