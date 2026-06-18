@@ -143,38 +143,45 @@ def top3(scores, p):
                   key=lambda d: (-means[d], int(d)))[:3]
 
 
-def jaccard_top3(ref_s, test_s):
-    """concordancia de CONJUNTO do top-3: |A inter B| / |A uniao B|, media por paciente.
-    Ignora a ordem. Pacientes sem top-3 clinico (sem gabarito) sao excluidos."""
-    vals = []
-    for p in PATIENTS:
-        A, B = set(top3(ref_s, p)), set(top3(test_s, p))
-        if not A:
-            continue
-        vals.append(len(A & B) / len(A | B))
+def jaccard_p(ref_s, test_s, p):
+    """concordancia de CONJUNTO do top-3 de um paciente: |A inter B| / |A uniao B|.
+    Ignora a ordem. Retorna None se o clinico nao tem top-3 (sem gabarito)."""
+    A, B = set(top3(ref_s, p)), set(top3(test_s, p))
+    if not A:
+        return None
+    return len(A & B) / len(A | B)
+
+
+def order_p(ref_s, test_s, p):
+    """acerto de ordem do top-3 de um paciente (0-1); None sem gabarito clinico.
+    Peso 3/2/1 pela posicao no top-3 do clinico. Cada dimensao tambem listada pelo
+    modelo rende seu peso descontado pela distancia de posicao (cheio se mesma
+    posicao, menor conforme a posicao se afasta), normalizado pelo maximo alcancavel."""
+    ref, test = top3(ref_s, p), top3(test_s, p)
+    if not ref:
+        return None
+    pos_t = {d: j for j, d in enumerate(test)}
+    num = den = 0.0
+    for i, d in enumerate(ref):
+        w = 3 - i                                  # 3, 2, 1
+        den += w
+        if d in pos_t:
+            num += w * (1 - abs(i - pos_t[d]) / 3)
+    return num / den if den else 0.0
+
+
+def _mean_top3(fn, ref_s, test_s):
+    """media por paciente de uma metrica de top-3, excluindo os sem gabarito clinico."""
+    vals = [v for p in PATIENTS if (v := fn(ref_s, test_s, p)) is not None]
     return float(np.mean(vals)) if vals else np.nan
 
 
+def jaccard_top3(ref_s, test_s):
+    return _mean_top3(jaccard_p, ref_s, test_s)
+
+
 def weighted_rank_top3(ref_s, test_s):
-    """escore 0-1 que premia acertar as dimensoes prioritarias E sua ordem.
-    Peso 3/2/1 pela posicao no top-3 do clinico. Cada dimensao tambem listada
-    pelo modelo rende seu peso descontado pela distancia de posicao (cheio se
-    mesma posicao, menor conforme a posicao se afasta), normalizado pelo maximo
-    alcancavel. Pacientes sem top-3 clinico sao excluidos."""
-    scores = []
-    for p in PATIENTS:
-        ref, test = top3(ref_s, p), top3(test_s, p)
-        if not ref:
-            continue
-        pos_t = {d: j for j, d in enumerate(test)}
-        num = den = 0.0
-        for i, d in enumerate(ref):
-            w = 3 - i                                  # 3, 2, 1
-            den += w
-            if d in pos_t:
-                num += w * (1 - abs(i - pos_t[d]) / 3)
-        scores.append(num / den if den else 0.0)
-    return float(np.mean(scores)) if scores else np.nan
+    return _mean_top3(order_p, ref_s, test_s)
 
 
 def metrics_row(ref_s, test_s):
@@ -258,18 +265,20 @@ def fig_heatmap(raters, path):
 
 # ----------------------------------------------------------- tabelas LaTeX
 def write_table(df, fname, caption, label, fonte="Fonte: o autor.",
-                pre="", column_format=None, tabularx=False):
+                pre="", column_format=None, tabularx=False, nota=None):
     # pre: comandos antes do tabular (ex.: \footnotesize, \tabcolsep) para caber na margem
     # column_format: especificacao de colunas (ex.: colunas X de tabularx que quebram linha)
     # tabularx: troca o ambiente tabular por tabularx{\textwidth} (texto longo que precisa quebrar)
+    # nota: legenda explicativa abaixo da tabela (ex.: de-para de abreviacoes), antes da Fonte
     kw = {"column_format": column_format} if column_format else {}
     inner = df.to_latex(index=False, escape=False, **kw)  # permite $\kappa$, $\times$
     if tabularx:
         inner = inner.replace("\\begin{tabular}", "\\begin{tabularx}{\\textwidth}", 1)
         inner = inner.replace("\\end{tabular}", "\\end{tabularx}", 1)
+    nota_tex = f"\\legend{{\\footnotesize {nota}}}\n" if nota else ""
     tex = (f"\\begin{{table}}[htbp]\n\\centering\n"
            f"\\caption{{{caption}}}\n\\label{{{label}}}\n{pre}{inner}"
-           f"\\legend{{{fonte}}}\n\\end{{table}}\n")
+           f"\\legend{{{fonte}}}\n{nota_tex}\\end{{table}}\n")
     open(os.path.join(TAB_DIR, fname), "w").write(tex)
     print("  escrito:", os.path.join("tabelas", fname))
 
@@ -387,14 +396,20 @@ write_table(pd.DataFrame(det_pairs), "tab_codetectados.tex",
             "tab:codetectados")
 
 t3 = []
+usadas = set()  # dimensoes que aparecem na tabela, para a nota de de-para
+fmt  = lambda L: ", ".join(L) or "---"          # so o numero da dimensao; nome vai na nota
+cell = lambda v: f"{v:.2f}" if v is not None else "---"  # None = sem gabarito clinico
 for p in PATIENTS:
-    fmt = lambda L: ", ".join(f"{d} ({DIMS[d]})" for d in L) or "---"
-    t3.append({"Paciente": p, "Clínico": fmt(top3(clinico, p)),
-               best["nome"]: fmt(top3(bestser, p))})
-_X = ">{\\raggedright\\arraybackslash}X"
+    rc, rm = top3(clinico, p), top3(bestser, p)
+    usadas |= set(rc) | set(rm)
+    t3.append({"Paciente": p, "Clínico": fmt(rc), "LLM": fmt(rm),
+               "$J_p$": cell(jaccard_p(clinico, bestser, p)),
+               "$O_p$": cell(order_p(clinico, bestser, p))})
+nota_dims = "Dimensões: " + ", ".join(
+    f"{d}~{DIMS[d]}" for d in sorted(usadas, key=int)) + "."
 write_table(pd.DataFrame(t3), "tab_top3.tex",
             f"Três dimensões prioritárias (top-3) por paciente: clínico e {best['nome']}",
             "tab:top3",
-            pre="\\small\n", column_format=f"l {_X} {_X}", tabularx=True)
+            pre="\\small\n", column_format="l l l r r", nota=nota_dims)
 
 print("\nOK. Saidas em:", MONO)
