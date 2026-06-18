@@ -6,7 +6,8 @@ Validacao da avaliacao TDPM-20 via LLM contra a avaliacao de um clinico
 Niveis de analise:
   1. Deteccao    - presenca/ausencia de sintoma por celula (paciente x item)
   2. Intensidade - concordancia da nota 0-4 (kappa ponderado, MAE)
-  3. Dimensional - agregacao para as 20 dimensoes + sobreposicao das top-3
+  3. Dimensional - media por dimensao (0-4, unidade de analise do TDPM-20):
+                   MAE sobre as 80 celulas (20 dims x 4 pacientes) + top-3
   4. Reprodutibilidade - 3 execucoes por modelo a temperatura 0
 
 Decisoes metodologicas (combinadas):
@@ -115,11 +116,65 @@ def codetected(ref_s, test_s):
     return pairs
 
 
+def dim_means(scores, p):
+    """media 0-4 por dimensao (ausente=0), sobre TODOS os itens da dimensao.
+
+    Esta e a unidade de analise prescrita pelo TDPM-20: o escore de cada
+    dimensao e a media dos seus itens (2, exceto Ansiedade/Fobia/Panico, 3),
+    nao a soma. Somar enviesaria a dimensao de 3 itens para cima.
+    """
+    sums = defaultdict(float)
+    for code in ITEM_CODES:
+        sums[code.split(".")[0]] += scores[p].get(code, 0)
+    return {d: sums[d] / int(DIM_NITEMS[d]) for d in DIMS}
+
+
+def to_dim_series(scores):
+    """vetor denso de medias por dimensao indexado por (paciente, dimensao)."""
+    idx = pd.MultiIndex.from_product([PATIENTS, list(DIMS)], names=["paciente", "dim"])
+    mm  = {p: dim_means(scores, p) for p in PATIENTS}
+    return pd.Series({(p, d): mm[p][d] for p, d in idx}, index=idx, name="dimmean")
+
+
 def top3(scores, p):
-    sums = defaultdict(int)
-    for code, sc in scores[p].items():
-        sums[code.split(".")[0]] += sc
-    return sorted((d for d in sums if sums[d] > 0), key=lambda d: -sums[d])[:3]
+    """tres dimensoes prioritarias, ordenadas pela media por dimensao (0-4)."""
+    means = dim_means(scores, p)
+    return sorted((d for d in means if means[d] > 0),
+                  key=lambda d: (-means[d], int(d)))[:3]
+
+
+def jaccard_top3(ref_s, test_s):
+    """concordancia de CONJUNTO do top-3: |A inter B| / |A uniao B|, media por paciente.
+    Ignora a ordem. Pacientes sem top-3 clinico (sem gabarito) sao excluidos."""
+    vals = []
+    for p in PATIENTS:
+        A, B = set(top3(ref_s, p)), set(top3(test_s, p))
+        if not A:
+            continue
+        vals.append(len(A & B) / len(A | B))
+    return float(np.mean(vals)) if vals else np.nan
+
+
+def weighted_rank_top3(ref_s, test_s):
+    """escore 0-1 que premia acertar as dimensoes prioritarias E sua ordem.
+    Peso 3/2/1 pela posicao no top-3 do clinico. Cada dimensao tambem listada
+    pelo modelo rende seu peso descontado pela distancia de posicao (cheio se
+    mesma posicao, menor conforme a posicao se afasta), normalizado pelo maximo
+    alcancavel. Pacientes sem top-3 clinico sao excluidos."""
+    scores = []
+    for p in PATIENTS:
+        ref, test = top3(ref_s, p), top3(test_s, p)
+        if not ref:
+            continue
+        pos_t = {d: j for j, d in enumerate(test)}
+        num = den = 0.0
+        for i, d in enumerate(ref):
+            w = 3 - i                                  # 3, 2, 1
+            den += w
+            if d in pos_t:
+                num += w * (1 - abs(i - pos_t[d]) / 3)
+        scores.append(num / den if den else 0.0)
+    return float(np.mean(scores)) if scores else np.nan
 
 
 def metrics_row(ref_s, test_s):
@@ -127,13 +182,30 @@ def metrics_row(ref_s, test_s):
     m = detection(ref, test)
     pairs = codetected(ref_s, test_s)
     n3 = sum(len(set(top3(ref_s, p)) & set(top3(test_s, p))) for p in PATIENTS)
+    # concordancia no nivel da media por dimensao (80 celulas: 20 dims x 4 pacientes).
+    # O MAE sobre todas as celulas e dominado por dimensoes ausentes em ambos (0 vs 0),
+    # entao reporta-se tambem o MAE restrito as dimensoes ATIVAS (>0 em algum avaliador),
+    # analogo a 'co-detectados' no nivel de item -- esse e o sinal honesto de gravidade.
+    rd, td  = to_dim_series(ref_s), to_dim_series(test_s)
+    dif_dim = (rd - td).abs()
+    ativa   = (rd > 0) | (td > 0)
     return dict(
         **m,
         n_codet=len(pairs),
         exata=sum(1 for *_, a, b in pairs if a == b),
         dentro1=sum(1 for *_, a, b in pairs if abs(a - b) <= 1),
         mae_codet=np.mean([abs(a - b) for *_, a, b in pairs]) if pairs else np.nan,
+        # vies = erro com sinal (modelo - clinico): >0 superestima, <0 subestima
+        bias_codet=np.mean([b - a for *_, a, b in pairs]) if pairs else np.nan,
         top3_overlap=n3,
+        mae_dim=float(dif_dim.mean()),
+        dim_dentro1=int((dif_dim <= 1).sum()),
+        dim_corr=float(rd.corr(td)),
+        n_dim_ativa=int(ativa.sum()),
+        mae_dim_ativa=float(dif_dim[ativa].mean()) if ativa.any() else np.nan,
+        bias_dim_ativa=float((td - rd)[ativa].mean()) if ativa.any() else np.nan,
+        top3_jaccard=jaccard_top3(ref_s, test_s),
+        top3_ordem=weighted_rank_top3(ref_s, test_s),
     )
 
 
@@ -221,11 +293,12 @@ worst = rows[-1]
 repro = {r["nome"]: reprodutibilidade(runs[r["nome"]]) for r in rows}
 
 hr("RANKING vs. CLINICO (execucao 1, ordenado por F1 de deteccao)")
-print(f"{'modelo':18} {'recall':>7} {'F1':>5} {'MAE':>6} {'top3':>5} | {'identicas':>9}")
+print(f"{'modelo':18} {'recall':>7} {'F1':>5} {'MAE':>6} {'MAEdimA':>8} {'top3':>5} | {'identicas':>9}")
 for r in rows:
     m = r["m"]; rp = repro[r["nome"]]
-    mae = f"{m['mae_codet']:.2f}" if m["n_codet"] else "---"
-    print(f"{r['nome']:18} {m['recall']:7.2f} {m['f1']:5.2f} {mae:>6} "
+    mae  = f"{m['mae_codet']:.2f}" if m["n_codet"] else "---"
+    maed = f"{m['mae_dim_ativa']:.2f}" if m["n_dim_ativa"] else "---"
+    print(f"{r['nome']:18} {m['recall']:7.2f} {m['f1']:5.2f} {mae:>6} {maed:>8} "
           f"{m['top3_overlap']:5} | {('sim' if rp['identical'] else 'nao'):>9}")
 print(f"\nMelhor F1: {best['nome']} (F1={best['m']['f1']:.2f})")
 
@@ -257,23 +330,58 @@ write_table(det, "tab_deteccao.tex",
             "Métricas de detecção de sintomas por modelo, contra o clínico (execução 1)",
             "tab:deteccao", pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
+# nivel de item (intensidade) e nivel de dimensao ficam em tabelas separadas,
+# espelhando as subsecoes de resultados
 inten = pd.DataFrame([{
     "Modelo": r["nome"],
     "N co-det.": r["m"]["n_codet"], "Exata": f"{r['m']['exata']}/{r['m']['n_codet']}",
     "Dentro de 1": f"{r['m']['dentro1']}/{r['m']['n_codet']}",
     "MAE co-det.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
-    "Top-3 (sobrep.)": r["m"]["top3_overlap"],
+    "Viés co-det.": f"{r['m']['bias_codet']:+.2f}" if r["m"]["n_codet"] else "---",
 } for r in rows])
 write_table(inten, "tab_intensidade.tex",
-            "Concordância de intensidade (escala 0--4) e dimensional por modelo, contra o clínico",
+            "Concordância de intensidade (escala 0--4) por modelo, contra o clínico",
             "tab:intensidade",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
+
+dimt = pd.DataFrame([{
+    "Modelo": r["nome"],
+    "N dim. ativa": r["m"]["n_dim_ativa"],
+    "MAE dim. ativa": f"{r['m']['mae_dim_ativa']:.2f}" if r["m"]["n_dim_ativa"] else "---",
+    "Viés dim. ativa": f"{r['m']['bias_dim_ativa']:+.2f}" if r["m"]["n_dim_ativa"] else "---",
+    "Jaccard top-3": f"{r['m']['top3_jaccard']:.2f}",
+    "Ordem top-3": f"{r['m']['top3_ordem']:.2f}",
+} for r in rows])
+write_table(dimt, "tab_dimensional.tex",
+            "Concordância no nível dimensional (média por dimensão, 0--4) por modelo, contra o clínico",
+            "tab:dimensional",
+            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
+
+# comparacao das medias por dimensao: clinico vs. melhor e pior modelo (por F1),
+# so nas dimensoes ativas em algum dos tres avaliadores
+_X = ">{\\raggedright\\arraybackslash}X"
+worstser  = runs[worst["nome"]][0]
+dim_rater = [("Clínico", clinico), (best["nome"], bestser), (worst["nome"], worstser)]
+dimcmp = []
+for p in PATIENTS:
+    mm = {lbl: dim_means(sc, p) for lbl, sc in dim_rater}
+    for d in DIMS:
+        vals = [mm[lbl][d] for lbl, _ in dim_rater]
+        if any(v > 0 for v in vals):
+            dimcmp.append({"Pac.": f"P{p[-1]}", "Dim.": d, "Dimensão": DIMS[d],
+                           "Clínico": f"{vals[0]:.1f}", best["nome"]: f"{vals[1]:.1f}",
+                           worst["nome"]: f"{vals[2]:.1f}"})
+write_table(pd.DataFrame(dimcmp), "tab_dim_comparacao.tex",
+            "Média por dimensão (0 a 4), recorte de dimensões ativas",
+            "tab:dim-comparacao",
+            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n",
+            column_format=f"l l {_X} r r r", tabularx=True)
 
 # detalhe ilustrativo no modelo de melhor concordancia
 det_pairs = []
 for p, code, a, b in sorted(codetected(clinico, bestser)):
     det_pairs.append({"Paciente": p, "Item": code, "Sintoma": ITEMS[code],
-                      "Clínico": a, best["nome"]: b, "Dif.": abs(a-b)})
+                      "Clínico": a, "LLM": b, "Dif.": abs(a-b)})
 write_table(pd.DataFrame(det_pairs), "tab_codetectados.tex",
             f"Itens pontuados simultaneamente por clínico e {best['nome']}",
             "tab:codetectados")
