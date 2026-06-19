@@ -343,8 +343,8 @@ write_table(det, "tab_deteccao.tex",
 # espelhando as subsecoes de resultados
 inten = pd.DataFrame([{
     "Modelo": r["nome"],
-    "N co-det.": r["m"]["n_codet"], "Exata": f"{r['m']['exata']}/{r['m']['n_codet']}",
-    "Dentro de 1": f"{r['m']['dentro1']}/{r['m']['n_codet']}",
+    "N co-det.": r["m"]["n_codet"], "Exata": f"{r['m']['exata']} de {r['m']['n_codet']}",
+    "Dentro de 1": f"{r['m']['dentro1']} de {r['m']['n_codet']}",
     "MAE co-det.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
     "Viés co-det.": f"{r['m']['bias_codet']:+.2f}" if r["m"]["n_codet"] else "---",
 } for r in rows])
@@ -366,6 +366,24 @@ write_table(dimt, "tab_dimensional.tex",
             "tab:dimensional",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
+# scorecard: uma metrica principal de cada nivel + reprodutibilidade, para comparar
+# os modelos lado a lado (a sintese se apoia nele). Repete numeros das tabelas por
+# nivel de proposito, mas o recorte e a comparacao entre modelos, e a coluna Reprod.
+# e informacao nova (so estava na prosa).
+score = pd.DataFrame([{
+    "Modelo": r["nome"],
+    "F1 (det.)": f"{r['m']['f1']:.2f}",
+    "MAE int.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
+    "MAE dim.": f"{r['m']['mae_dim_ativa']:.2f}" if r["m"]["n_dim_ativa"] else "---",
+    "Jaccard T3": f"{r['m']['top3_jaccard']:.2f}",
+    "Ordem T3": f"{r['m']['top3_ordem']:.2f}",
+    "Reprod.": "sim" if repro[r["nome"]]["identical"] else "não",
+} for r in rows])
+write_table(score, "tab_scorecard.tex",
+            "Principais métricas por modelo, contra o clínico",
+            "tab:scorecard",
+            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
+
 # comparacao das medias por dimensao: clinico vs. melhor e pior modelo (por F1),
 # so nas dimensoes ativas em algum dos tres avaliadores
 _X = ">{\\raggedright\\arraybackslash}X"
@@ -385,15 +403,6 @@ write_table(pd.DataFrame(dimcmp), "tab_dim_comparacao.tex",
             "tab:dim-comparacao",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n",
             column_format=f"l l {_X} r r r", tabularx=True)
-
-# detalhe ilustrativo no modelo de melhor concordancia
-det_pairs = []
-for p, code, a, b in sorted(codetected(clinico, bestser)):
-    det_pairs.append({"Paciente": p, "Item": code, "Sintoma": ITEMS[code],
-                      "Clínico": a, "LLM": b, "Dif.": abs(a-b)})
-write_table(pd.DataFrame(det_pairs), "tab_codetectados.tex",
-            f"Itens pontuados simultaneamente por clínico e {best['nome']}",
-            "tab:codetectados")
 
 t3 = []
 usadas = set()  # dimensoes que aparecem na tabela, para a nota de de-para
