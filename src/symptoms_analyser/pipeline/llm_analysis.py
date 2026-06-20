@@ -127,16 +127,19 @@ def aggregate_chunk_results(chunk_results: List[Dict[str, Any]]) -> Dict[str, An
             for item_id, it in data.get("items", {}).items():
                 sc = int(it.get("score", 0))
                 ev = it.get("evidence", [])
-                
+                just = it.get("justification")
+
                 if item_id not in patient_items[patient_id]:
                     patient_items[patient_id][item_id] = {
                         "name": TDPM_ITEMS.get(item_id, "Desconhecido"),
-                        "score": sc, 
-                        "evidence": ev
+                        "score": sc,
+                        "evidence": ev,
+                        "justification": just
                     }
                 else:
                     if sc > patient_items[patient_id][item_id]["score"]:
                         patient_items[patient_id][item_id]["score"] = sc
+                        patient_items[patient_id][item_id]["justification"] = just
                     patient_items[patient_id][item_id]["evidence"].extend(ev)
 
     patient_summaries = {}
