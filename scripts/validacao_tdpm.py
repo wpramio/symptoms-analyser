@@ -34,7 +34,7 @@ from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB   = os.path.join(ROOT, "data", "sqlite.db")
 ONTO = os.path.join(ROOT, "data", "tdpm_ontology.json")
-CSV  = os.path.join(ROOT, "data", "avaliacao_tdpm_terapeuta.csv")
+CSV  = os.path.join(ROOT, "data", "avaliacao_tdpm_terapeuta_16_03_26.csv")
 
 # saidas vao direto para o repo da monografia
 MONO    = os.path.expanduser("~/projects/ufrgs/tcc-monografia")
@@ -241,7 +241,7 @@ def fig_heatmap(raters, path):
 
 
 # ----------------------------------------------------------- tabelas LaTeX
-def write_table(df, fname, caption, label, fonte="Fonte: o autor.",
+def write_table(df, fname, caption, label, fonte="Fonte: elaborado pelo autor.",
                 pre="", column_format=None, tabularx=False, nota=None):
     # pre: comandos antes do tabular (ex.: \footnotesize, \tabcolsep) para caber na margem
     # column_format: especificacao de colunas (ex.: colunas X de tabularx que quebram linha)
