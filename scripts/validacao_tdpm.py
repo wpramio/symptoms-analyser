@@ -152,24 +152,6 @@ def jaccard_p(ref_s, test_s, p):
     return len(A & B) / len(A | B)
 
 
-def order_p(ref_s, test_s, p):
-    """acerto de ordem do top-3 de um paciente (0-1); None sem gabarito clinico.
-    Peso 3/2/1 pela posicao no top-3 do clinico. Cada dimensao tambem listada pelo
-    modelo rende seu peso descontado pela distancia de posicao (cheio se mesma
-    posicao, menor conforme a posicao se afasta), normalizado pelo maximo alcancavel."""
-    ref, test = top3(ref_s, p), top3(test_s, p)
-    if not ref:
-        return None
-    pos_t = {d: j for j, d in enumerate(test)}
-    num = den = 0.0
-    for i, d in enumerate(ref):
-        w = 3 - i                                  # 3, 2, 1
-        den += w
-        if d in pos_t:
-            num += w * (1 - abs(i - pos_t[d]) / 3)
-    return num / den if den else 0.0
-
-
 def _mean_top3(fn, ref_s, test_s):
     """media por paciente de uma metrica de top-3, excluindo os sem gabarito clinico."""
     vals = [v for p in PATIENTS if (v := fn(ref_s, test_s, p)) is not None]
@@ -178,10 +160,6 @@ def _mean_top3(fn, ref_s, test_s):
 
 def jaccard_top3(ref_s, test_s):
     return _mean_top3(jaccard_p, ref_s, test_s)
-
-
-def weighted_rank_top3(ref_s, test_s):
-    return _mean_top3(order_p, ref_s, test_s)
 
 
 def metrics_row(ref_s, test_s):
@@ -212,7 +190,6 @@ def metrics_row(ref_s, test_s):
         mae_dim_ativa=float(dif_dim[ativa].mean()) if ativa.any() else np.nan,
         bias_dim_ativa=float((td - rd)[ativa].mean()) if ativa.any() else np.nan,
         top3_jaccard=jaccard_top3(ref_s, test_s),
-        top3_ordem=weighted_rank_top3(ref_s, test_s),
     )
 
 
@@ -359,7 +336,6 @@ dimt = pd.DataFrame([{
     "MAE dim. ativa": f"{r['m']['mae_dim_ativa']:.2f}" if r["m"]["n_dim_ativa"] else "---",
     "Viés dim. ativa": f"{r['m']['bias_dim_ativa']:+.2f}" if r["m"]["n_dim_ativa"] else "---",
     "Jaccard top-3": f"{r['m']['top3_jaccard']:.2f}",
-    "Ordem top-3": f"{r['m']['top3_ordem']:.2f}",
 } for r in rows])
 write_table(dimt, "tab_dimensional.tex",
             "Concordância no nível dimensional (média por dimensão, 0--4) por modelo, contra o clínico",
@@ -376,7 +352,6 @@ score = pd.DataFrame([{
     "MAE int.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
     "MAE dim.": f"{r['m']['mae_dim_ativa']:.2f}" if r["m"]["n_dim_ativa"] else "---",
     "Jaccard T3": f"{r['m']['top3_jaccard']:.2f}",
-    "Ordem T3": f"{r['m']['top3_ordem']:.2f}",
     "Reprod.": "sim" if repro[r["nome"]]["identical"] else "não",
 } for r in rows])
 write_table(score, "tab_scorecard.tex",
@@ -412,13 +387,12 @@ for p in PATIENTS:
     rc, rm = top3(clinico, p), top3(bestser, p)
     usadas |= set(rc) | set(rm)
     t3.append({"Paciente": p, "Clínico": fmt(rc), "LLM": fmt(rm),
-               "$J_p$": cell(jaccard_p(clinico, bestser, p)),
-               "$O_p$": cell(order_p(clinico, bestser, p))})
+               "$J_p$": cell(jaccard_p(clinico, bestser, p))})
 nota_dims = "Dimensões: " + ", ".join(
     f"{d}~{DIMS[d]}" for d in sorted(usadas, key=int)) + "."
 write_table(pd.DataFrame(t3), "tab_top3.tex",
             f"Três dimensões prioritárias (top-3) por paciente: clínico e {best['nome']}",
             "tab:top3",
-            pre="\\small\n", column_format="l l l r r", nota=nota_dims)
+            pre="\\small\n", column_format="l l l r", nota=nota_dims)
 
 print("\nOK. Saidas em:", MONO)
