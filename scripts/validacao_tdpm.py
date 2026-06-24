@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
 """
-Validacao da avaliacao TDPM-20 via LLM contra a avaliacao de um clinico
-(sessao 16/03/2026). Analise exploratoria/preliminar (N=1 sessao, 4 pacientes).
+Validacao da avaliacao TDPM-20 via LLM contra a avaliacao de um clinico.
+Analise exploratoria/preliminar. Parametrizado por sessao (ver SESSIONS).
 
 Niveis de analise:
   1. Deteccao    - presenca/ausencia de sintoma por celula (paciente x item)
   2. Intensidade - concordancia da nota 0-4 (kappa ponderado, MAE)
   3. Dimensional - media por dimensao (0-4, unidade de analise do TDPM-20):
-                   MAE sobre as 80 celulas (20 dims x 4 pacientes) + top-3
+                   MAE sobre as celulas (20 dims x pacientes) + top-3
   4. Reprodutibilidade - 3 execucoes por modelo a temperatura 0
 
 Decisoes metodologicas (combinadas):
+  - elenco de pacientes = quem participou da sessao (therapy_session_patients);
+    presenca = avaliacao, entao quem nao aparece no CSV foi considerado sem sintomas
   - linha "Trecho de exemplo" do CSV do clinico e descartada
-  - itens em branco = ausente (0); Paciente3 incluido como ausente
+  - itens em branco = ausente (0)
   - escala 1-4 para presenca; 0 = ausencia implicita
   - dedup de itens repetidos pela maior nota (regra de desempate do TDPM-20)
-  - vs-clinico usa a execucao 1 de cada modelo; pacientes alem de 1-4 sao ignorados
+  - vs-clinico usa a execucao 1 de cada modelo
 
-Metricas via scikit-learn. Rode a partir da raiz do repo:
-  uv run python scripts/validacao_tdpm.py
+Metricas via scikit-learn. Rode a partir da raiz do repo (default: sessao 16/03):
+  uv run python scripts/validacao_tdpm.py [16_03|23_03]
 """
-import csv, json, sqlite3, re, os
+import csv, json, sqlite3, re, os, sys
 from collections import defaultdict
 
 import numpy as np
@@ -34,35 +36,75 @@ from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB   = os.path.join(ROOT, "data", "sqlite.db")
 ONTO = os.path.join(ROOT, "data", "tdpm_ontology.json")
-CSV  = os.path.join(ROOT, "data", "avaliacao_tdpm_terapeuta_16_03_26.csv")
 
 # saidas vao direto para o repo da monografia
 MONO    = os.path.expanduser("~/projects/ufrgs/tcc-monografia")
 FIG_DIR = os.path.join(MONO, "figuras")
 TAB_DIR = os.path.join(MONO, "tabelas")
 
-PATIENTS = ["Paciente1", "Paciente2", "Paciente3", "Paciente4"]
+# Configuracao por sessao avaliada. O elenco de pacientes nao e fixo: vem da tabela
+# therapy_session_patients (presenca = avaliacao pelo clinico; quem nao aparece no CSV
+# do clinico foi considerado sem sintomas, ou seja, verdadeiro negativo). 'suffix' evita
+# que uma sessao sobrescreva as tabelas/figuras de outra ("" mantem os nomes da 16/03,
+# que sao os referenciados na monografia).
+#   modelos: nome de exibicao -> (slug OpenRouter, [eval run1, run2, run3])
+#   prompt_novo: modelo -> eval_id rodado com o prompt revisado (criterios explicitos)
+SESSIONS = {
+    "16_03": dict(
+        therapy_session_id=1,
+        data="16/03/2026",
+        csv=os.path.join(ROOT, "data", "avaliacao_tdpm_terapeuta_16_03_26.csv"),
+        suffix="",
+        modelos=[
+            ("Gemma 4 31B",       "google/gemma-4-31b-it:free",  [1,  6,  17]),
+            ("Gemini 3.5 Flash",  "google/gemini-3.5-flash",     [7,  8,  10]),
+            ("Gemini 2.5 Pro",    "google/gemini-2.5-pro",       [40, 41, 42]),
+            ("Claude Haiku 4.5",  "anthropic/claude-haiku-4.5",  [11, 12, 13]),
+            ("Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6", [14, 15, 16]),
+            ("Claude Opus 4.8",   "anthropic/claude-opus-4.8",   [37, 38, 39]),
+            ("GPT-5.4 nano",      "openai/gpt-5.4-nano",         [18, 19, 20]),
+            ("GPT-5.4 mini",      "openai/gpt-5.4-mini",         [21, 22, 23]),
+            ("GPT-5.4",           "openai/gpt-5.4",              [24, 25, 26]),
+            ("GPT-5.5",           "openai/gpt-5.5",              [34, 35, 36]),
+        ],
+        prompt_novo={"Claude Sonnet 4.6": 45, "GPT-5.4 mini": 46,
+                     "Claude Haiku 4.5": 47, "GPT-5.4 nano": 48},
+    ),
+    # 23/03: 10 modelos, 1 execucao cada, rodados com o prompt REVISADO (decisao da
+    # orientadora: a sessao 2 ja usa o prompt melhorado). Logo, NAO e prompt-matched com
+    # a 16/03 (que usou o prompt inicial) -- a comparacao sessao-a-sessao deve dizer isso.
+    # 1 execucao => reprodutibilidade nao medida (aparece como n/d).
+    "23_03": dict(
+        therapy_session_id=2,
+        data="23/03/2026",
+        csv=os.path.join(ROOT, "data", "avaliacao_tdpm_terapeuta_23_03_26.csv"),
+        suffix="_23_03",
+        modelos=[
+            ("Gemma 4 31B",       "google/gemma-4-31b-it:free",  [58]),
+            ("Gemini 3.5 Flash",  "google/gemini-3.5-flash",     [49]),
+            ("Gemini 2.5 Pro",    "google/gemini-2.5-pro",       [50]),
+            ("Claude Haiku 4.5",  "anthropic/claude-haiku-4.5",  [51]),
+            ("Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6", [52]),
+            ("Claude Opus 4.8",   "anthropic/claude-opus-4.8",   [53]),
+            ("GPT-5.4 nano",      "openai/gpt-5.4-nano",         [54]),
+            ("GPT-5.4 mini",      "openai/gpt-5.4-mini",         [55]),
+            ("GPT-5.4",           "openai/gpt-5.4",              [56]),
+            ("GPT-5.5",           "openai/gpt-5.5",              [57]),
+        ],
+        prompt_novo={},
+    ),
+}
 
-# modelo (nome de exibicao) -> (slug OpenRouter, [eval run1, run2, run3])
-MODELOS = [
-    ("Gemma 4 31B",       "google/gemma-4-31b-it:free",  [1,  6,  17]),
-    ("Gemini 3.5 Flash",  "google/gemini-3.5-flash",     [7,  8,  10]),
-    ("Gemini 2.5 Pro",    "google/gemini-2.5-pro",       [40, 41, 42]),
-    ("Claude Haiku 4.5",  "anthropic/claude-haiku-4.5",  [11, 12, 13]),
-    ("Claude Sonnet 4.6", "anthropic/claude-sonnet-4.6", [14, 15, 16]),
-    ("Claude Opus 4.8",   "anthropic/claude-opus-4.8",   [37, 38, 39]),
-    ("GPT-5.4 nano",      "openai/gpt-5.4-nano",         [18, 19, 20]),
-    ("GPT-5.4 mini",      "openai/gpt-5.4-mini",         [21, 22, 23]),
-    ("GPT-5.4",           "openai/gpt-5.4",              [24, 25, 26]),
-    ("GPT-5.5",           "openai/gpt-5.5",              [34, 35, 36]),
-]
-
-# avaliacoes com o prompt revisado (criterios explicitos de intensidade, impacto e
-# recorrencia + campo de justificativa por item), rodadas so para o melhor e o pior
-# modelo do experimento principal, 1 execucao cada (a variabilidade entre execucoes
-# e intrinseca ao modelo, nao ao prompt). Mesma sessao (16/03), mesmo clinico.
-PROMPT_NOVO = {"Claude Sonnet 4.6": 45, "GPT-5.4 mini": 46,
-               "Claude Haiku 4.5": 47, "GPT-5.4 nano": 48}
+# sessao ativa: 1o argumento de linha de comando (default 16/03)
+SESSION = sys.argv[1] if len(sys.argv) > 1 else "16_03"
+if SESSION not in SESSIONS:
+    sys.exit(f"sessao desconhecida: {SESSION!r}. Opcoes: {', '.join(SESSIONS)}")
+cfg          = SESSIONS[SESSION]
+CSV          = cfg["csv"]
+MODELOS      = cfg["modelos"]
+PROMPT_NOVO  = cfg["prompt_novo"]
+SUFFIX       = cfg["suffix"]
+SESSION_DATE = cfg["data"]
 
 PROV_COLOR = {"google": "#5B8FF9", "anthropic": "#9270CA", "openai": "#61C0BF"}
 def provider(slug): return slug.split("/")[0]
@@ -75,6 +117,20 @@ DIM_NITEMS = pd.Series(ITEM_CODES).str.split(".").str[0].value_counts()  # itens
 
 
 # ----------------------------------------------------------- carga de dados
+def load_roster(session_id):
+    """pacientes da sessao, na ordem do numero do pseudonimo. A regra e presenca =
+    avaliacao: todos que participaram entram, mesmo os sem sintoma no CSV do clinico
+    (verdadeiros negativos), porque e onde aparece a superdeteccao do LLM."""
+    con = sqlite3.connect(DB); con.row_factory = sqlite3.Row
+    rows = con.execute(
+        "SELECT p.pseudonym FROM therapy_session_patients tsp "
+        "JOIN patients p ON p.id = tsp.patient_id WHERE tsp.therapy_session_id = ?",
+        (session_id,)).fetchall()
+    con.close()
+    return sorted((r["pseudonym"] for r in rows),
+                  key=lambda s: int(re.sub(r"\D", "", s) or 0))
+
+
 def load_clinico():
     scores = {p: {} for p in PATIENTS}
     for r in csv.DictReader(open(CSV)):
@@ -175,7 +231,7 @@ def metrics_row(ref_s, test_s):
     m = detection(ref, test)
     pairs = codetected(ref_s, test_s)
     n3 = sum(len(set(top3(ref_s, p)) & set(top3(test_s, p))) for p in PATIENTS)
-    # concordancia no nivel da media por dimensao (80 celulas: 20 dims x 4 pacientes).
+    # concordancia no nivel da media por dimensao (20 dims x N pacientes da sessao).
     # O MAE sobre todas as celulas e dominado por dimensoes ausentes em ambos (0 vs 0),
     # entao reporta-se tambem o MAE restrito as dimensoes ATIVAS (>0 em algum avaliador),
     # analogo a 'co-detectados' no nivel de item -- esse e o sinal honesto de gravidade.
@@ -202,8 +258,11 @@ def metrics_row(ref_s, test_s):
 
 
 def reprodutibilidade(series_list):
-    """concordancia entre execucoes do mesmo modelo (temperatura 0)."""
+    """concordancia entre execucoes do mesmo modelo (temperatura 0). Com menos de duas
+    execucoes nao da para medir: identical=None (reportado como n/d)."""
     sers = [to_series(s) for s in series_list]
+    if len(sers) < 2:
+        return dict(identical=None)
     return dict(identical=all(sers[0].equals(s) for s in sers[1:]))
 
 
@@ -255,6 +314,10 @@ def write_table(df, fname, caption, label, fonte="Fonte: elaborado pelo autor.",
     # column_format: especificacao de colunas (ex.: colunas X de tabularx que quebram linha)
     # tabularx: troca o ambiente tabular por tabularx{\textwidth} (texto longo que precisa quebrar)
     # nota: legenda explicativa abaixo da tabela (ex.: de-para de abreviacoes), antes da Fonte
+    # sessoes != 16/03 ganham sufixo no rotulo (evita colisao de \label) e a data na legenda
+    if SUFFIX:
+        label = label + SUFFIX
+        caption = f"{caption} (sessão {SESSION_DATE})"
     kw = {"column_format": column_format} if column_format else {}
     inner = df.to_latex(index=False, escape=False, **kw)  # permite $\kappa$, $\times$
     if tabularx:
@@ -272,6 +335,8 @@ def hr(t=""): print("\n" + "=" * 72 + (f"\n{t}" if t else ""))
 
 
 # ----------------------------------------------------------- main
+PATIENTS = load_roster(cfg["therapy_session_id"])
+print(f"sessao {SESSION}: {len(PATIENTS)} pacientes -> {', '.join(PATIENTS)}")
 clinico = load_clinico()
 runs = {nome: [load_llm(e) for e in evals] for nome, slug, evals in MODELOS}
 
@@ -293,7 +358,7 @@ for r in rows:
     mae  = f"{m['mae_codet']:.2f}" if m["n_codet"] else "---"
     maed = f"{m['mae_dim_ativa']:.2f}" if m["n_dim_ativa"] else "---"
     print(f"{r['nome']:18} {m['recall']:7.2f} {m['f1']:5.2f} {mae:>6} {maed:>8} "
-          f"{m['top3_overlap']:5} | {('sim' if rp['identical'] else 'nao'):>9}")
+          f"{m['top3_overlap']:5} | {({True:'sim',False:'nao',None:'n/d'}[rp['identical']]):>9}")
 print(f"\nMelhor F1: {best['nome']} (F1={best['m']['f1']:.2f})")
 
 bestser = runs[best["nome"]][0]
@@ -303,12 +368,12 @@ hr("GERANDO FIGURAS")
 os.makedirs(FIG_DIR, exist_ok=True)
 fig_confusao([{"short": best["nome"],  "m": best["m"]},
               {"short": worst["nome"], "m": worst["m"]}],
-             os.path.join(FIG_DIR, "fig_matriz_confusao.pdf"))
+             os.path.join(FIG_DIR, f"fig_matriz_confusao{SUFFIX}.pdf"))
 # heatmap compara o clinico com o melhor e o pior modelo (por F1)
 heat = [("Clínico", clinico), (best["nome"], runs[best["nome"]][0]),
         (worst["nome"], runs[worst["nome"]][0])]
-fig_heatmap(heat, os.path.join(FIG_DIR, "fig_notas_por_avaliador.pdf"))
-for f in ("fig_matriz_confusao.pdf", "fig_notas_por_avaliador.pdf"):
+fig_heatmap(heat, os.path.join(FIG_DIR, f"fig_notas_por_avaliador{SUFFIX}.pdf"))
+for f in (f"fig_matriz_confusao{SUFFIX}.pdf", f"fig_notas_por_avaliador{SUFFIX}.pdf"):
     print("  escrito:", os.path.join("figuras", f))
 
 # ---- tabelas ----
@@ -320,7 +385,7 @@ det = pd.DataFrame([{
     "VN": r["m"]["tn"], "Precisão": f"{r['m']['precision']:.2f}",
     "Recall": f"{r['m']['recall']:.2f}", "F1": f"{r['m']['f1']:.2f}",
 } for r in rows])
-write_table(det, "tab_deteccao.tex",
+write_table(det, f"tab_deteccao{SUFFIX}.tex",
             "Métricas de detecção de sintomas por modelo, contra o clínico (execução 1)",
             "tab:deteccao", pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
@@ -333,7 +398,7 @@ inten = pd.DataFrame([{
     "MAE co-det.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
     "Viés co-det.": f"{r['m']['bias_codet']:+.2f}" if r["m"]["n_codet"] else "---",
 } for r in rows])
-write_table(inten, "tab_intensidade.tex",
+write_table(inten, f"tab_intensidade{SUFFIX}.tex",
             "Concordância de intensidade (escala 0--4) por modelo, contra o clínico",
             "tab:intensidade",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
@@ -345,7 +410,7 @@ dimt = pd.DataFrame([{
     "Viés dim. ativa": f"{r['m']['bias_dim_ativa']:+.2f}" if r["m"]["n_dim_ativa"] else "---",
     "Jaccard top-3": f"{r['m']['top3_jaccard']:.2f}",
 } for r in rows])
-write_table(dimt, "tab_dimensional.tex",
+write_table(dimt, f"tab_dimensional{SUFFIX}.tex",
             "Concordância no nível dimensional (média por dimensão, 0--4) por modelo, contra o clínico",
             "tab:dimensional",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
@@ -360,9 +425,9 @@ score = pd.DataFrame([{
     "MAE int.": f"{r['m']['mae_codet']:.2f}" if r["m"]["n_codet"] else "---",
     "MAE dim.": f"{r['m']['mae_dim_ativa']:.2f}" if r["m"]["n_dim_ativa"] else "---",
     "Jaccard T3": f"{r['m']['top3_jaccard']:.2f}",
-    "Reprod.": "sim" if repro[r["nome"]]["identical"] else "não",
+    "Reprod.": {True: "sim", False: "não", None: "n/d"}[repro[r["nome"]]["identical"]],
 } for r in rows])
-write_table(score, "tab_scorecard.tex",
+write_table(score, f"tab_scorecard{SUFFIX}.tex",
             "Principais métricas por modelo, contra o clínico",
             "tab:scorecard",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
@@ -388,12 +453,13 @@ for nome in nomes_novo:
         "MAE dim.": arrow(_mae_dim(v), _mae_dim(r)),
         "Jaccard T3": arrow(f"{v['top3_jaccard']:.2f}", f"{r['top3_jaccard']:.2f}"),
     })
-write_table(pd.DataFrame(comp), "tab_prompt.tex",
-            "Efeito do prompt revisado (critérios explícitos de intensidade, impacto e "
-            "recorrência) sobre a concordância com o clínico, por modelo "
-            "(inicial\\,$\\to$\\,revisado)",
-            "tab:prompt",
-            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
+if comp:   # so gera a tabela de prompt quando ha comparacao inicial vs. revisado
+    write_table(pd.DataFrame(comp), f"tab_prompt{SUFFIX}.tex",
+                "Efeito do prompt revisado (critérios explícitos de intensidade, impacto e "
+                "recorrência) sobre a concordância com o clínico, por modelo "
+                "(inicial\\,$\\to$\\,revisado)",
+                "tab:prompt",
+                pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
 # comparacao das medias por dimensao: clinico vs. melhor e pior modelo (por F1),
 # so nas dimensoes ativas em algum dos tres avaliadores
@@ -409,7 +475,7 @@ for p in PATIENTS:
             dimcmp.append({"Pac.": f"P{p[-1]}", "Dim.": d, "Dimensão": DIMS[d],
                            "Clínico": f"{vals[0]:.1f}", best["nome"]: f"{vals[1]:.1f}",
                            worst["nome"]: f"{vals[2]:.1f}"})
-write_table(pd.DataFrame(dimcmp), "tab_dim_comparacao.tex",
+write_table(pd.DataFrame(dimcmp), f"tab_dim_comparacao{SUFFIX}.tex",
             "Média por dimensão (0 a 4), recorte de dimensões ativas",
             "tab:dim-comparacao",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n",
@@ -426,7 +492,7 @@ for p in PATIENTS:
                "$J_p$": cell(jaccard_p(clinico, bestser, p))})
 nota_dims = "Dimensões: " + ", ".join(
     f"{d}~{DIMS[d]}" for d in sorted(usadas, key=int)) + "."
-write_table(pd.DataFrame(t3), "tab_top3.tex",
+write_table(pd.DataFrame(t3), f"tab_top3{SUFFIX}.tex",
             f"Três dimensões prioritárias (top-3) por paciente: clínico e {best['nome']}",
             "tab:top3",
             pre="\\small\n", column_format="l l l r", nota=nota_dims)
