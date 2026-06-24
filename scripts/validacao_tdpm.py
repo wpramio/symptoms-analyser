@@ -56,6 +56,14 @@ MODELOS = [
     ("GPT-5.4",           "openai/gpt-5.4",              [24, 25, 26]),
     ("GPT-5.5",           "openai/gpt-5.5",              [34, 35, 36]),
 ]
+
+# avaliacoes com o prompt revisado (criterios explicitos de intensidade, impacto e
+# recorrencia + campo de justificativa por item), rodadas so para o melhor e o pior
+# modelo do experimento principal, 1 execucao cada (a variabilidade entre execucoes
+# e intrinseca ao modelo, nao ao prompt). Mesma sessao (16/03), mesmo clinico.
+PROMPT_NOVO = {"Claude Sonnet 4.6": 45, "GPT-5.4 mini": 46,
+               "Claude Haiku 4.5": 47, "GPT-5.4 nano": 48}
+
 PROV_COLOR = {"google": "#5B8FF9", "anthropic": "#9270CA", "openai": "#61C0BF"}
 def provider(slug): return slug.split("/")[0]
 
@@ -357,6 +365,34 @@ score = pd.DataFrame([{
 write_table(score, "tab_scorecard.tex",
             "Principais métricas por modelo, contra o clínico",
             "tab:scorecard",
+            pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
+
+# comparacao prompt inicial vs. revisado, para o melhor e o pior modelo. Mostra o
+# efeito de guiar o LLM com criterios explicitos, sem trocar de modelo.
+comp = []
+# ordena os modelos avaliados pelo F1 do prompt inicial (melhor -> pior). Uma linha por
+# modelo, cada celula no formato inicial$\to$revisado para leitura direta do efeito.
+nomes_novo = sorted(PROMPT_NOVO, key=lambda n: metrics_row(clinico, runs[n][0])["f1"],
+                    reverse=True)
+arrow = lambda a, b: f"{a}\\,$\\to$\\,{b}"
+def _mae_int(m): return f"{m['mae_codet']:.2f}" if m["n_codet"] else "---"
+def _mae_dim(m): return f"{m['mae_dim_ativa']:.2f}" if m["n_dim_ativa"] else "---"
+for nome in nomes_novo:
+    v = metrics_row(clinico, runs[nome][0])               # prompt inicial
+    r = metrics_row(clinico, load_llm(PROMPT_NOVO[nome]))  # prompt revisado
+    comp.append({
+        "Modelo": nome,
+        "Recall": arrow(f"{v['recall']:.2f}", f"{r['recall']:.2f}"),
+        "F1 (det.)": arrow(f"{v['f1']:.2f}", f"{r['f1']:.2f}"),
+        "MAE int.": arrow(_mae_int(v), _mae_int(r)),
+        "MAE dim.": arrow(_mae_dim(v), _mae_dim(r)),
+        "Jaccard T3": arrow(f"{v['top3_jaccard']:.2f}", f"{r['top3_jaccard']:.2f}"),
+    })
+write_table(pd.DataFrame(comp), "tab_prompt.tex",
+            "Efeito do prompt revisado (critérios explícitos de intensidade, impacto e "
+            "recorrência) sobre a concordância com o clínico, por modelo "
+            "(inicial\\,$\\to$\\,revisado)",
+            "tab:prompt",
             pre="\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n")
 
 # comparacao das medias por dimensao: clinico vs. melhor e pior modelo (por F1),
