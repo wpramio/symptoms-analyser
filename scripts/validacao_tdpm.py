@@ -68,7 +68,9 @@ SESSIONS = {
             ("GPT-5.5",           "openai/gpt-5.5",              [34, 35, 36]),
         ],
         prompt_novo={"Claude Sonnet 4.6": 45, "GPT-5.4 mini": 46,
-                     "Claude Haiku 4.5": 47, "GPT-5.4 nano": 48},
+                     "Claude Haiku 4.5": 47, "GPT-5.4 nano": 48, "Gemma 4 31B": 44,
+                     "GPT-5.4": 59, "GPT-5.5": 60, "Claude Opus 4.8": 61,
+                     "Gemini 2.5 Pro": 62, "Gemini 3.5 Flash": 63},
     ),
     # 23/03: 10 modelos, 1 execucao cada, rodados com o prompt REVISADO (decisao da
     # orientadora: a sessao 2 ja usa o prompt melhorado). Logo, NAO e prompt-matched com
