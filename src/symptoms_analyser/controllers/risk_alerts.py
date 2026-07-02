@@ -1,7 +1,8 @@
 import json
 import re
 from typing import List, Dict, Any, Optional
-import sqlite3
+
+from sqlalchemy import text
 from symptoms_analyser.db import get_db
 from symptoms_analyser.controllers.therapy_sessions import calculate_airtime
 
@@ -54,23 +55,20 @@ def _run_heuristics_calculations(
     alerts = []
     
     with get_db() as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
         
-        placeholders = ",".join("?" for _ in session_ids)
+        placeholders = ",".join(str(s) for s in session_ids)
         
         # 5. Fetch all patient item scores for the evaluated sessions
         patient_history = {} # patient_pseudonym -> list of dicts: {"session_id": ..., "scores": {item_code: score}}
         
         if eval_ids:
-            eval_placeholders = ",".join("?" for _ in eval_ids)
-            cursor.execute(f"""
+            eval_ph = ",".join(str(e) for e in eval_ids)
+            score_rows = conn.execute(text(f"""
                 SELECT pis.evaluation_id, p.pseudonym, pis.item_code, pis.score
                 FROM patient_item_scores pis
                 JOIN patients p ON pis.patient_id = p.id
-                WHERE pis.evaluation_id IN ({eval_placeholders})
-            """, eval_ids)
-            score_rows = cursor.fetchall()
+                WHERE pis.evaluation_id IN ({eval_ph})
+            """)).mappings().fetchall()
             
             # Group scores by patient, then by session
             temp_history = {} # pseudonym -> session_id -> {item_code: score}
@@ -100,12 +98,12 @@ def _run_heuristics_calculations(
         airtime_data = None
         
         # Fetch transcripts for all sessions
-        cursor.execute(f"""
-            SELECT therapy_session_id, raw_text, anonymized_text 
-            FROM transcripts 
-            WHERE therapy_session_id IN ({placeholders})
-        """, session_ids)
-        transcripts_rows = cursor.fetchall()
+        session_ph = ",".join(str(s) for s in session_ids)
+        transcripts_rows = conn.execute(text(f"""
+            SELECT therapy_session_id, raw_text, anonymized_text
+            FROM transcripts
+            WHERE therapy_session_id IN ({session_ph})
+        """)).mappings().fetchall()
         
         # Map of session_id to transcript text
         session_transcripts = {}
@@ -113,18 +111,18 @@ def _run_heuristics_calculations(
             session_transcripts[row["therapy_session_id"]] = row["anonymized_text"] or row["raw_text"]
             
         # Aggregate airtime across all sessions
-        for sid, text in session_transcripts.items():
-            if text:
+        for sid, t_text in session_transcripts.items():
+            if t_text:
                 # Determine participants of this specific session
-                cursor.execute("""
+                cursor_rows = conn.execute(text("""
                     SELECT p.pseudonym
                     FROM therapy_session_patients tsp
                     JOIN patients p ON tsp.patient_id = p.id
-                    WHERE tsp.therapy_session_id = ?
-                """, (sid,))
-                session_participants = [r["pseudonym"] for r in cursor.fetchall()]
+                    WHERE tsp.therapy_session_id = :sid
+                """), {"sid": sid}).mappings().fetchall()
+                session_participants = [r["pseudonym"] for r in cursor_rows]
                 
-                s_airtime = calculate_airtime(text, session_participants)
+                s_airtime = calculate_airtime(t_text, session_participants)
                 if s_airtime and "speakers" in s_airtime:
                     for sp_info in s_airtime["speakers"]:
                         speaker = sp_info["speaker"]
@@ -133,25 +131,23 @@ def _run_heuristics_calculations(
                         global_total_words += w_count
                         
         # Also keep latest session's airtime for the relational checks that need current-session speaker data
-        cursor.execute("""
-            SELECT raw_text, anonymized_text 
-            FROM transcripts 
-            WHERE therapy_session_id = ? 
+        latest_row = conn.execute(text("""
+            SELECT raw_text, anonymized_text
+            FROM transcripts
+            WHERE therapy_session_id = :sid
             ORDER BY created_at DESC LIMIT 1
-        """, (ref_session_id,))
-        latest_row = cursor.fetchone()
+        """), {"sid": ref_session_id}).mappings().fetchone()
         if latest_row:
             l_text = latest_row["anonymized_text"] or latest_row["raw_text"]
             if l_text:
                 airtime_data = calculate_airtime(l_text, list(curr_participants.values()))
                 
         # 7. Fetch interactions_mapping and notes from session clinical analyses
-        cursor.execute(f"""
+        clinical_analysis_rows = conn.execute(text(f"""
             SELECT therapy_session_id, interactions_mapping, group_progress_note
             FROM session_clinical_analyses
-            WHERE therapy_session_id IN ({placeholders})
-        """, session_ids)
-        clinical_analysis_rows = cursor.fetchall()
+            WHERE therapy_session_id IN ({session_ph})
+        """)).mappings().fetchall()
         
         curr_interactions = None
         historical_clinical_analyses = sorted(clinical_analysis_rows, key=lambda r: session_order.get(r["therapy_session_id"], 9999))
@@ -176,11 +172,12 @@ def _run_heuristics_calculations(
             attendance_rate = 0.0
             total_cohort_sessions = len(session_ids)
             if total_cohort_sessions > 0:
-                cursor.execute("""
-                    SELECT count(*) FROM therapy_session_patients 
-                    WHERE patient_id = ? AND therapy_session_id IN ({})
-                """.format(placeholders), [p_db_id] + session_ids)
-                attended_count = cursor.fetchone()[0] or 0
+                att_ph = ",".join(str(s) for s in session_ids)
+                att_row = conn.execute(text(f"""
+                    SELECT count(*) as cnt FROM therapy_session_patients
+                    WHERE patient_id = :pid AND therapy_session_id IN ({att_ph})
+                """), {"pid": p_db_id}).fetchone()
+                attended_count = att_row[0] or 0
                 attendance_rate = (attended_count / total_cohort_sessions) * 100
             
             # Attendance Scores & Flags
@@ -612,12 +609,12 @@ def get_session_risk_alerts(session_id: int) -> Dict[str, Any]:
     of the group.
     """
     with get_db() as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
         
-        # 1. Fetch reference session
-        cursor.execute("SELECT name, start_at, therapy_group_id FROM therapy_sessions WHERE id = ?", (session_id,))
-        curr_session = cursor.fetchone()
+        
+        curr_session = conn.execute(
+            text("SELECT name, start_at, therapy_group_id FROM therapy_sessions WHERE id = :sid"),
+            {"sid": session_id},
+        ).mappings().fetchone()
         if not curr_session:
             return {"alerts": []}
             
@@ -626,20 +623,19 @@ def get_session_risk_alerts(session_id: int) -> Dict[str, Any]:
         
         # 2. Get all therapy sessions up to and including the current one, sorted chronologically
         if group_id is not None:
-            cursor.execute("""
-                SELECT id, name, start_at 
-                FROM therapy_sessions 
-                WHERE therapy_group_id = ? AND start_at <= ? 
+            all_sessions = conn.execute(text("""
+                SELECT id, name, start_at
+                FROM therapy_sessions
+                WHERE therapy_group_id = :gid AND start_at <= :start
                 ORDER BY start_at ASC
-            """, (group_id, curr_start))
+            """), {"gid": group_id, "start": curr_start}).mappings().fetchall()
         else:
-            cursor.execute("""
-                SELECT id, name, start_at 
-                FROM therapy_sessions 
-                WHERE start_at <= ? 
+            all_sessions = conn.execute(text("""
+                SELECT id, name, start_at
+                FROM therapy_sessions
+                WHERE start_at <= :start
                 ORDER BY start_at ASC
-            """, (curr_start,))
-        all_sessions = cursor.fetchall()
+            """), {"start": curr_start}).mappings().fetchall()
         session_ids = [s["id"] for s in all_sessions]
         session_order = {sid: idx for idx, sid in enumerate(session_ids)}
         
@@ -647,29 +643,28 @@ def get_session_risk_alerts(session_id: int) -> Dict[str, Any]:
             return {"alerts": []}
             
         # 3. Get the latest evaluations for these sessions
-        placeholders = ",".join("?" for _ in session_ids)
-        cursor.execute(f"""
+        ph = ",".join(str(s) for s in session_ids)
+        evals = conn.execute(text(f"""
             SELECT e.id as eval_id, e.therapy_session_id
             FROM tdpm_evaluations e
             JOIN (
                 SELECT therapy_session_id, MAX(id) as max_eval_id
                 FROM tdpm_evaluations
-                WHERE therapy_session_id IN ({placeholders})
+                WHERE therapy_session_id IN ({ph})
                 GROUP BY therapy_session_id
             ) latest_eval ON e.id = latest_eval.max_eval_id
-        """, session_ids)
-        evals = cursor.fetchall()
+        """)).mappings().fetchall()
         eval_id_to_session = {r["eval_id"]: r["therapy_session_id"] for r in evals}
         eval_ids = list(eval_id_to_session.keys())
         
         # 4. Get active participants of the current session
-        cursor.execute("""
+        part_rows = conn.execute(text("""
             SELECT p.id, p.pseudonym
             FROM therapy_session_patients tsp
             JOIN patients p ON tsp.patient_id = p.id
-            WHERE tsp.therapy_session_id = ?
-        """, (session_id,))
-        curr_participants = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+            WHERE tsp.therapy_session_id = :sid
+        """), {"sid": session_id}).mappings().fetchall()
+        curr_participants = {r["id"]: r["pseudonym"] for r in part_rows}
         
         # Specific session context: all possible patients is just current participants
         all_possible_patients = curr_participants
@@ -694,12 +689,12 @@ def get_group_risk_alerts(group_id: int) -> Dict[str, Any]:
     to show active risk alerts for the group.
     """
     with get_db() as conn:
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
         
-        # Find the reference session for the group
-        cursor.execute("SELECT id, name, start_at FROM therapy_sessions WHERE therapy_group_id = ? ORDER BY start_at DESC LIMIT 1", (group_id,))
-        curr_session = cursor.fetchone()
+        
+        curr_session = conn.execute(
+            text("SELECT id, name, start_at FROM therapy_sessions WHERE therapy_group_id = :gid ORDER BY start_at DESC LIMIT 1"),
+            {"gid": group_id},
+        ).mappings().fetchone()
             
         if not curr_session:
             return {"alerts": []}
@@ -708,13 +703,12 @@ def get_group_risk_alerts(group_id: int) -> Dict[str, Any]:
         curr_start = curr_session["start_at"]
         
         # Get all therapy sessions up to and including the current one, sorted chronologically
-        cursor.execute("""
-            SELECT id, name, start_at 
-            FROM therapy_sessions 
-            WHERE therapy_group_id = ? AND start_at <= ? 
+        all_sessions = conn.execute(text("""
+            SELECT id, name, start_at
+            FROM therapy_sessions
+            WHERE therapy_group_id = :gid AND start_at <= :start
             ORDER BY start_at ASC
-        """, (group_id, curr_start))
-        all_sessions = cursor.fetchall()
+        """), {"gid": group_id, "start": curr_start}).mappings().fetchall()
         session_ids = [s["id"] for s in all_sessions]
         session_order = {sid: idx for idx, sid in enumerate(session_ids)}
         
@@ -722,37 +716,36 @@ def get_group_risk_alerts(group_id: int) -> Dict[str, Any]:
             return {"alerts": []}
             
         # Get the latest evaluations for these sessions
-        placeholders = ",".join("?" for _ in session_ids)
-        cursor.execute(f"""
+        ph = ",".join(str(s) for s in session_ids)
+        evals = conn.execute(text(f"""
             SELECT e.id as eval_id, e.therapy_session_id
             FROM tdpm_evaluations e
             JOIN (
                 SELECT therapy_session_id, MAX(id) as max_eval_id
                 FROM tdpm_evaluations
-                WHERE therapy_session_id IN ({placeholders})
+                WHERE therapy_session_id IN ({ph})
                 GROUP BY therapy_session_id
             ) latest_eval ON e.id = latest_eval.max_eval_id
-        """, session_ids)
-        evals = cursor.fetchall()
+        """)).mappings().fetchall()
         eval_id_to_session = {r["eval_id"]: r["therapy_session_id"] for r in evals}
         eval_ids = list(eval_id_to_session.keys())
         
         # Get active participants of the reference session
-        cursor.execute("""
+        part_rows = conn.execute(text("""
             SELECT p.id, p.pseudonym
             FROM therapy_session_patients tsp
             JOIN patients p ON tsp.patient_id = p.id
-            WHERE tsp.therapy_session_id = ?
-        """, (ref_session_id,))
-        curr_participants = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+            WHERE tsp.therapy_session_id = :sid
+        """), {"sid": ref_session_id}).mappings().fetchall()
+        curr_participants = {r["id"]: r["pseudonym"] for r in part_rows}
         
         # Determine all possible patients in the cohort up to this point
-        cursor.execute("""
+        all_patients_rows = conn.execute(text("""
             SELECT id, pseudonym
             FROM patients
-            WHERE therapy_group_id = ?
-        """, (group_id,))
-        all_possible_patients = {r["id"]: r["pseudonym"] for r in cursor.fetchall()}
+            WHERE therapy_group_id = :gid
+        """), {"gid": group_id}).mappings().fetchall()
+        all_possible_patients = {r["id"]: r["pseudonym"] for r in all_patients_rows}
             
     return _run_heuristics_calculations(
         ref_session_id=ref_session_id,

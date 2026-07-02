@@ -8,6 +8,9 @@ and group dynamics/graph analysis computations.
 import json
 import re
 import unicodedata
+
+from sqlalchemy import text
+
 from symptoms_analyser.db import get_db
 from symptoms_analyser.controllers.therapy_sessions import calculate_airtime
 
@@ -205,7 +208,6 @@ def compute_graph_data(raw_edges: list, group_patients: list) -> dict:
 def get_therapy_groups() -> list[dict]:
     """Retrieve all therapy groups with clinician name, patients count, and sessions count."""
     with get_db() as conn:
-        cursor = conn.cursor()
         query = """
             SELECT g.id, g.name, g.created_at,
                    u.name as clinician_name,
@@ -215,7 +217,7 @@ def get_therapy_groups() -> list[dict]:
             LEFT JOIN users u ON g.clinician_id = u.id
             ORDER BY g.name ASC
         """
-        cursor.execute(query)
+        rows = conn.execute(text(query)).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -225,37 +227,35 @@ def get_therapy_groups() -> list[dict]:
                 "patient_count": r["patient_count"],
                 "session_count": r["session_count"]
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
 def get_therapy_group_detail(group_id: int) -> dict | None:
     """Retrieve details for a single therapy group and its associated patients."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
+        group = conn.execute(
+            text("""
             SELECT g.id, g.name, u.name as clinician_name, g.created_at
             FROM therapy_groups g
             LEFT JOIN users u ON g.clinician_id = u.id
-            WHERE g.id = ?
-            """,
-            (group_id,),
-        )
-        group = cursor.fetchone()
+            WHERE g.id = :gid
+            """),
+            {"gid": group_id},
+        ).mappings().fetchone()
         if not group:
             return None
             
-        cursor.execute(
-            """
+        patients_rows = conn.execute(
+            text("""
             SELECT id, real_name, pseudonym
             FROM patients
-            WHERE therapy_group_id = ?
+            WHERE therapy_group_id = :gid
             ORDER BY CAST(SUBSTR(pseudonym, 9) AS INTEGER) ASC
-            """,
-            (group_id,),
-        )
-        patients = [dict(row) for row in cursor.fetchall()]
+            """),
+            {"gid": group_id},
+        ).mappings().fetchall()
+        patients = [dict(row) for row in patients_rows]
         
         return {
             "group": dict(group),
@@ -266,13 +266,12 @@ def get_therapy_group_detail(group_id: int) -> dict | None:
 def get_therapy_groups_admin() -> list[dict]:
     """Return all therapy groups ordered by name for the admin management page."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        rows = conn.execute(text("""
             SELECT g.id, g.name, g.clinician_id, u.name as clinician_name, g.created_at
             FROM therapy_groups g
             LEFT JOIN users u ON g.clinician_id = u.id
             ORDER BY g.name ASC
-        """)
+        """)).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -281,7 +280,7 @@ def get_therapy_groups_admin() -> list[dict]:
                 "clinician_name": r["clinician_name"] or "Sem clínico",
                 "created_at": r["created_at"],
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
@@ -301,12 +300,11 @@ def create_therapy_group(name: str | None, clinician_id: int | str | None = None
         return {"error": "É necessário selecionar um clínico responsável"}, 400
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM therapy_groups WHERE name = ?", (name,))
-        if cursor.fetchone():
+        row = conn.execute(text("SELECT id FROM therapy_groups WHERE name = :name"), {"name": name}).mappings().fetchone()
+        if row:
             return {"error": f"Já existe um grupo com o nome '{name}'"}, 409
 
-        cursor.execute("INSERT INTO therapy_groups (name, clinician_id) VALUES (?, ?)", (name, clinician_id))
+        conn.execute(text("INSERT INTO therapy_groups (name, clinician_id) VALUES (:name, :cid)"), {"name": name, "cid": clinician_id})
         conn.commit()
 
     return {"message": "Grupo criado com sucesso"}, 201
@@ -334,22 +332,21 @@ def update_therapy_group(
         clinician_id = None
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM therapy_groups WHERE id = ?", (group_id,))
-        if not cursor.fetchone():
+        row = conn.execute(text("SELECT id FROM therapy_groups WHERE id = :gid"), {"gid": group_id}).mappings().fetchone()
+        if not row:
             return {"error": "Grupo não encontrado"}, 404
 
-        cursor.execute("SELECT id FROM therapy_groups WHERE name = ? AND id != ?", (new_name, group_id))
-        if cursor.fetchone():
+        row = conn.execute(text("SELECT id FROM therapy_groups WHERE name = :name AND id != :gid"), {"name": new_name, "gid": group_id}).mappings().fetchone()
+        if row:
             return {"error": f"Já existe um grupo com o nome '{new_name}'"}, 409
 
         if clinician_id is not None:
-            cursor.execute(
-                "UPDATE therapy_groups SET name = ?, clinician_id = ? WHERE id = ?",
-                (new_name, clinician_id, group_id),
+            conn.execute(
+                text("UPDATE therapy_groups SET name = :name, clinician_id = :cid WHERE id = :gid"),
+                {"name": new_name, "cid": clinician_id, "gid": group_id},
             )
         else:
-            cursor.execute("UPDATE therapy_groups SET name = ? WHERE id = ?", (new_name, group_id))
+            conn.execute(text("UPDATE therapy_groups SET name = :name WHERE id = :gid"), {"name": new_name, "gid": group_id})
         conn.commit()
 
     return {"message": "Grupo atualizado com sucesso"}, 200
@@ -361,14 +358,12 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
     for all sessions belonging to a therapy group.
     """
     with get_db() as conn:
-        cursor = conn.cursor()
-        
         # 1. Fetch all sessions in the group
-        cursor.execute(
-            "SELECT id, name FROM therapy_sessions WHERE therapy_group_id = ?",
-            (int(group_id),)
-        )
-        sessions = [dict(row) for row in cursor.fetchall()]
+        session_rows = conn.execute(
+            text("SELECT id, name FROM therapy_sessions WHERE therapy_group_id = :gid"),
+            {"gid": int(group_id)}
+        ).mappings().fetchall()
+        sessions = [dict(row) for row in session_rows]
 
         # 2. Accumulate airtime speakers
         aggregated_speakers = {}
@@ -383,32 +378,31 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
             session_name = session["name"]
 
             # Query participating patients pseudonyms for this session
-            cursor.execute(
-                """
+            patient_rows = conn.execute(
+                text("""
                 SELECT p.pseudonym 
                 FROM therapy_session_patients tsp 
                 JOIN patients p ON tsp.patient_id = p.id 
-                WHERE tsp.therapy_session_id = ?
-                """,
-                (session_id,)
-            )
-            patients_list = [r["pseudonym"] for r in cursor.fetchall()]
+                WHERE tsp.therapy_session_id = :sid
+                """),
+                {"sid": session_id}
+            ).mappings().fetchall()
+            patients_list = [r["pseudonym"] for r in patient_rows]
 
             # Query latest transcript for this session
-            cursor.execute(
-                """
+            t_row = conn.execute(
+                text("""
                 SELECT raw_text, anonymized_text 
                 FROM transcripts 
-                WHERE therapy_session_id = ? 
+                WHERE therapy_session_id = :sid 
                 ORDER BY created_at DESC LIMIT 1
-                """,
-                (session_id,)
-            )
-            t_row = cursor.fetchone()
+                """),
+                {"sid": session_id}
+            ).mappings().fetchone()
             if t_row:
-                text = t_row["anonymized_text"] or t_row["raw_text"]
-                if text:
-                    airtime = calculate_airtime(text, patients_list)
+                text_content = t_row["anonymized_text"] or t_row["raw_text"]
+                if text_content:
+                    airtime = calculate_airtime(text_content, patients_list)
                     if airtime and "speakers" in airtime:
                         for spk in airtime["speakers"]:
                             name = spk["speaker"]
@@ -420,15 +414,14 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
                             total_turns += spk["turn_count"]
 
             # Query clinical analysis interactions mapping
-            cursor.execute(
-                """
+            s_row = conn.execute(
+                text("""
                 SELECT interactions_mapping
                 FROM session_clinical_analyses
-                WHERE therapy_session_id = ?
-                """,
-                (session_id,)
-            )
-            s_row = cursor.fetchone()
+                WHERE therapy_session_id = :sid
+                """),
+                {"sid": session_id}
+            ).mappings().fetchone()
             if s_row and s_row["interactions_mapping"]:
                 try:
                     mapping = json.loads(s_row["interactions_mapping"])
@@ -468,15 +461,15 @@ def get_group_dynamics_data(group_id: int | str) -> dict:
                 edge['type'] = _normalize_edge_type(edge['type'])
 
         # Fetch group patients for graph node ordering
-        cursor.execute(
-            """
+        patient_rows = conn.execute(
+            text("""
             SELECT pseudonym FROM patients
-            WHERE therapy_group_id = ?
+            WHERE therapy_group_id = :gid
             ORDER BY CAST(SUBSTR(pseudonym, 9) AS INTEGER) ASC
-            """,
-            (int(group_id),)
-        )
-        group_patients = [r["pseudonym"] for r in cursor.fetchall()]
+            """),
+            {"gid": int(group_id)}
+        ).mappings().fetchall()
+        group_patients = [r["pseudonym"] for r in patient_rows]
 
         # Post-process Interactions mapping data (raw edges kept for scroll list)
         clinical_analysis_payload = None

@@ -10,6 +10,8 @@ import re
 from pathlib import Path
 from typing import Dict, Any
 
+from sqlalchemy import text
+
 from symptoms_analyser.db import get_db
 import symptoms_analyser.db.orm as orm
 
@@ -39,17 +41,15 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
     """
     # 1. Fetch original evaluation details
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
+        row = conn.execute(
+            text("""
             SELECT e.transcript_id, e.therapy_session_id, et.raw_payload
             FROM tdpm_evaluations e
             JOIN evaluation_telemetry et ON e.id = et.evaluation_id
-            WHERE e.id = ?
-            """,
-            (original_eval_id,),
-        )
-        row = cursor.fetchone()
+            WHERE e.id = :eval_id
+            """),
+            {"eval_id": original_eval_id},
+        ).mappings().fetchone()
 
     if not row:
         raise ValueError(f"Avaliação de origem (ID {original_eval_id}) não encontrada no banco de dados.")
@@ -151,20 +151,21 @@ def save_revision_logic(original_eval_id: int, edits_json: Dict[str, Any], user_
     baseline_payload["model"] = "human-revision"
 
     with get_db() as conn:
-        conn.execute("BEGIN TRANSACTION")
         try:
             # A. Insert tdpm_evaluations
-            eval_sql = """
+            result = conn.execute(text("""
                 INSERT INTO tdpm_evaluations 
                 (transcript_id, evaluator_id, parent_evaluation_id, evaluation_type, therapy_session_id, created_at)
-                VALUES (?, ?, ?, 'revised', ?, ?)
-            """
-            cursor = conn.cursor()
-            cursor.execute(
-                eval_sql,
-                (transcript_id, user_id, original_eval_id, therapy_session_id, created_at_str)
-            )
-            new_eval_id = cursor.lastrowid
+                VALUES (:tid, :uid, :parent_id, 'revised', :sid, :created_at)
+                RETURNING id
+            """), {
+                "tid": transcript_id,
+                "uid": user_id,
+                "parent_id": original_eval_id,
+                "sid": therapy_session_id,
+                "created_at": created_at_str,
+            })
+            new_eval_id = result.fetchone()[0]
 
             # B. Insert evaluation_telemetry
             orm.create_evaluation_telemetry(

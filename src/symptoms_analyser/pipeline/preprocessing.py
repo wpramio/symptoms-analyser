@@ -9,8 +9,9 @@ Preprocessing logic of the symptoms-analyser pipeline:
 from datetime import datetime, timezone
 import re
 from pathlib import Path
-import sqlite3
 from typing import Dict, List, Optional, Tuple
+
+from sqlalchemy import text
 
 from docx import Document
 
@@ -145,7 +146,7 @@ def create_transcript(
     anonymized_text: str,
     metadata: Dict[str, str],
     extract_metadata: bool = False,
-    db_conn: Optional[sqlite3.Connection] = None
+    db_conn=None
 ) -> int:
     """
     Create initial transcript record in DB and optionally extract metadata 
@@ -188,7 +189,7 @@ def create_transcript(
 def anonymize_text(
     raw_text: str,
     clinician_name: Optional[str] = None,
-    db_conn: Optional[sqlite3.Connection] = None
+    db_conn=None
 ) -> Tuple[str, List[Tuple[str, str]]]:
     """
     Anonymization & patient creation mapping.
@@ -213,12 +214,12 @@ def anonymize_text(
 def _anonymize_with_conn(
     raw_text: str,
     clinician_name: Optional[str],
-    conn: sqlite3.Connection
+    conn,
 ) -> Tuple[str, List[Tuple[str, str]]]:
     if not raw_text:
         raise ValueError("Raw text is empty or None.")
 
-    cursor = conn.cursor()
+    # Use SQLAlchemy connection directly (no manual cursor needed)
 
     # Build the set of known therapist labels (generic + real name if provided)
     therapist_labels = {"terapeuta", "clinico", "clínico", "clinician", "dr.", "dra.", "dr", "dra"}
@@ -232,8 +233,8 @@ def _anonymize_with_conn(
             therapist_labels.add(words[0].lower())
 
     # 1. Fetch all pseudonyms currently registered in the database to prevent collisions
-    cursor.execute("SELECT pseudonym FROM patients")
-    db_pseudonyms = [r["pseudonym"] for r in cursor.fetchall()]
+    rows = conn.execute(text("SELECT pseudonym FROM patients")).mappings().fetchall()
+    db_pseudonyms = [r["pseudonym"] for r in rows]
     
     used_numbers = set()
     for ps in db_pseudonyms:
@@ -282,8 +283,11 @@ def _anonymize_with_conn(
             used_numbers.add(int(num))
         else:
             # Check DB for existing real name match to reuse their pseudonym
-            cursor.execute("SELECT pseudonym FROM patients WHERE real_name = ? COLLATE NOCASE", (sp,))
-            db_row = cursor.fetchone()
+            db_row = conn.execute(
+                text("SELECT pseudonym FROM patients WHERE LOWER(real_name) = LOWER(:rn)"),
+                {"rn": sp},
+            ).mappings().fetchone()
+
             if db_row:
                 ps = db_row["pseudonym"]
                 already_pseudo[ps] = sp

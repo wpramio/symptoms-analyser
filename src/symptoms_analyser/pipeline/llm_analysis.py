@@ -13,7 +13,7 @@ import math
 from pathlib import Path
 import random
 import re
-import sqlite3
+from sqlalchemy import text
 import time
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -177,33 +177,28 @@ def evaluate_symptoms_with_tdpm(
     transcript_id: int,
     blocks_per_call: int = 100,
     evaluator_id: str = "clinician_1",
-    db_conn: Optional[sqlite3.Connection] = None
+    db_conn=None
 ) -> int:
     """
     Run the TDPM-20 analysis pipeline on the preprocessed/anonymized transcript text
     loaded from the database.
     """
-    # 1. Fetch anonymized text and session references
-    cursor = db_conn.cursor() if db_conn else None
-    if cursor:
-        cursor.execute("""
+    if db_conn:
+        row = db_conn.execute(text("""
             SELECT t.anonymized_text, t.therapy_session_id, t.filename, s.therapy_group_id
             FROM transcripts t
             LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
-            WHERE t.id = ?
-        """, (transcript_id,))
-        row = cursor.fetchone()
+            WHERE t.id = :tid
+        """), {"tid": transcript_id}).mappings().fetchone()
     else:
         from symptoms_analyser.db import get_db
         with get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            row = conn.execute(text("""
                 SELECT t.anonymized_text, t.therapy_session_id, t.filename, s.therapy_group_id
                 FROM transcripts t
                 LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
-                WHERE t.id = ?
-            """, (transcript_id,))
-            row = cursor.fetchone()
+                WHERE t.id = :tid
+            """), {"tid": transcript_id}).mappings().fetchone()
     if not row or not row["anonymized_text"]:
         raise ValueError(f"Transcript ID {transcript_id} not found or has no preprocessed text in database.")
 
@@ -362,26 +357,24 @@ def evaluate_symptoms_with_tdpm(
         db_conn=db_conn
     )
 
-    print(f"  DB Scoring Telemetry → sqlite.db (Evaluation ID: {eval_id})")
+    print(f"  DB Scoring Telemetry → DB (Evaluation ID: {eval_id})")
     return eval_id
 
 
 def generate_clinical_analysis(
     transcript_id: int,
-    db_conn: sqlite3.Connection
+    db_conn,
 ) -> None:
     """
     Retrieve anonymized text of the transcript and its participating patients list,
     query the LLM for qualitative session clinical analysis, and store the result in the 'session_clinical_analyses' table.
     """
     # 1. Fetch transcript information
-    cursor = db_conn.cursor()
-    cursor.execute("""
-        SELECT anonymized_text, therapy_session_id 
-        FROM transcripts 
-        WHERE id = ?
-    """, (transcript_id,))
-    row = cursor.fetchone()
+    row = db_conn.execute(text("""
+        SELECT anonymized_text, therapy_session_id
+        FROM transcripts
+        WHERE id = :tid
+    """), {"tid": transcript_id}).mappings().fetchone()
     if not row:
         raise ValueError(f"Transcript ID {transcript_id} not found in the database.")
     
@@ -390,8 +383,10 @@ def generate_clinical_analysis(
     
     if not anonymized_text:
         # Fallback to raw text if anonymized_text (anonymized) is empty or not populated
-        cursor.execute("SELECT raw_text FROM transcripts WHERE id = ?", (transcript_id,))
-        fallback_row = cursor.fetchone()
+        fallback_row = db_conn.execute(
+            text("SELECT raw_text FROM transcripts WHERE id = :tid"),
+            {"tid": transcript_id},
+        ).mappings().fetchone()
         anonymized_text = fallback_row["raw_text"] if fallback_row else ""
         
     if not anonymized_text.strip():
@@ -399,13 +394,13 @@ def generate_clinical_analysis(
         return
 
     # 2. Fetch participating patient pseudonyms
-    cursor.execute("""
-        SELECT p.pseudonym 
+    patient_rows = db_conn.execute(text("""
+        SELECT p.pseudonym
         FROM patients p
         JOIN therapy_session_patients tsp ON p.id = tsp.patient_id
-        WHERE tsp.therapy_session_id = ?
-    """, (therapy_session_id,))
-    patients = [r["pseudonym"] for r in cursor.fetchall()]
+        WHERE tsp.therapy_session_id = :sid
+    """), {"sid": therapy_session_id}).mappings().fetchall()
+    patients = [r["pseudonym"] for r in patient_rows]
     patients_list_str = ", ".join(patients) if patients else "Nenhum paciente identificado"
 
     # 3. Formulate the LLM prompt context
