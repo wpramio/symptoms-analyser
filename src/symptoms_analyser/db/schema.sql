@@ -6,7 +6,7 @@
 -- ==========================================
 
 -- Enable strict foreign key checking in execution context if needed.
--- Note: SQLite requires 'PRAGMA foreign_keys = ON;' per-connection.
+-- Note: SQLite requires 'PRAGMA foreign_keys = ON' per-connection.
 
 -- 1. Users Table
 CREATE TABLE IF NOT EXISTS users (
