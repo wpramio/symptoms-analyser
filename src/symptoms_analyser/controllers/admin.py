@@ -660,12 +660,18 @@ def get_clinicians() -> list[dict]:
 
 def get_sessions_admin(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all therapy sessions with key metadata for the admin management page."""
+    from symptoms_analyser.db import is_postgres
     with get_db() as conn:
-        query = """
+        if is_postgres():
+            concat_fn = "string_agg(p.pseudonym, ', ')"
+        else:
+            concat_fn = "group_concat(p.pseudonym, ', ')"
+
+        query = f"""
             SELECT s.id, s.name, s.start_at, s.duration, s.therapy_group_id,
                    u.name as clinician_name,
                    g.name as therapy_group_name,
-                   (SELECT group_concat(p.pseudonym, ', ')
+                   (SELECT {concat_fn}
                     FROM therapy_session_patients tsp
                     JOIN patients p ON tsp.patient_id = p.id
                     WHERE tsp.therapy_session_id = s.id) as patients,
