@@ -1,0 +1,159 @@
+-- ==========================================
+-- schema_postgres.sql
+-- -------------------
+-- Centralized database schema definition for
+-- Symptoms Analyser PostgreSQL database.
+-- ==========================================
+
+-- 1. Users Table
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('patient', 'clinician', 'admin')),
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
+
+-- 1.5. Therapy Groups Table
+CREATE TABLE IF NOT EXISTS therapy_groups (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    clinician_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_therapy_groups_clinician ON therapy_groups (clinician_id);
+
+-- 2. Patients Table
+CREATE TABLE IF NOT EXISTS patients (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE,
+    therapy_group_id INTEGER,
+    real_name TEXT NOT NULL,           -- PHI
+    pseudonym TEXT UNIQUE NOT NULL,    -- e.g. "Paciente1"
+    metadata TEXT,                     -- JSON metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (therapy_group_id) REFERENCES therapy_groups(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_patients_pseudonym ON patients (pseudonym);
+CREATE INDEX IF NOT EXISTS idx_patients_group ON patients (therapy_group_id);
+
+-- 3. Therapy Sessions Table
+CREATE TABLE IF NOT EXISTS therapy_sessions (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,                -- e.g. "Sessão 28/05/2026"
+    clinician_id INTEGER NOT NULL,
+    therapy_group_id INTEGER,
+    start_at TIMESTAMP,
+    duration INTEGER,                  -- in minutes
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (clinician_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (therapy_group_id) REFERENCES therapy_groups(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_clinician ON therapy_sessions (clinician_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_group ON therapy_sessions (therapy_group_id);
+
+-- 4. Therapy Session Patients Join Table
+CREATE TABLE IF NOT EXISTS therapy_session_patients (
+    id SERIAL PRIMARY KEY,
+    therapy_session_id INTEGER NOT NULL,
+    patient_id INTEGER NOT NULL,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    UNIQUE(therapy_session_id, patient_id)
+);
+
+-- 5. Transcripts Table
+CREATE TABLE IF NOT EXISTS transcripts (
+    id SERIAL PRIMARY KEY,
+    therapy_session_id INTEGER,
+    filename TEXT NOT NULL,
+    file_type TEXT,
+    raw_text TEXT NOT NULL,            -- Raw transcript text (contains PHI)
+    anonymized_text TEXT,              -- Anonymized text (no PHI)
+    file_size_bytes INTEGER,
+    batch_id TEXT,                     -- UUID for grouping bulk uploads
+    status TEXT NOT NULL DEFAULT 'queued' 
+        CHECK (status IN ('queued', 'preprocessing', 'preprocessed', 'evaluating', 'completed', 'failed')),
+    progress_percent REAL DEFAULT 0.0,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_transcripts_session ON transcripts (therapy_session_id);
+CREATE INDEX IF NOT EXISTS idx_transcripts_batch ON transcripts (batch_id);
+CREATE INDEX IF NOT EXISTS idx_transcripts_status ON transcripts (status);
+
+-- 6. TDPM Evaluations Table
+CREATE TABLE IF NOT EXISTS tdpm_evaluations (
+    id SERIAL PRIMARY KEY,
+    transcript_id INTEGER NOT NULL,
+    evaluator_id INTEGER,
+    parent_evaluation_id INTEGER,      -- Self-reference for clinician overrides/revisions
+    evaluation_type TEXT NOT NULL DEFAULT 'automated'
+        CHECK (evaluation_type IN ('automated', 'manual', 'revised')),
+    therapy_session_id INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
+    FOREIGN KEY (evaluator_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (parent_evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE SET NULL,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_evaluations_created_at ON tdpm_evaluations (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_evaluations_session ON tdpm_evaluations (therapy_session_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_transcript ON tdpm_evaluations (transcript_id);
+CREATE INDEX IF NOT EXISTS idx_evaluations_evaluator ON tdpm_evaluations (evaluator_id);
+
+-- 7. Evaluation Telemetry Table
+CREATE TABLE IF NOT EXISTS evaluation_telemetry (
+    evaluation_id INTEGER PRIMARY KEY,
+    model TEXT NOT NULL,
+    chunks_evaluated INTEGER,
+    blocks_per_call INTEGER,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    total_elapsed_seconds REAL,
+    status TEXT NOT NULL DEFAULT 'success'
+        CHECK (status IN ('success', 'failed')),
+    failure_reason TEXT,
+    raw_payload TEXT,                  -- Complete LLM response payload (JSON)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE
+);
+
+-- 8. Patient Item Scores Table
+CREATE TABLE IF NOT EXISTS patient_item_scores (
+    id SERIAL PRIMARY KEY,
+    evaluation_id INTEGER NOT NULL,
+    patient_id INTEGER NOT NULL,
+    dimension_code TEXT NOT NULL,
+    item_code TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    justification TEXT,
+    evidence TEXT,                     -- JSON array of evidence citations
+    FOREIGN KEY (evaluation_id) REFERENCES tdpm_evaluations(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patient_item_evaluation ON patient_item_scores (evaluation_id, patient_id, item_code);
+CREATE INDEX IF NOT EXISTS idx_patient_item_lookup ON patient_item_scores (patient_id, dimension_code, item_code);
+
+-- 9. Session Clinical Analyses Table (qualitative whole-text clinical analyses)
+CREATE TABLE IF NOT EXISTS session_clinical_analyses (
+    transcript_id INTEGER PRIMARY KEY,
+    therapy_session_id INTEGER NOT NULL,
+    group_progress_note TEXT,
+    interactions_mapping TEXT,       -- JSON text representing interactions network
+    model TEXT,
+    prompt_tokens INTEGER,
+    completion_tokens INTEGER,
+    processing_time REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE,
+    FOREIGN KEY (therapy_session_id) REFERENCES therapy_sessions(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_clinical_analyses_session ON session_clinical_analyses (therapy_session_id);
