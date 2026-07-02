@@ -5,10 +5,11 @@ Pipeline Orchestrator: Asynchronous processing pipeline for transcript analysis.
 """
 
 from pathlib import Path
-import sqlite3
 import traceback
 
-from symptoms_analyser.utils import DB_PATH
+from sqlalchemy import text
+
+from symptoms_analyser.db import get_raw_connection, engine
 import symptoms_analyser.db as orm
 from symptoms_analyser.pipeline.preprocessing import extract_text, anonymize_text, create_transcript
 from symptoms_analyser.pipeline.llm_analysis import evaluate_symptoms_with_tdpm, generate_clinical_analysis
@@ -31,12 +32,8 @@ def process_transcript_pipeline(
         print(f"[{task_id}] {msg}")
 
     try:
-        # Establish connection for WAL execution
-        db_conn = sqlite3.connect(DB_PATH, timeout=30.0)
-        db_conn.execute("PRAGMA journal_mode=WAL")
-        db_conn.execute("PRAGMA synchronous=NORMAL")
-        db_conn.execute("PRAGMA foreign_keys=ON")
-        db_conn.row_factory = sqlite3.Row
+        # Establish a SQLAlchemy connection for the pipeline
+        db_conn = engine.connect()
 
         # Text extraction
         add_log("(1/4) Extraindo texto da transcrição")
@@ -44,12 +41,11 @@ def process_transcript_pipeline(
 
         # Resolve the clinician's real name so it is not treated as a patient
         clinician_name = None
-        row = db_conn.execute(
+        row = db_conn.execute(text(
             "SELECT u.name FROM users u "
             "JOIN therapy_sessions ts ON ts.clinician_id = u.id "
-            "WHERE ts.id = ?",
-            (therapy_session_id,)
-        ).fetchone()
+            "WHERE ts.id = :sid"
+        ), {"sid": therapy_session_id}).mappings().fetchone()
         if row:
             clinician_name = row["name"]
 
@@ -73,10 +69,11 @@ def process_transcript_pipeline(
         )
 
         # Register any new provisional patients identified in local anonymization
-        cursor = db_conn.cursor()
-        cursor.execute("SELECT therapy_group_id FROM therapy_sessions WHERE id = ?", (therapy_session_id,))
-        session_row = cursor.fetchone()
-        therapy_group_id = session_row["therapy_group_id"] if session_row else None
+        row = db_conn.execute(
+            text("SELECT therapy_group_id FROM therapy_sessions WHERE id = :sid"),
+            {"sid": therapy_session_id},
+        ).mappings().fetchone()
+        therapy_group_id = row["therapy_group_id"] if row else None
 
         for real_name, pseudonym in mappings:
             orm.find_or_create_patient(pseudonym, real_name, therapy_group_id, db_conn)

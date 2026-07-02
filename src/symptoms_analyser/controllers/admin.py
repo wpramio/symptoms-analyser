@@ -8,6 +8,7 @@ Each function is independently testable without Flask or HTTP.
 import json
 import re
 from datetime import datetime
+from sqlalchemy import text
 from symptoms_analyser.db import get_db
 
 
@@ -32,43 +33,40 @@ def get_stats() -> dict:
         "total_patients": 0,
     }
     with get_db() as conn:
-        cursor = conn.cursor()
+        row = conn.execute(text("SELECT count(*) as cnt FROM transcripts")).mappings().fetchone()
+        stats["total_transcripts"] = row["cnt"] if row else 0
 
-        cursor.execute("SELECT count(*) FROM transcripts")
-        stats["total_transcripts"] = cursor.fetchone()[0] or 0
-
-        cursor.execute("SELECT count(*) FROM transcripts WHERE status IN ('preprocessed', 'completed')")
-        successes = cursor.fetchone()[0] or 0
+        row = conn.execute(text("SELECT count(*) as cnt FROM transcripts WHERE status IN ('preprocessed', 'completed')")).mappings().fetchone()
+        successes = row["cnt"] if row else 0
         if stats["total_transcripts"] > 0:
             stats["success_rate"] = round((successes / stats["total_transcripts"]) * 100.0, 1)
 
-        cursor.execute("""
+        row = conn.execute(text("""
             SELECT 
                 (SELECT COALESCE(SUM(prompt_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_clinical_analyses),
+                (SELECT COALESCE(SUM(prompt_tokens), 0) FROM session_clinical_analyses) as pt,
                 (SELECT COALESCE(SUM(completion_tokens), 0) FROM evaluation_telemetry) +
-                (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_clinical_analyses)
-        """)
-        row = cursor.fetchone()
-        stats["total_prompt_tokens"] = row[0] or 0
-        stats["total_completion_tokens"] = row[1] or 0
+                (SELECT COALESCE(SUM(completion_tokens), 0) FROM session_clinical_analyses) as ct
+        """)).mappings().fetchone()
+        if row:
+            stats["total_prompt_tokens"] = row["pt"] or 0
+            stats["total_completion_tokens"] = row["ct"] or 0
 
-        cursor.execute("SELECT count(*) FROM patients")
-        stats["total_patients"] = cursor.fetchone()[0] or 0
+        row = conn.execute(text("SELECT count(*) as cnt FROM patients")).mappings().fetchone()
+        stats["total_patients"] = row["cnt"] if row else 0
 
     return stats
 
 
 def get_transcripts() -> list[dict]:
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        rows = conn.execute(text("""
             SELECT t.id, t.filename, t.file_type, t.file_size_bytes, t.status, t.progress_percent, t.error_message, t.created_at,
                    t.therapy_session_id, s.name as session_name
             FROM transcripts t
             LEFT JOIN therapy_sessions s ON t.therapy_session_id = s.id
             ORDER BY t.created_at DESC
-        """)
+        """)).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -82,7 +80,7 @@ def get_transcripts() -> list[dict]:
                 "therapy_session_id": r["therapy_session_id"],
                 "session_name": r["session_name"] or "Sem sessão vinculada",
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
@@ -90,8 +88,7 @@ def get_transcripts() -> list[dict]:
 
 def get_evaluation_telemetry() -> list[dict]:
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        rows = conn.execute(text("""
             SELECT et.evaluation_id, et.model, et.chunks_evaluated, et.blocks_per_call,
                    et.prompt_tokens, et.completion_tokens, et.total_elapsed_seconds,
                    et.status, et.failure_reason, et.created_at,
@@ -100,7 +97,7 @@ def get_evaluation_telemetry() -> list[dict]:
             JOIN tdpm_evaluations e ON et.evaluation_id = e.id
             LEFT JOIN therapy_sessions s ON e.therapy_session_id = s.id
             ORDER BY et.created_at DESC
-        """)
+        """)).mappings().fetchall()
         return [
             {
                 "evaluation_id": r["evaluation_id"],
@@ -117,21 +114,20 @@ def get_evaluation_telemetry() -> list[dict]:
                 "therapy_session_id": r["therapy_session_id"],
                 "session_name": r["session_name"] or "Sem sessão vinculada",
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
 def get_clinical_analysis_telemetry() -> list[dict]:
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        rows = conn.execute(text("""
             SELECT ss.transcript_id, ss.therapy_session_id, ss.model,
                    ss.prompt_tokens, ss.completion_tokens, ss.processing_time,
                    ss.created_at, s.name as session_name
             FROM session_clinical_analyses ss
             LEFT JOIN therapy_sessions s ON ss.therapy_session_id = s.id
             ORDER BY ss.created_at DESC
-        """)
+        """)).mappings().fetchall()
         return [
             {
                 "transcript_id": r["transcript_id"],
@@ -143,33 +139,33 @@ def get_clinical_analysis_telemetry() -> list[dict]:
                 "created_at": r["created_at"],
                 "session_name": r["session_name"] or "Sem sessão vinculada",
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
 def get_patients() -> list[dict]:
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name
+        rows = conn.execute(text("""
+            SELECT p.id, p.real_name, p.pseudonym, p.metadata, p.created_at, p.therapy_group_id, g.name as therapy_group_name
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
-            ORDER BY p.id ASC
-        """)
+            ORDER BY CAST(SUBSTR(p.pseudonym, 9) AS INTEGER) ASC
+        """)).mappings().fetchall()
         return [
             {
                 "id": r["id"],
-                "pseudonym": r["pseudonym"],
                 "real_name": r["real_name"],
-                "created_at": r["created_at"],
+                "pseudonym": r["pseudonym"],
                 "therapy_group_id": r["therapy_group_id"],
                 "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
+                "metadata": r["metadata"],
+                "created_at": r["created_at"],
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
-def create_patient(pseudonym: str | None, real_name: str | None, therapy_group_id: int | str | None = None) -> tuple[dict, int]:
+def create_patient(pseudonym: str | None, real_name: str | None, therapy_group_id: int | str | None = None, metadata: str | None = None) -> tuple[dict, int]:
     """
     Validate and insert a new patient mapping.
     Returns (response_dict, http_status_code).
@@ -195,14 +191,13 @@ def create_patient(pseudonym: str | None, real_name: str | None, therapy_group_i
         therapy_group_id = None
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM patients WHERE pseudonym = ?", (pseudonym,))
-        if cursor.fetchone():
-            return {"error": f"O pseudônimo '{pseudonym}' já está cadastrado"}, 409
+        row = conn.execute(text("SELECT id FROM patients WHERE pseudonym = :pseudo"), {"pseudo": pseudonym}).mappings().fetchone()
+        if row:
+            return {"error": f"Já existe um paciente com o pseudônimo '{pseudonym}'"}, 409
 
-        cursor.execute(
-            "INSERT INTO patients (pseudonym, real_name, therapy_group_id) VALUES (?, ?, ?)",
-            (pseudonym, real_name, therapy_group_id),
+        conn.execute(
+            text("INSERT INTO patients (real_name, pseudonym, metadata, therapy_group_id) VALUES (:rn, :pseudo, :meta, :gid)"),
+            {"rn": real_name, "pseudo": pseudonym, "meta": metadata, "gid": therapy_group_id},
         )
         conn.commit()
 
@@ -258,20 +253,19 @@ def update_patient(
 def get_patients_list_with_stats(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all patients with aggregated clinical session participation counts."""
     with get_db() as conn:
-        cursor = conn.cursor()
         query = """
             SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name,
                    (SELECT count(*) FROM therapy_session_patients WHERE patient_id = p.id) as total_sessions
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
         """
-        params = []
+        params = {}
         if group_id is not None and str(group_id).strip() not in ("", "None"):
-            query += " WHERE p.therapy_group_id = ?"
-            params.append(int(group_id))
+            query += " WHERE p.therapy_group_id = :gid"
+            params["gid"] = int(group_id)
             
         query += " ORDER BY p.id ASC"
-        cursor.execute(query, params)
+        rows = conn.execute(text(query), params).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -282,21 +276,19 @@ def get_patients_list_with_stats(group_id: int | str | None = None) -> list[dict
                 "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                 "total_sessions": r["total_sessions"]
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
 def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
     """Retrieve pseudonym details and the chronological therapy session log for a single patient."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        patient_row = conn.execute(text("""
             SELECT p.id, p.pseudonym, p.real_name, p.created_at, g.name as therapy_group_name
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
-            WHERE p.pseudonym = ?
-        """, (patient_id,))
-        patient_row = cursor.fetchone()
+            WHERE p.pseudonym = :pid
+        """), {"pid": patient_id}).mappings().fetchone()
         if not patient_row:
             return None
             
@@ -310,14 +302,14 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
         }
         
         # Query sessions this patient has participated in
-        cursor.execute("""
+        session_rows = conn.execute(text("""
             SELECT s.id, s.name, s.start_at, g.name as therapy_group_name
             FROM therapy_sessions s
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-            WHERE sp.patient_id = ?
+            WHERE sp.patient_id = :pdb
             ORDER BY s.start_at DESC
-        """, (patient_db_id,))
+        """), {"pdb": patient_db_id}).mappings().fetchall()
         sessions = [
             {
                 "id": r["id"],
@@ -325,7 +317,7 @@ def get_patient_detail_with_sessions(patient_id: str) -> dict | None:
                 "start_at": r["start_at"],
                 "therapy_group_name": r["therapy_group_name"] or "Sem grupo"
             }
-            for r in cursor.fetchall()
+            for r in session_rows
         ]
         
         return {
@@ -374,19 +366,14 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
     Returns None if the patient does not exist.
     """
     with get_db() as conn:
-        cursor = conn.cursor()
 
         # --- Patient record ---
-        cursor.execute(
-            """
+        patient_row = conn.execute(text("""
             SELECT p.id, p.pseudonym, p.real_name, p.created_at, p.therapy_group_id, g.name as therapy_group_name
             FROM patients p
             LEFT JOIN therapy_groups g ON p.therapy_group_id = g.id
-            WHERE p.pseudonym = ?
-            """,
-            (patient_id,),
-        )
-        patient_row = cursor.fetchone()
+            WHERE p.pseudonym = :pid
+        """), {"pid": patient_id}).mappings().fetchone()
         if not patient_row:
             return None
 
@@ -401,17 +388,14 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
         }
 
         # --- Sessions this patient is linked to ---
-        cursor.execute(
-            """
+        session_rows = conn.execute(text("""
             SELECT s.id, s.name, s.start_at, g.name as therapy_group_name
             FROM therapy_sessions s
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-            WHERE sp.patient_id = ?
+            WHERE sp.patient_id = :pdb
             ORDER BY s.start_at DESC
-            """,
-            (patient_db_id,),
-        )
+        """), {"pdb": patient_db_id}).mappings().fetchall()
         sessions = [
             {
                 "id": r["id"],
@@ -419,15 +403,14 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
                 "start_at": format_date_dmyy(r["start_at"]),
                 "therapy_group_name": r["therapy_group_name"] or "Sem grupo"
             }
-            for r in cursor.fetchall()
+            for r in session_rows
         ]
 
         # --- All evaluated sessions for this patient (chronological) ---
         # We select only the latest evaluation ID for each session using a subquery (MAX(id))
         # to ensure that if a session has both an automated and revised evaluation,
         # we only pick the latest (human-revised) evaluation.
-        cursor.execute(
-            """
+        eval_rows = conn.execute(text("""
             SELECT e.id as eval_id, s.name as session_name, s.start_at,
                    et.raw_payload
             FROM tdpm_evaluations e
@@ -439,12 +422,9 @@ def get_patient_evolution_data(patient_id: str) -> dict | None:
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
             JOIN therapy_session_patients sp ON sp.therapy_session_id = s.id
             JOIN evaluation_telemetry et ON et.evaluation_id = e.id
-            WHERE sp.patient_id = ?
+            WHERE sp.patient_id = :pdb
             ORDER BY s.start_at ASC
-            """,
-            (patient_db_id,),
-        )
-        eval_rows = cursor.fetchall()
+        """), {"pdb": patient_db_id}).mappings().fetchall()
 
     # Build timeline entries
     timeline = []
@@ -670,20 +650,17 @@ def get_tdpm_table_data() -> list[dict]:
 
 
 def get_clinicians() -> list[dict]:
-    """Return all users with the clinician or admin role for select dropdowns."""
+    """Retrieve all users with the clinician role."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, name FROM users WHERE role IN ('clinician', 'admin') ORDER BY name ASC"
-        )
-        return [{"id": r["id"], "name": r["name"]} for r in cursor.fetchall()]
-
+        rows = conn.execute(text(
+            "SELECT id, name FROM users WHERE role = 'clinician' ORDER BY name ASC"
+        )).mappings().fetchall()
+        return [{"id": r["id"], "name": r["name"]} for r in rows]
 
 
 def get_sessions_admin(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all therapy sessions with key metadata for the admin management page."""
     with get_db() as conn:
-        cursor = conn.cursor()
         query = """
             SELECT s.id, s.name, s.start_at, s.duration, s.therapy_group_id,
                    u.name as clinician_name,
@@ -699,12 +676,12 @@ def get_sessions_admin(group_id: int | str | None = None) -> list[dict]:
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
         """
-        params = []
+        params = {}
         if group_id is not None and str(group_id).strip() not in ("", "None"):
-            query += " WHERE s.therapy_group_id = ?"
-            params.append(int(group_id))
+            query += " WHERE s.therapy_group_id = :gid"
+            params["gid"] = int(group_id)
         query += " ORDER BY s.start_at DESC, s.created_at DESC"
-        cursor.execute(query, params)
+        rows = conn.execute(text(query), params).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -717,7 +694,7 @@ def get_sessions_admin(group_id: int | str | None = None) -> list[dict]:
                 "patients": r["patients"] or "Nenhum paciente",
                 "transcript_status": r["transcript_status"],
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
@@ -751,9 +728,8 @@ def update_session_admin(
         therapy_group_id = None
 
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM therapy_sessions WHERE id = ?", (session_id,))
-        if not cursor.fetchone():
+        row = conn.execute(text("SELECT id FROM therapy_sessions WHERE id = :sid"), {"sid": session_id}).mappings().fetchone()
+        if not row:
             return {"error": "Sessão não encontrada"}, 404
 
     from symptoms_analyser.db import update_therapy_session as orm_update_session
@@ -768,9 +744,8 @@ def update_session_admin(
 def delete_transcript_admin(transcript_id: int) -> tuple[dict, int]:
     """Validate existence and delete a transcript via ORM layer. Returns (response_dict, status_code)."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM transcripts WHERE id = ?", (transcript_id,))
-        if not cursor.fetchone():
+        row = conn.execute(text("SELECT id FROM transcripts WHERE id = :tid"), {"tid": transcript_id}).mappings().fetchone()
+        if not row:
             return {"error": "Transcrição não encontrada"}, 404
             
     import symptoms_analyser.db as orm
@@ -779,24 +754,29 @@ def delete_transcript_admin(transcript_id: int) -> tuple[dict, int]:
 
 
 def get_sessions_api_data() -> list[dict]:
-    """Retrieve all therapy sessions with patient IDs for the admin API."""
+    """Retrieve minimal session data for dashboard visualization endpoints."""
+    from symptoms_analyser.db import is_postgres
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT s.id, s.name, s.clinician_id, s.start_at, s.duration, s.created_at,
+        if is_postgres():
+            concat_fn = "string_agg(p.pseudonym, ', ')"
+        else:
+            concat_fn = "group_concat(p.pseudonym, ', ')"
+
+        rows = conn.execute(text(f"""
+            SELECT s.id, s.name, s.start_at, s.duration,
                    u.name as clinician_name,
                    g.name as therapy_group_name,
-                   (SELECT group_concat(patient_id, ', ') FROM therapy_session_patients WHERE therapy_session_id = s.id) as patients
+                   (SELECT {concat_fn} FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients,
+                   s.created_at
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-            ORDER BY s.start_at DESC, s.created_at DESC
-        """)
+            ORDER BY s.start_at DESC
+        """)).mappings().fetchall()
         return [
             {
                 "id": r["id"],
                 "name": r["name"],
-                "clinician_id": r["clinician_id"],
                 "clinician_name": r["clinician_name"] or "Sem clínico",
                 "therapy_group_name": r["therapy_group_name"] or "Sem grupo",
                 "start_at": r["start_at"],
@@ -804,6 +784,5 @@ def get_sessions_api_data() -> list[dict]:
                 "patients": r["patients"] or "Nenhum paciente",
                 "created_at": r["created_at"],
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
-

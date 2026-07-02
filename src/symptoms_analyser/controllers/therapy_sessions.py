@@ -1,4 +1,13 @@
+"""
+controllers/therapy_sessions.py
+-------------------------------
+Controller functions for therapy session CRUD, airtime calculations,
+and session detail/status retrieval.
+"""
+
 from typing import Dict, Any, Optional
+
+from sqlalchemy import text
 
 import symptoms_analyser.db as orm
 from symptoms_analyser.controllers.transcript_upload import (
@@ -84,14 +93,21 @@ def handle_new_therapy_session(form_data: Dict[str, Any], file_obj: Optional[Any
 
 def get_therapy_sessions(group_id: int | str | None = None) -> list[dict]:
     """Retrieve all therapy sessions with calculated clinician details, patients, transcript status, and evaluation IDs."""
-    from symptoms_analyser.db import get_db
+    from symptoms_analyser.db import get_db, is_postgres
     with get_db() as conn:
-        cursor = conn.cursor()
-        query = """
+        # group_concat is SQLite-specific; PostgreSQL uses string_agg
+        if is_postgres():
+            concat_fn = "string_agg(p.pseudonym, ', ')"
+            concat_fn_ids = "string_agg(CAST(patient_id AS TEXT), ', ')"
+        else:
+            concat_fn = "group_concat(p.pseudonym, ', ')"
+            concat_fn_ids = "group_concat(patient_id, ', ')"
+
+        query = f"""
             SELECT s.id, s.name, s.start_at, s.duration,
                    u.name as clinician_name,
                    g.name as therapy_group_name,
-                   (SELECT group_concat(p.pseudonym, ', ') FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients,
+                   (SELECT {concat_fn} FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = s.id) as patients,
                    (SELECT status FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_status,
                    (SELECT progress_percent FROM transcripts WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as transcript_progress,
                    (SELECT id FROM tdpm_evaluations WHERE therapy_session_id = s.id ORDER BY created_at DESC LIMIT 1) as evaluation_id
@@ -99,13 +115,13 @@ def get_therapy_sessions(group_id: int | str | None = None) -> list[dict]:
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
         """
-        params = []
+        params = {}
         if group_id is not None and str(group_id).strip() not in ("", "None"):
-            query += " WHERE s.therapy_group_id = ?"
-            params.append(int(group_id))
+            query += " WHERE s.therapy_group_id = :gid"
+            params["gid"] = int(group_id)
             
         query += " ORDER BY s.start_at DESC, s.created_at DESC"
-        cursor.execute(query, params)
+        rows = conn.execute(text(query), params).mappings().fetchall()
         return [
             {
                 "id": r["id"],
@@ -119,7 +135,7 @@ def get_therapy_sessions(group_id: int | str | None = None) -> list[dict]:
                 "transcript_progress": r["transcript_progress"] or 0,
                 "evaluation_id": r["evaluation_id"]
             }
-            for r in cursor.fetchall()
+            for r in rows
         ]
 
 
@@ -221,16 +237,14 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
     """Retrieve details for a single therapy session including participants, transcripts, and evaluation identifiers."""
     from symptoms_analyser.db import get_db
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        session_row = conn.execute(text("""
             SELECT s.id, s.name, s.start_at, s.duration, u.name as clinician_name,
                    s.therapy_group_id, g.name as therapy_group_name
             FROM therapy_sessions s
             LEFT JOIN users u ON s.clinician_id = u.id
             LEFT JOIN therapy_groups g ON s.therapy_group_id = g.id
-            WHERE s.id = ?
-        """, (session_id,))
-        session_row = cursor.fetchone()
+            WHERE s.id = :sid
+        """), {"sid": session_id}).mappings().fetchone()
         if not session_row:
             return None
             
@@ -245,19 +259,18 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
         }
         
         # Query participating patients pseudonyms
-        cursor.execute("""
-            SELECT p.pseudonym FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = ?
-        """, (session_id,))
-        patients_list = [r["pseudonym"] for r in cursor.fetchall()]
+        patient_rows = conn.execute(text("""
+            SELECT p.pseudonym FROM therapy_session_patients tsp JOIN patients p ON tsp.patient_id = p.id WHERE tsp.therapy_session_id = :sid
+        """), {"sid": session_id}).mappings().fetchall()
+        patients_list = [r["pseudonym"] for r in patient_rows]
         
         # Query latest transcript if exists
-        cursor.execute("""
+        transcript_row = conn.execute(text("""
             SELECT id, filename, status, progress_percent, raw_text, anonymized_text, error_message
             FROM transcripts
-            WHERE therapy_session_id = ?
+            WHERE therapy_session_id = :sid
             ORDER BY created_at DESC LIMIT 1
-        """, (session_id,))
-        transcript_row = cursor.fetchone()
+        """), {"sid": session_id}).mappings().fetchone()
         
         transcript_data = None
         airtime_data = None
@@ -277,12 +290,11 @@ def get_therapy_session_detail(session_id: int) -> dict | None:
                 airtime_data = calculate_airtime(text_for_airtime, patients_list)
             
         # Query latest evaluation if exists
-        cursor.execute("""
+        eval_row = conn.execute(text("""
             SELECT id FROM tdpm_evaluations
-            WHERE therapy_session_id = ?
+            WHERE therapy_session_id = :sid
             ORDER BY created_at DESC LIMIT 1
-        """, (session_id,))
-        eval_row = cursor.fetchone()
+        """), {"sid": session_id}).mappings().fetchone()
         evaluation_id = eval_row["id"] if eval_row else None
         
         return {
@@ -298,14 +310,12 @@ def get_session_transcript_status(session_id: int) -> dict:
     """Retrieve processing logs and status percentage for a dynamic session detail pipeline poll."""
     from symptoms_analyser.db import get_db
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+        row = conn.execute(text("""
             SELECT status, progress_percent, error_message
             FROM transcripts
-            WHERE therapy_session_id = ?
+            WHERE therapy_session_id = :sid
             ORDER BY created_at DESC LIMIT 1
-        """, (session_id,))
-        row = cursor.fetchone()
+        """), {"sid": session_id}).mappings().fetchone()
         
         if not row:
             return {"status": "none", "progress_percent": 0, "error": None, "logs": []}

@@ -1,10 +1,11 @@
 """
 symptoms_analyser/db package
 ----------------------------
-Clean interface exposing SQLite database connection and ORM logic.
+Clean interface exposing database connection and ORM logic.
+Supports SQLite (default) and PostgreSQL (via DB_URL env var).
 """
 
-from .connection import get_db
+from .connection import get_db, get_raw_connection, is_postgres, engine
 from .orm import (
     create_therapy_session,
     update_therapy_session,
@@ -23,6 +24,9 @@ from .orm import (
 
 __all__ = [
     "get_db",
+    "get_raw_connection",
+    "is_postgres",
+    "engine",
     "create_therapy_session",
     "update_therapy_session",
     "find_or_create_patient",

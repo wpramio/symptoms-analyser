@@ -7,30 +7,31 @@ Query and alignment functions for therapy session dynamic evaluations.
 import json
 import math
 
+from sqlalchemy import text
+
 from symptoms_analyser.db import get_db
 
 
 def list_evaluation_ids() -> list[dict]:
     """Return a list of successfully completed clinical evaluations available for comparison."""
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
+        rows = conn.execute(
+            text("""
             SELECT e.id AS evaluation_id, s.name, u.name as clinician_name, e.created_at
             FROM tdpm_evaluations e
             JOIN evaluation_telemetry et ON e.id = et.evaluation_id
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
             LEFT JOIN users u ON s.clinician_id = u.id
             ORDER BY e.created_at DESC
-            """
-        )
+            """)
+        ).mappings().fetchall()
         return [
             {
                 "id": str(row["evaluation_id"]),
                 "name": f"{row['name']} ({row['clinician_name'] or 'Sem clínico'} - {row['created_at']})",
                 "path": f"/api/evaluations/{row['evaluation_id']}",
             }
-            for row in cursor.fetchall()
+            for row in rows
         ]
 
 
@@ -48,35 +49,32 @@ def get_evaluation_payload(eval_id: str) -> dict | None:
         Exception on DB or JSON errors.
     """
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
+        row = conn.execute(
+            text("""
             SELECT et.raw_payload, s.name, u.name as clinician_name
             FROM evaluation_telemetry et
             JOIN tdpm_evaluations e ON et.evaluation_id = e.id
             JOIN therapy_sessions s ON e.therapy_session_id = s.id
             LEFT JOIN users u ON s.clinician_id = u.id
-            WHERE et.evaluation_id = ?
-            """,
-            (eval_id,),
-        )
-        row = cursor.fetchone()
+            WHERE et.evaluation_id = :eval_id
+            """),
+            {"eval_id": eval_id},
+        ).mappings().fetchone()
 
         clinical_analysis_row = None
         if row:
-            cursor.execute(
-                """
+            clinical_analysis_row = conn.execute(
+                text("""
                 SELECT group_progress_note, interactions_mapping
                 FROM session_clinical_analyses
-                WHERE transcript_id = (SELECT transcript_id FROM tdpm_evaluations WHERE id = ?)
-                """,
-                (eval_id,),
-            )
-            clinical_analysis_row = cursor.fetchone()
+                WHERE transcript_id = (SELECT transcript_id FROM tdpm_evaluations WHERE id = :eval_id)
+                """),
+                {"eval_id": eval_id},
+            ).mappings().fetchone()
 
-    if row and row[0]:
-        payload = json.loads(row[0])
-        payload["session"] = f"{row[1]} ({row[2] or 'Sem clínico'})"
+    if row and row["raw_payload"]:
+        payload = json.loads(row["raw_payload"])
+        payload["session"] = f"{row['name']} ({row['clinician_name'] or 'Sem clínico'})"
         
         # Inject clinical analysis
         if clinical_analysis_row:
@@ -242,12 +240,12 @@ def save_clinical_analysis(eval_id: int, note: str) -> None:
     """Save clinical progress note/analysis for the given evaluation ID."""
     import symptoms_analyser.db as orm
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT transcript_id FROM tdpm_evaluations WHERE id = ?", (eval_id,))
-        row = cursor.fetchone()
+        row = conn.execute(
+            text("SELECT transcript_id FROM tdpm_evaluations WHERE id = :eval_id"),
+            {"eval_id": eval_id},
+        ).mappings().fetchone()
         if not row:
             raise ValueError("Avaliação não encontrada")
         transcript_id = row["transcript_id"]
         
     orm.update_session_clinical_analysis(transcript_id, note)
-
